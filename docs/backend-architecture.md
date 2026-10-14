@@ -1,6 +1,6 @@
 # 墨枢 Inkloom 后端整体框架设计
 
-> 依据：`docs/agent-development.md`（业务编排与 Agent 契约）、`docs/product-design.md`（产品流程）、`docs/frontend-engineering-prompt.md`（REST/SSE 接口契约）。
+> 配套：[Agent 编排与开发详解](./agent-orchestration.md)、[增量开发与学习计划](./backend-build-plan.md)、[前端 API 契约](./frontend-api.md)。
 > 技术栈：**Go + Eino（显式 Graph/Interrupt/Checkpoint）+ PostgreSQL/pgvector + OpenTelemetry→Langfuse**。
 > 本文只定框架与边界：分层、模块、运行时模型、一致性、数据与接口；代码级签名随各里程碑细化。
 
@@ -137,7 +137,7 @@ migrations/                         # SQL 迁移（编号，含 pgvector 扩展�
 | 图执行状态 | Eino State + PG Checkpoint | 当前走到哪个节点、节点输入版本、轮次、中断恢复点 |
 | 运行事件流 | `run_event` 只追加表 | 给前端/SSE/审计/时间线用，可重放 |
 
-run 启动时**冻结版本集合**（project/chapter/outline/bible/style 的具体版本 + draft_version），整轮 run 只读这些版本；作者改动产生新版本，不影响已在跑的 run 的输入。
+run 启动时冻结 project/outline/bible/style 等**基础输入版本**并记录初始 draft_version。正文随修订产生新版本，同轮 Critics 读取同一正文快照；下一轮使用修订后的版本。人工修改不能被偷偷拼入旧上下文：旧产物提交及审批失效，需显式重新装配/启动或经版本校验恢复。
 
 ### 5.2 一次章节 run 的生命周期
 
@@ -162,15 +162,17 @@ POST /runs/:id/actions（approve|redirect|instruct|inline_edit|cancel，带 draf
 revise.round(x,max) / gate.waiting / escalated / conflict.created /
 index.updating / run.finished / run.failed / version.stale`
 
-- **outbox 模式**：业务写库与事件追加同事务；dispatcher 异步发布，保证"库改了事件必达"，不依赖模型调用成功与否。
+- **outbox 模式**：业务写库与事件追加同事务；dispatcher 异步发布，提交后可重试投递，允许重复；客户端按事件 ID 去重。在事件保留范围内支持断线补发，游标过期则重取快照，回放转实时订阅须避免缺口。
 - 事件携带 `run_id、node、round、draft_version、版本引用、用量`，前端据此驱动 React Flow 高亮、Findings、返工进度。
 
 ### 5.4 失控防护（确定性护栏，集中在 router/platform）
 
-- 返工 `revise_round ≤ 2`（可配 3），超限 → `escalate`（带历轮 diff 与未决问题）。
+- 返工默认最多 2 轮（可配 3），初稿评审不计轮数；第 2 轮修订复检仍失败便 `escalate`，不启动第 3 轮修订。
+- 严重度决定修复范围，授权决定是否执行。锁定大纲、重大结构、跨章修改及事实冲突先出方案交人；I5 即支持 needs_human 终态，I7 再补中断恢复。
 - 每节点工具调用 ≤3、结果大小上限、重复无增益查询即停；ReAct 只存在于有边界的查证。
 - 每次模型调用前检查 **总调用数 / token / 金额预算**（结构修复、重试、工具循环都计入）。
-- 写入按 `(run_id,node,round,input_version,attempt)` **幂等去重**；外部模型超时结果未知不假装未扣费，交由作者选择重试。
+- 业务写入按 `(run_id,node,round,input_version)` 对应的稳定操作键幂等去重；`attempt` 仅记录调用尝试，不能让重试绕过幂等。模型调用设超时、取消和有限重试；结果未知不假装未扣费。
+- 恢复时先读取已提交产物；必须测试“业务事务已提交、checkpoint 尚未保存”时崩溃，恢复后不重复提交。模型响应未保存时不能保证不重复调用，需记录未知状态并受预算约束。
 - Critic 必要项失败不得由其他 Critic 的通过替代（barrier，不是投票）。
 
 ---
@@ -285,15 +287,17 @@ REST：项目与树、章节版本读取、segment PATCH（409）、bible CRUD�
 
 ## 13. M1 落地顺序（最小可跑后端）
 
-1. 骨架：config / DB / migrations / 路由 / 健康检查 / 单章假数据。
-2. domain + 表：Segment/Finding/ChapterState/角色输出 Schema；segments、runs、run_events、checkpoints、llm_calls。
-3. agents/model：接一个 ChatModel，跑通 writer + 结构化解析（含失败/截断/非法引用用例）。
-4. orchestration：Assemble→Draft→一致性/AI味两 Critic（并行 barrier）→Aggregate→条件路由→修订→复检，2 轮上限。
-5. store/checkpoint：PG Checkpoint；HumanGate interrupt/resume（approve/instruct/inline_edit）+ 409。
-6. events/outbox + SSE hub（回放）；ContextManifest 基础版。
-7. app 用例与 REST 串通前端工作台；Commit 冻结版本；单章定稿 e2e。
+开发顺序以 [增量学习计划](./backend-build-plan.md) 为准：
 
-M2 加完整记忆/pgvector/工具循环；M3 加 ChangeSet/影响传播/冲突/分支；M4 加评测与多模型成本；M5 加 style/reader 全量与统稿。**接口与表从第一天就预留，不靠删模块来"分期"。**
+1. I0–I1：config、纯领域规则、模型端口/Fake、内存仓库与最小图；定义 ContextBundle 和版本引用。
+2. I2–I3：结构化输出加固、真实模型、Prompt 版本与用量记录；加入超时/取消/调用预算，用最小 REST 联通前端。
+3. I4–I5：P2 有限返工，再加一致性并行评审、分级与授权路由；同轮读同一正文版本，越权返回 needs_human。
+4. I6：PG/migrations、版本化仓储、409、事务与版本竞争测试。
+5. I7：PG Checkpoint、Interrupt/Resume、业务幂等与崩溃恢复测试。
+6. I8：事件/outbox、SSE、回放去重与慢客户端处理，替代最小轮询。
+7. I9：完善 ContextManifest、Commit 冻结匹配版本；单章定稿 e2e。
+
+M2 先定最小可见性过滤，再加完整记忆/pgvector/工具循环；M3 加 ChangeSet/影响传播/冲突/分支；M4 加评测与多模型成本；M5 加 style/reader 全量与统稿。**先定必要契约，表与适配器按阶段引入，不提前建完所有模块。**
 
 ---
 

@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["findings"],
+  "properties": {
+    "findings": {
+      "type": "array",
+      "maxItems": 64,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "critic", "severity", "segmentId", "quote", "evidenceRefs", "reason", "suggestion", "repairScope", "draftVersion"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1, "pattern": "\\S"},
+          "critic": {"const": "ai_taste"},
+          "severity": {"enum": ["P2", "P3"]},
+          "segmentId": {"type": "string", "minLength": 1, "pattern": "\\S"},
+          "quote": {"type": "string", "minLength": 1, "pattern": "\\S"},
+          "evidenceRefs": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1, "pattern": "\\S"}},
+          "reason": {"type": "string", "minLength": 1, "pattern": "\\S"},
+          "suggestion": {"type": "string", "minLength": 1, "pattern": "\\S"},
+          "repairScope": {"const": "phrase"},
+          "draftVersion": {"type": "integer", "minimum": 1}
+        }
+      }
+    }
+  }
+}

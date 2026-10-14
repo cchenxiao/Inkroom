@@ -1,3 +1,4 @@
+import BackendTrial from './components/BackendTrial';
 import SuggestionDialog from './components/SuggestionDialog';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -453,6 +454,7 @@ export default function PreparePage() {
           </>
         )}
       </AsyncState>
+      <BackendTrial />
       <SuggestionDialog
         open={suggestOpen}
         onOpenChange={setSuggestOpen}

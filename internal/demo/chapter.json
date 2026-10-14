@@ -1,0 +1,36 @@
+{
+  "context": {
+    "chapterId": "ch7",
+    "branchId": "main",
+    "beat": {
+      "id": "ch7-beat-1",
+      "sceneId": "ch7-scene-1",
+      "title": "交还铜扣",
+      "description": "陆青把沈砚父亲外套上的铜扣交给沈砚。铜扣属于沈砚的父亲，不是陆青的父亲。沈砚想追问来历，陆青避而不答。"
+    },
+    "pov": "沈砚",
+    "sources": [
+      {"id": "bible-shenyan", "version": 1, "text": "沈砚回乡调查父亲沉船的真相，不愿向陆青暴露急切。"},
+      {"id": "style-zhuoliu", "version": 1, "text": "限知第三人称。以动作和对白承载情绪，不解释人物所有想法。"}
+    ]
+  },
+  "writer": {
+    "text": "陆青把铜扣放在桌沿。沈砚没有接。窗外的雨敲着铁皮，一股难以言喻的情绪涌上心头。\n“哪来的？”\n“你先收着。”她说。\n沈砚用指甲拨开扣眼里的泥。泥已经干了。"
+  },
+  "critic": {
+    "findings": [
+      {
+        "id": "finding-ai-taste-1",
+        "critic": "ai_taste",
+        "severity": "P2",
+        "segmentId": "ch7-beat-1-seg-1",
+        "quote": "一股难以言喻的情绪涌上心头",
+        "evidenceRefs": ["ch7-beat-1-seg-1"],
+        "reason": "抽象情绪套话重复解释紧张感，前后的停顿和拨泥动作已经承载情绪。",
+        "suggestion": "只删去该套话，保留雨声、停顿和拨泥动作。",
+        "repairScope": "phrase",
+        "draftVersion": 1
+      }
+    ]
+  }
+}

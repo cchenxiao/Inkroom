@@ -7,5 +7,6 @@ dist/
 *.tsbuildinfo
 coverage/
 .DS_Store
+.idea/
 playwright-report/
 test-results/

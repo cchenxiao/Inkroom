@@ -320,3 +320,22 @@ input[type='checkbox'] {
     grid-template-columns: 1fr;
   }
 }
+
+.backend-trial {
+  margin-top: 24px;
+  padding: 24px;
+}
+.backend-trial summary {
+  cursor: pointer;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+.backend-candidate {
+  background: var(--paper);
+  color: var(--bg);
+  border-radius: 12px;
+  padding: 24px;
+  white-space: pre-wrap;
+  font-family: 'Noto Serif SC', 'Source Han Serif', Songti, serif;
+  line-height: 1.9;
+}
