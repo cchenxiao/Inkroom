@@ -1,0 +1,108 @@
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+import type { RunEvent, RunNode } from '@/types/domain';
+interface UIState {
+  maxRounds: 2 | 3;
+  setMaxRounds: (value: 2 | 3) => void;
+  leftOpen: boolean;
+  rightOpen: boolean;
+  focus: boolean;
+  heatmap: boolean;
+  commandOpen: boolean;
+  drawer: 'closed' | 'half' | 'full';
+  drawerTab: string;
+  selectedSegment: string | null;
+  selectedFinding: string | null;
+  chapterId: string;
+  branchId: string;
+  stale: boolean;
+  node: RunNode | null;
+  runId: string | null;
+  events: RunEvent[];
+  streamText: string;
+  setPanel: (side: 'left' | 'right', value: boolean) => void;
+  setFocus: (v: boolean) => void;
+  setHeatmap: (v: boolean) => void;
+  setCommand: (v: boolean) => void;
+  setDrawer: (v: UIState['drawer']) => void;
+  setDrawerTab: (v: string) => void;
+  selectSegment: (id: string | null) => void;
+  selectFinding: (id: string | null) => void;
+  setChapter: (id: string) => void;
+  setBranch: (id: string) => void;
+  setStale: (v: boolean) => void;
+  setRun: (id: string) => void;
+  addEvent: (e: RunEvent) => void;
+  clearStream: () => void;
+}
+export const useUIStore = create<UIState>()(
+  persist(
+    (set) => ({
+      maxRounds: 2,
+      setMaxRounds: (maxRounds) => set({ maxRounds }),
+      leftOpen: true,
+      rightOpen: true,
+      focus: false,
+      heatmap: true,
+      commandOpen: false,
+      drawer: 'closed',
+      drawerTab: 'flow',
+      selectedSegment: null,
+      selectedFinding: null,
+      chapterId: 'ch7',
+      branchId: 'main',
+      stale: false,
+      node: null,
+      runId: null,
+      events: [],
+      streamText: '',
+      setPanel: (side, value) => set(side === 'left' ? { leftOpen: value } : { rightOpen: value }),
+      setFocus: (focus) => set({ focus }),
+      setHeatmap: (heatmap) => set({ heatmap }),
+      setCommand: (commandOpen) => set({ commandOpen }),
+      setDrawer: (drawer) => set({ drawer }),
+      setDrawerTab: (drawerTab) => set({ drawerTab }),
+      selectSegment: (selectedSegment) => set({ selectedSegment }),
+      selectFinding: (selectedFinding) => set({ selectedFinding }),
+      setChapter: (chapterId) =>
+        set({
+          chapterId,
+          selectedSegment: null,
+          selectedFinding: null,
+          stale: false,
+          runId: null,
+          node: null,
+          events: [],
+          streamText: '',
+        }),
+      setBranch: (branchId) =>
+        set({ branchId, stale: false, runId: null, node: null, events: [], streamText: '' }),
+      setStale: (stale) => set({ stale }),
+      setRun: (runId) => set({ runId, events: [], streamText: '' }),
+      addEvent: (event) =>
+        set((s) =>
+          s.events.some((e) => e.id === event.id)
+            ? s
+            : {
+                events: [...s.events.slice(-99), event],
+                node: event.data.node ?? s.node,
+                streamText:
+                  event.type === 'draft.delta'
+                    ? s.streamText + (event.data.text ?? '')
+                    : s.streamText,
+                stale: event.type === 'version.stale' ? true : s.stale,
+              },
+        ),
+      clearStream: () => set({ streamText: '' }),
+    }),
+    {
+      name: 'inkloom-layout',
+      partialize: (s) => ({
+        leftOpen: s.leftOpen,
+        rightOpen: s.rightOpen,
+        drawer: s.drawer,
+        heatmap: s.heatmap,
+      }),
+    },
+  ),
+);

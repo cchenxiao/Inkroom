@@ -1,0 +1,338 @@
+.page-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.page-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.page-form {
+  display: grid;
+  gap: 18px;
+}
+.page-section {
+  margin-top: 30px;
+}
+.page-content h2 {
+  font-size: 16px;
+  font-weight: 550;
+}
+.page-content h3,
+.bible-panel h3 {
+  font-size: 14px;
+  font-weight: 550;
+  line-height: 1.5;
+}
+.page-content p,
+.bible-panel p {
+  font-size: 12px;
+  line-height: 1.85;
+}
+.page-content small,
+.bible-panel small {
+  font-size: 10px;
+  color: var(--text-dim);
+  line-height: 1.7;
+}
+.page-content .section-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.page-content .section-title > small {
+  margin-left: auto;
+}
+.page-content .page-actions {
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+.page-content .page-heading > .page-actions {
+  margin: 0;
+  flex-wrap: nowrap;
+}
+.quiet {
+  color: var(--text-dim);
+}
+.page-error {
+  color: var(--p0);
+  margin-top: 12px;
+  line-height: 1.7;
+}
+.page-warning {
+  color: var(--p1);
+  padding: 10px;
+  background: color-mix(in srgb, var(--p1) 8%, transparent);
+  border-radius: 6px;
+}
+.page-eyebrow {
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: var(--text-dim);
+  line-height: 1.8;
+}
+.voice-tags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: 12px 0;
+}
+.character-identity {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.character-avatar {
+  height: 38px;
+  width: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--ai) 25%, transparent);
+  background: color-mix(in srgb, var(--ai) 9%, transparent);
+  color: var(--ai);
+  font-family: var(--font-prose);
+  font-size: 19px;
+}
+.character-motivations {
+  margin: 16px 0;
+  display: grid;
+  gap: 10px;
+}
+.character-motivations > div {
+  display: grid;
+  grid-template-columns: 36px 1fr;
+  gap: 10px;
+  font-size: 11px;
+  line-height: 1.8;
+}
+.character-motivations dt {
+  color: var(--text-dim);
+}
+.character-motivations dd {
+  margin: 0;
+}
+.style-anchor {
+  margin: 16px 0;
+  padding: 12px 16px;
+  border-left: 2px solid var(--ai);
+  background: color-mix(in srgb, var(--ai) 4%, transparent);
+  font-family: var(--font-prose);
+  font-size: 14px;
+  line-height: 2;
+  color: var(--text);
+}
+.metric-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  margin: 18px 0;
+  padding: 14px 0;
+  border-block: 1px solid var(--border);
+}
+.metric-pair > div {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.metric-pair strong {
+  font-size: 21px;
+  font-weight: 400;
+}
+.page-diff,
+.evidence-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.page-diff > div,
+.evidence-pair > div {
+  background: var(--bg);
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  min-width: 0;
+}
+.page-diff small,
+.evidence-pair small {
+  color: var(--text-dim);
+  font-size: 10px;
+}
+.page-diff pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 11px;
+  line-height: 1.8;
+  max-height: 300px;
+  overflow: auto;
+}
+.page-diff > div:first-child {
+  border-top-color: var(--p0);
+}
+.page-diff > div:last-child {
+  border-top-color: var(--success);
+}
+.evidence-pair p {
+  margin: 10px 0 0;
+  line-height: 1.8;
+}
+.impact-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  width: 100%;
+  text-align: left;
+  padding: 14px 0;
+}
+.impact-row > div {
+  flex: 1;
+  min-width: 0;
+}
+.impact-row strong {
+  font-size: 12px;
+  font-weight: 500;
+}
+.impact-row p {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-top: 4px;
+  line-height: 1.65;
+}
+.check-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  font-size: 11px;
+  color: var(--text-dim);
+  line-height: 1.7;
+  margin: 16px 0;
+}
+.check-label input,
+input[type='checkbox'] {
+  accent-color: var(--human);
+}
+.full-width {
+  width: 100%;
+  margin-top: 10px;
+}
+.diff-old {
+  background: color-mix(in srgb, var(--p0) 5%, transparent);
+  color: color-mix(in srgb, var(--text) 75%, var(--p0));
+  border-left: 2px solid color-mix(in srgb, var(--p0) 45%, transparent);
+}
+.diff-new {
+  background: color-mix(in srgb, var(--success) 6%, transparent);
+  color: color-mix(in srgb, var(--text) 75%, var(--success));
+  border-left: 2px solid color-mix(in srgb, var(--success) 45%, transparent);
+}
+.change-entry-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+.change-entry {
+  position: relative;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  padding: 22px;
+  text-align: left;
+}
+.change-entry > svg:first-child {
+  color: var(--human);
+  margin-bottom: 20px;
+}
+.change-entry > svg:last-child {
+  position: absolute;
+  right: 20px;
+  top: 22px;
+  color: var(--text-dim);
+}
+.change-entry h3 {
+  margin-bottom: 8px;
+}
+.change-entry p {
+  color: var(--text-dim);
+  font-size: 11px;
+}
+.change-entry:hover {
+  border-color: var(--human);
+}
+.conflict-card {
+  margin-bottom: 16px;
+  border-top: 2px solid color-mix(in srgb, var(--p0) 60%, transparent);
+}
+.conflict-card > .evidence-pair {
+  margin: 18px 0 12px;
+}
+.conflict-choices {
+  display: flex;
+  gap: 8px;
+  margin-top: 18px;
+  flex-wrap: wrap;
+}
+.change-record {
+  margin-bottom: 16px;
+}
+.change-record h3 {
+  margin-top: 8px;
+}
+.propagation-steps {
+  display: flex;
+  margin: 22px 0;
+  gap: 8px;
+}
+.propagation-steps > div {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--text-dim);
+  font-size: 10px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--border);
+}
+.propagation-steps > div.complete {
+  border-color: var(--ai);
+  color: var(--text);
+}
+.propagation-steps span {
+  border: 1px solid var(--border);
+  width: 17px;
+  height: 17px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-size: 9px;
+}
+.propagation-steps .complete span {
+  border-color: var(--ai);
+  color: var(--ai);
+}
+.blast-counts {
+  display: flex;
+  gap: 28px;
+  margin-bottom: 12px;
+}
+.blast-counts > span {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 10px;
+  color: var(--text-dim);
+}
+.blast-counts strong {
+  font-size: 19px;
+  font-weight: 400;
+  color: var(--text);
+}
+.change-record .impact-row:hover {
+  background: var(--overlay);
+}
+.change-record > button:last-child {
+  margin-top: 12px;
+}

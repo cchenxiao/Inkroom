@@ -1,0 +1,27 @@
+:root {
+  --bg: #0e1013;
+  --panel: #161a20;
+  --overlay: #1e242d;
+  --border: rgba(255, 255, 255, 0.08);
+  --text: #e6e8ec;
+  --text-dim: #9aa1ac;
+  --paper: #fbf9f4;
+  --ai: #6366f1;
+  --human: #10b981;
+  --p0: #f04d5e;
+  --p1: #f59e0b;
+  --p2: #3b82f6;
+  --success: #22c55e;
+  --foreshadow: #a855f7;
+  --paper-ink: #161a20;
+  --paper-dim: #9aa1ac;
+  --radius: 8px;
+  --radius-lg: 12px;
+  --ease: 200ms ease;
+  --shadow: 0 12px 48px color-mix(in srgb, var(--bg) 55%, transparent);
+  --font-ui:
+    Inter, -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Source Han Sans SC', sans-serif;
+  --font-manuscript: 'Noto Serif SC', 'Source Han Serif SC', 'Songti SC', STSong, serif;
+  --font-mono: 'JetBrains Mono', 'SFMono-Regular', monospace;
+  color-scheme: dark;
+}
