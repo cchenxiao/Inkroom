@@ -17,7 +17,8 @@ import (
 )
 
 type Options struct {
-	FrozenInput       *manuscript.FrozenInput // HTTP 创建 run 前持久化；CLI 可由应用层即时装配。
+	CallHistory       []model.CallRecord
+	FrozenInput       *manuscript.FrozenInput // HTTP 在 Writer 前持久化；CLI 可由应用层即时装配。
 	BaseDraftVersion  int                     // 已持久化的章节版本；初稿从它递增。
 	OnModelCall       func(context.Context, model.CallRecord) error
 	AllowLocalRewrite bool // 仅授权冻结的本场/Beat 候选正文，不能改设定/大纲/事件结果。

@@ -13,8 +13,8 @@ import (
 	"inkloom/internal/domain/manuscript"
 )
 
-func (s *Store) CreateRun(ctx context.Context, r app.Run) error { return s.createRun(ctx, r, nil) }
-func (s *Store) createRun(ctx context.Context, r app.Run, input *manuscript.FrozenInput) error {
+func (s *Store) CreateRun(ctx context.Context, r app.Run) error { return s.createRun(ctx, r, nil, nil) }
+func (s *Store) createRun(ctx context.Context, r app.Run, input, preparation *manuscript.FrozenInput) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return err
@@ -49,6 +49,15 @@ func (s *Store) createRun(ctx context.Context, r app.Run, input *manuscript.Froz
 			return err
 		}
 		if _, err = tx.Exec(ctx, "INSERT INTO run_contexts VALUES($1,$2)", r.ID, raw); err != nil {
+			return err
+		}
+	}
+	if preparation != nil {
+		raw, err := json.Marshal(preparation)
+		if err != nil {
+			return err
+		}
+		if _, err = tx.Exec(ctx, "INSERT INTO run_preparations VALUES($1,$2)", r.ID, raw); err != nil {
 			return err
 		}
 	}

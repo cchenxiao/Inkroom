@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -58,7 +59,9 @@ func (g *Guard) Generate(ctx context.Context, in Input) (Output, Usage, error) {
 			return Output{}, total, err
 		}
 		// UTF-8 字节数作为当前中文材料的保守估算，另预留最大输出。
-		estimate := len(in.SystemPrompt) + len(in.UserPrompt) + g.limits.OutputTokens + 128
+		history, _ := json.Marshal(in.Messages)
+		tools, _ := json.Marshal(in.Tools)
+		estimate := len(history) + len(tools) + len(in.SystemPrompt) + len(in.UserPrompt) + g.limits.OutputTokens + 128
 		g.mu.Lock()
 		if g.calls >= g.limits.Calls || g.reserved+estimate > g.limits.Tokens {
 			g.mu.Unlock()

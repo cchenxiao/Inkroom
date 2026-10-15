@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"inkloom/internal/domain/manuscript"
+	"inkloom/internal/domain/memory"
 	"inkloom/internal/domain/review"
 )
 
@@ -42,6 +43,10 @@ type FinalCommit struct {
 	Refs             []manuscript.VersionRef    `json:"refs"`
 }
 type FinalRepository interface {
+	CreatePreparingRun(context.Context, Run, manuscript.FrozenInput) error
+	PreparationInput(context.Context, string) (manuscript.FrozenInput, error)
+	SaveLookup(context.Context, string, memory.LookupTrace) error
+	SealPreparedContext(context.Context, string, manuscript.FrozenInput) error
 	LiveRepository
 	CreatePreparedRun(context.Context, Run, manuscript.FrozenInput) error
 	FrozenContext(context.Context, string) (manuscript.FrozenInput, error)

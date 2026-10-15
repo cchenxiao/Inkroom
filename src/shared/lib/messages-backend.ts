@@ -1,4 +1,26 @@
 export const backendMessages = {
+  preparingContext:
+    '正在准备上下文；准备完成后才冻结最终清单并启动 Writer。失败或中断时不会补造清单。',
+  preparationStopped: '上下文准备已停止，未生成最终清单，Writer 尚未启动。',
+  lookupTitle: '装配查询记录',
+  lookupNote: '最多查询 3 次，范围由服务端固定。空结果不代表事实不存在；只记录公开工具行为。',
+  lookupEmpty: '尚未调用工具；材料充分时可直接完成准备。',
+  lookupRejected: '查询请求未通过校验',
+  lookupNew: '新增来源',
+  lookupStates: {
+    started: '查询中',
+    completed: '查询完成',
+    rejected: '已拒绝',
+    failed: '查询失败',
+  } as Record<string, string>,
+  lookupStops: {
+    ready: '准备完成，最终采用材料以冻结清单为准',
+    insufficient: '材料不足，需要作者补充',
+    no_gain: '连续两次没有新增来源，已停止',
+    rejected: '工具或参数不合法、重复查询，已停止',
+    limit: '达到查询上限，已停止',
+    blocked: '准备未完成，请查看调用记录；不会启动 Writer',
+  } as Record<string, string>,
   contextManifest: '本次上下文清单 · 固定输入版本',
   legacyContext: '此旧运行未保存上下文清单，不能补造定稿依据。请发起一次新运行。',
   contextError: '上下文清单读取失败。',
@@ -62,6 +84,7 @@ export const backendMessages = {
   graphFinished: '本节点已结束',
   graphEvidence: '以本次运行快照为准，图中没有执行的节点不会标为通过。',
   graphNodes: {
+    context_assemble: '装配 · 按需查询',
     commit: '定稿冻结',
     draft: 'Writer · 初稿',
     hard_consistency: '一致性 Critic',
@@ -201,6 +224,8 @@ export const backendMessages = {
   burstiness: '句长波动',
   hits: '禁用短语命中',
   nodes: {
+    context_assembler: '装配助手',
+    context_assemble: '准备上下文 · 按需查询',
     commit: '定稿冻结',
     human_gate: '作者审核',
     human_edit: '作者修改后待复检',

@@ -2,8 +2,10 @@ package adapters
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/eino-contrib/jsonschema"
 	"net/http"
 	"net/url"
 
@@ -30,17 +32,42 @@ func NewDeepSeek(cfg config.Config) (*DeepSeek, error) {
 }
 
 func (d *DeepSeek) Generate(ctx context.Context, in model.Input) (model.Output, model.Usage, error) {
+	format := deepseek.ResponseFormatType(deepseek.ResponseFormatTypeJSONObject)
+	if len(in.Tools) > 0 || len(in.Messages) > 0 {
+		format = deepseek.ResponseFormatTypeText
+	}
 	cm, err := deepseek.NewChatModel(ctx, &deepseek.ChatModelConfig{
 		APIKey: d.cfg.APIKey, BaseURL: d.cfg.BaseURL, Model: d.cfg.ModelName,
 		Timeout: d.cfg.CallTimeout, MaxTokens: d.cfg.MaxOutputTokens, Temperature: in.Temperature,
 		ThinkingConfig:     &deepseek.ThinkingConfig{Type: "disabled"},
-		ResponseFormatType: deepseek.ResponseFormatTypeJSONObject,
+		ResponseFormatType: format,
 		HTTPClient:         &http.Client{Timeout: d.cfg.CallTimeout, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }},
 	})
 	if err != nil {
 		return model.Output{}, model.Usage{}, fmt.Errorf("cannot initialize DeepSeek adapter")
 	}
-	msg, err := cm.Generate(ctx, []*schema.Message{schema.SystemMessage(in.SystemPrompt), schema.UserMessage(in.UserPrompt)})
+	if len(in.Tools) > 0 {
+		definitions := make([]*schema.ToolInfo, 0, len(in.Tools))
+		for _, tool := range in.Tools {
+			var params jsonschema.Schema
+			if err := json.Unmarshal(tool.Parameters, &params); err != nil {
+				return model.Output{}, model.Usage{}, fmt.Errorf("invalid tool schema")
+			}
+			definitions = append(definitions, &schema.ToolInfo{Name: tool.Name, Desc: tool.Description, ParamsOneOf: schema.NewParamsOneOfByJSONSchema(&params)})
+		}
+		if err := cm.BindTools(definitions); err != nil {
+			return model.Output{}, model.Usage{}, fmt.Errorf("cannot bind tools")
+		}
+	}
+	messages := []*schema.Message{schema.SystemMessage(in.SystemPrompt), schema.UserMessage(in.UserPrompt)}
+	for _, item := range in.Messages {
+		msg := &schema.Message{Role: schema.RoleType(item.Role), Content: item.Content, ToolCallID: item.ToolCallID}
+		for _, call := range item.ToolCalls {
+			msg.ToolCalls = append(msg.ToolCalls, schema.ToolCall{ID: call.ID, Type: "function", Function: schema.FunctionCall{Name: call.Name, Arguments: call.Arguments}})
+		}
+		messages = append(messages, msg)
+	}
+	msg, err := cm.Generate(ctx, messages)
 	if err != nil {
 		if ctx.Err() != nil {
 			return model.Output{}, model.Usage{}, ctx.Err()
@@ -70,5 +97,9 @@ func (d *DeepSeek) Generate(ctx context.Context, in model.Input) (model.Output, 
 		finish = model.Refused
 	}
 	// 不读取或记录模型隐藏推理内容。
-	return model.Output{Content: msg.Content, FinishReason: finish}, usage, nil
+	calls := make([]model.ToolCall, 0, len(msg.ToolCalls))
+	for _, c := range msg.ToolCalls {
+		calls = append(calls, model.ToolCall{ID: c.ID, Name: c.Function.Name, Arguments: c.Function.Arguments})
+	}
+	return model.Output{Content: msg.Content, FinishReason: finish, ToolCalls: calls}, usage, nil
 }

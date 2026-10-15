@@ -8,6 +8,7 @@ import (
 )
 
 type Step struct {
+	ToolCalls    []ToolCall
 	Role         string
 	Content      string
 	Purpose      Purpose
@@ -51,7 +52,7 @@ func (f *Fake) Generate(ctx context.Context, in Input) (Output, Usage, error) {
 		if finish == "" {
 			finish = Complete
 		}
-		return Output{Content: step.Content, FinishReason: finish}, Usage{Known: true}, nil
+		return Output{Content: step.Content, FinishReason: finish, ToolCalls: step.ToolCalls}, Usage{Known: true}, nil
 	}
 	return Output{}, Usage{}, fmt.Errorf("fake has no response for role=%q purpose=%q draftVersion=%d", in.Role, in.Purpose, material.DraftVersion)
 }

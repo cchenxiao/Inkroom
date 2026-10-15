@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import BackendTrialResult from './BackendTrialResult';
 import BackendHumanGate from './BackendHumanGate';
 import BackendContextManifest from './BackendContextManifest';
+import BackendLookupTrace from './BackendLookupTrace';
 import BackendFinalize from './BackendFinalize';
 import BackendDraft from './BackendDraft';
 import BackendRunHistory from './BackendRunHistory';
@@ -262,6 +263,7 @@ export default function BackendTrial() {
                 </Suspense>
               )}
               {run.result?.stopReason && <p role="status">{run.result.stopReason}</p>}
+              <BackendLookupTrace run={run} />
               <BackendContextManifest key={`context-${run.id}`} run={run} />
               {run.canResume && run.status !== 'committed' && (
                 <BackendHumanGate

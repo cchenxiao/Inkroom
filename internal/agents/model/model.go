@@ -7,6 +7,8 @@ import (
 )
 
 type Input struct {
+	Tools    []ToolDefinition
+	Messages []Message
 	Role     string
 	Task     string
 	Material json.RawMessage
@@ -30,13 +32,15 @@ const (
 type FinishReason string
 
 const (
-	Complete  FinishReason = "complete"
-	Refused   FinishReason = "refused"
-	Truncated FinishReason = "truncated"
+	ToolRequested FinishReason = "tool_calls"
+	Complete      FinishReason = "complete"
+	Refused       FinishReason = "refused"
+	Truncated     FinishReason = "truncated"
 )
 
 type Output struct {
-	Content string
+	ToolCalls []ToolCall
+	Content   string
 	// 由适配器映射供应商元数据，不能让正文 JSON 自报“生成完整”。
 	FinishReason FinishReason
 }

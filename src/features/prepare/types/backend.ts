@@ -2,6 +2,16 @@ import type { Finding, RunState } from '@/types/domain';
 
 /** I3 结果是隔离的单段候选，不是工作台正式稿本。 */
 export interface BackendRun extends Omit<RunState, 'status' | 'currentNode'> {
+  lookup?: {
+    steps: {
+      callId: string;
+      query: string;
+      status: string;
+      newSources: number;
+      refs: { id: string; version: number; digest: string }[];
+    }[];
+    stop?: string;
+  };
   inputDigest?: string;
   commitId?: string;
   eventSequence: number;

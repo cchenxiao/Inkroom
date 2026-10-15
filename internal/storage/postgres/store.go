@@ -31,6 +31,9 @@ var commitMigration string
 //go:embed migrations/005_memory.sql
 var memoryMigration string
 
+//go:embed migrations/006_preparation.sql
+var preparationMigration string
+
 type Store struct {
 	pool  *pgxpool.Pool
 	lease *pgx.Conn
@@ -95,7 +98,7 @@ func (s *Store) migrate(ctx context.Context) error {
 	if _, err = tx.Exec(ctx, "CREATE TABLE IF NOT EXISTS schema_migrations(version integer PRIMARY KEY, checksum text NOT NULL)"); err != nil {
 		return err
 	}
-	for i, sql := range []string{migration, humanMigration, eventMigration, commitMigration, memoryMigration} {
+	for i, sql := range []string{migration, humanMigration, eventMigration, commitMigration, memoryMigration, preparationMigration} {
 		version := i + 1
 		checksum := fmt.Sprintf("%x", sha256.Sum256([]byte(sql)))
 		var existing string

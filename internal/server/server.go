@@ -181,15 +181,14 @@ func (s *service) start(w http.ResponseWriter, r *http.Request) {
 		fail(w, 400, "missing_version", "请先读取当前稿本，再携带 draftVersion 启动")
 		return
 	}
-	run := app.Run{MaxCalls: s.cfg.MaxCalls, MaxTokens: s.cfg.MaxTokens, ID: rand.Text(), CreatedAt: time.Now().UTC(), BaseDraftVersion: *in.DraftVersion, DraftVersion: *in.DraftVersion, ChapterID: in.ChapterID, BranchID: in.BranchID, Scenario: in.Scenario, AllowLocalRewrite: in.AllowLocalRewrite, AutoRevise: in.AutoRevise, MaxRounds: in.MaxRounds, Status: "running", CurrentNode: "draft", Nodes: []any{}, Provider: s.cfg.Model, Model: s.cfg.ModelName}
-	input, err := app.PrepareRetrievedContext(r.Context(), s.cfg, run.Scenario, run.ID, run.BaseDraftVersion, s.retriever)
+	run := app.Run{MaxCalls: s.cfg.MaxCalls, MaxTokens: s.cfg.MaxTokens, ID: rand.Text(), CreatedAt: time.Now().UTC(), BaseDraftVersion: *in.DraftVersion, DraftVersion: *in.DraftVersion, ChapterID: in.ChapterID, BranchID: in.BranchID, Scenario: in.Scenario, AllowLocalRewrite: in.AllowLocalRewrite, AutoRevise: in.AutoRevise, MaxRounds: in.MaxRounds, Status: "running", CurrentNode: "context_assemble", Nodes: []any{}, Provider: s.cfg.Model, Model: s.cfg.ModelName}
+	input, err := app.PrepareContext(s.cfg, run.Scenario, run.ID, run.BaseDraftVersion)
 	if err != nil {
 		s.mu.Unlock()
 		fail(w, 422, "context_not_ready", err.Error())
 		return
 	}
-	run.InputDigest = input.Manifest.Digest
-	if err := s.repo.CreatePreparedRun(r.Context(), run, input); err != nil {
+	if err := s.repo.CreatePreparingRun(r.Context(), run, input); err != nil {
 		s.mu.Unlock()
 		storageError(w, err)
 		return
@@ -218,15 +217,29 @@ func (s *service) execute(run app.Run) {
 		run.ElapsedMs = time.Since(started).Milliseconds()
 		run.Result = &state
 	}
-	input, err := s.repo.FrozenContext(ctx, run.ID)
+	run, input, err := s.prepare(ctx, run)
 	if err != nil {
 		finish, stop := context.WithTimeout(context.Background(), 5*time.Second)
 		defer stop()
-		_ = s.repo.StopRun(finish, run.ID, "failed", "冻结输入读取失败，未调用模型")
+		status, reason := "failed", "上下文准备未完成，未启动 Writer；请查看工具轨迹和调用记录"
+		if errors.Is(err, app.ErrVersionMismatch) {
+			status = "stale"
+			reason = "稿本已变更，旧上下文准备失效"
+		} else if s.root.Err() != nil {
+			status = "interrupted"
+			reason = "准备阶段中断，未自动重试模型"
+		}
+		_ = s.repo.StopRun(finish, run.ID, status, reason)
+		return
+	}
+	history, err := s.repo.Calls(ctx, run.ID)
+	if err != nil {
+		_ = s.repo.StopRun(ctx, run.ID, "failed", "模型调用预算读取失败，未启动 Writer")
 		return
 	}
 	result, err := app.ExecuteChapter(ctx, s.cfg, run.Scenario, orchestration.Options{
 		FrozenInput:      &input,
+		CallHistory:      history,
 		BaseDraftVersion: run.BaseDraftVersion, AllowLocalRewrite: run.AllowLocalRewrite, AutoRevise: run.AutoRevise, MaxRounds: run.MaxRounds,
 		OnModelCall: func(_ context.Context, c model.CallRecord) error {
 			// 取消后的最后一次调用结果也要记账；独立短超时，不能发起新的模型调用。

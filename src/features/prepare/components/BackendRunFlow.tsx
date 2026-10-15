@@ -5,6 +5,7 @@ import { backendMessages as t } from '@/shared/lib/messages-backend';
 import type { BackendRun } from '../types/backend';
 
 const positions: Record<string, [number, number]> = {
+  context_assemble: [240, -90],
   draft: [240, 0],
   hard_consistency: [100, 90],
   ai_taste: [380, 90],
@@ -17,6 +18,7 @@ const positions: Record<string, [number, number]> = {
   commit: [240, 510],
 };
 const forward: [string, string][] = [
+  ['context_assemble', 'draft'],
   ['draft', 'hard_consistency'],
   ['draft', 'ai_taste'],
   ['hard_consistency', 'aggregate'],
@@ -33,13 +35,20 @@ export default function BackendRunFlow({ run }: { run: BackendRun }) {
   const [selected, setSelected] = useState<string | null>(null);
   const { nodes, edges } = useMemo(() => {
     const roles = (run.activeRoles ?? []).map((role) =>
-      role === 'writer' ? 'draft' : role === 'polisher' ? 'micro_edit' : role,
+      role === 'writer'
+        ? 'draft'
+        : role === 'polisher'
+          ? 'micro_edit'
+          : role === 'context_assembler'
+            ? 'context_assemble'
+            : role,
     );
     const active = (id: string) =>
       run.status === 'running' &&
       (roles.includes(id) ||
         (run.currentNode === id && roles.length === 0 && run.result?.nodePhase !== 'finished'));
     const completed = new Set<string>();
+    if (run.inputDigest && run.lookup?.stop === 'ready') completed.add('context_assemble');
     if (run.status === 'approved' || run.status === 'committed') completed.add('human_gate');
     if (run.result?.segments.length) completed.add('draft');
     for (const critic of run.result?.criticReviews ?? []) {

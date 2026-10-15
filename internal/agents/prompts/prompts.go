@@ -36,6 +36,8 @@ func Render(in model.Input) (model.Input, error) {
 	switch name {
 	case "writer":
 		in.Temperature = 0.8
+	case "context_assembler":
+		in.Temperature = 0.1
 	case "ai_taste":
 	case "hard_consistency":
 		in.Temperature = 0.1

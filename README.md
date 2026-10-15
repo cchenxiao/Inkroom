@@ -360,7 +360,7 @@ go run ./cmd/inkloom -context-preview -pov character-luqing
 
 ### I10b：数据库检索已接入 Writer
 
-HTTP 启动一轮创作时，现在执行：**读取固定版本目录 → 按角色过滤 → 关键词/向量双通道召回 → 融合与重排 → 按预算装入上下文 → 保存输入 → Writer**。恢复旧 run 仍读取原快照，不重新搜索。前端上下文清单区分“固定读取”“关键词检索”“智谱混合检索”，并明确标注教学来源。检索事实可供一致性 Critic 核对，原文/台词仍保留 `passage` 类型，不自动当作事实。
+I10 建立的检索链路（I11 起由装配助手按需调用）：**读取固定版本目录 → 按角色过滤 → 关键词/向量双通道召回 → 融合与重排 → 按预算装入上下文 → 保存输入 → Writer**。恢复旧 run 仍读取原快照，不重新搜索。前端上下文清单区分“固定读取”“关键词检索”“智谱混合检索”，并明确标注教学来源。检索事实可供一致性 Critic 核对，原文/台词仍保留 `passage` 类型，不自动当作事实。
 
 学习顺序：
 
@@ -404,3 +404,18 @@ go run ./cmd/inkloom -memory-eval
 ```
 
 作者明确填写片段的时间和获知范围；`text` 可省略，后端从冻结提交复制原文。若提供的文本与定稿不一致，或试图将原文发布为 `fact`，请求会被拒绝。整段混有不同知情范围时应先在正文中拆分；没有知情元数据的材料不会默认开放。当前尚无自动知识抽取/发布 UI，也没有把 Mock 工作台变成真实章节库；HTTP 写作位置仍固定为 ch7/main/沈砚，整本书编排在后续扩展。
+
+
+### I11a：装配助手按需调用检索工具
+
+现在 `POST /api/runs` 先保存基础输入与运行，立即返回 202；后台执行 **装配助手判断 → 请求 search_memory → Go 校验并执行 → 工具结果交回模型 → 决定继续查询或结束 → 冻结最终上下文 → Writer**。DeepSeek 使用原生 `tool_calls`，智谱只做检索中的向量计算。材料充分时可以零查询直接结束；`ready` 是装配助手的业务判断，不是正确性证明，也不能绕过版本、预算或可见性校验。
+
+按下面顺序读代码：
+
+1. [模型端口](internal/agents/model/tools.go)与[DeepSeek 适配器](internal/agents/adapters/deepseek.go)：工具说明、assistant 工具请求、带 `tool_call_id` 的工具结果如何传递；协议参考 [DeepSeek Tool Calls](https://api-docs.deepseek.com/guides/tool_calls/)。普通写作仍用 JSON 模式，工具对话用原生协议。
+2. [有界查询循环](internal/contextlookup/lookup.go)：只允许 `search_memory({query})`，项目/分支/时间/角色由 Go 固定；每次一个调用，最多 3 次工具请求、4 次模型决策。非法参数、重复查询、重复调用 ID、两次连续没有新来源或超限会停止，未 ready 不启动 Writer。结束输出仅为 `{"decision":"ready"}` 或 `{"decision":"insufficient"}`。
+3. [来源目录快照](internal/retrieval/session.go)：一轮准备中的多次查询复用同一版本目录；每次仍先执行 I10 可见性过滤。模型拿到的是来源原文与版本，不能通过总结输出补造事实；最终按首次命中顺序去重并受材料预算裁剪。
+4. [准备事务](internal/storage/postgres/preparation.go)：迁移 006 增加 `run_preparations` 保存基础输入；最终材料独立写入 `run_contexts`。封存前核对作者稿本版本，不覆盖既有快照。工具轨迹与 SSE 事件同事务；准备阶段重启标记中断，不自动重复调用。
+5. [用例接入](internal/app/lookup.go)：复用 Guard，工具 schema 和历史消息计入预算估计；Writer 与人审继续使用已落库调用历史，编号和预算不重置。页面“装配查询记录”展示查询、新增来源、版本与停止原因。
+
+当前仅开放装配助手的工具调用，一致性 Critic 自主查证属于 I11b。章内 CLI 演示仍使用固定输入；HTTP 才执行后台查询准备。工具请求失败不静默改成“无问题”，检索空结果不是事实不存在的证明；向量调用用量仍未合并到 Chat 用量栏。

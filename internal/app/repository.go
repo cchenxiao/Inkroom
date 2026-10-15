@@ -7,6 +7,7 @@ import (
 
 	"inkloom/internal/agents/model"
 	"inkloom/internal/domain/manuscript"
+	"inkloom/internal/domain/memory"
 	"inkloom/internal/domain/review"
 	"inkloom/internal/orchestration"
 )
@@ -20,6 +21,7 @@ var ErrActionMismatch = errors.New("action id reused with different content")
 var ErrInvalidWrite = errors.New("invalid draft write")
 
 type Run struct {
+	Lookup            *memory.LookupTrace         `json:"lookup,omitempty"`
 	InputDigest       string                      `json:"inputDigest,omitempty"`
 	CommitID          string                      `json:"commitId,omitempty"`
 	EventSequence     int64                       `json:"eventSequence"`

@@ -250,3 +250,10 @@ internal/agents/
 `PolishWithInstruction` / `RewriteWithInstruction` 在材料中新增可选 `authorInstruction`。模板 v2 明确它只约束本轮已有问题的局部修订，不能越过设定、事件结果、目标范围与输出契约。自动修订传空要求；旧 v1 模板保留，调用记录区分 prompt 版本与 Schema 版本。复检依旧把正文与冻结事实分别交给两个 Critic，不把作者的修订要求当作通过理由。
 
 HumanGate、版本比较、批准和幂等恢复全部由 Go 程序与数据库控制，不让模型决定能否 resume、是否已获批准或是否应重复提交。真实页面验证：v11 等待作者 → 人工直改为 v12 → 仅两个 Critic 复检 → 批准候选；共 5 次模型调用、已知 7268 tokens，批准本身未调用模型。未提供的事实仍可能漏报，此记录不代表全章质量评测通过。
+
+
+## I11a · Context Assembler 工具提示词
+
+模板为 `internal/agents/prompts/context_assembler.v1.tmpl`，沿用职责/契约/任务/只读材料的分隔。此角色使用原生 `tool_calls`，不把工具名和参数伪装成普通正文 JSON。工具只开放 `search_memory({query})`；查完后输出 `{"decision":"ready"}` 或 `{"decision":"insufficient"}`，这是“材料是否足够”的业务决定，不是自行声明 API 调用成功；供应商 finish_reason 仍由适配器校验。
+
+工具 schema 与结束决策 schema 在 `internal/contextlookup/lookup.go` 单处定义。Go 执行白名单、参数/重复检查、次数与用量限制；模型输出不授予权限。回传只包含可见来源原文、版本与剩余调用数，不包含被过滤的秘密文本。材料中的指令只作为数据；不保存隐藏思维链，不允许模型直接提交改写或提炼出的新事实。当前一致性 Critic 仍不调用工具。

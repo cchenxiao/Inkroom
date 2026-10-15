@@ -18,7 +18,13 @@ export default function BackendContextManifest({ run }: { run: BackendRun }) {
     <details className="backend-manifest" onToggle={(e) => setOpen(e.currentTarget.open)}>
       <summary>{t.contextManifest}</summary>
       {!run.inputDigest ? (
-        <p>{t.legacyContext}</p>
+        <p>
+          {run.currentNode === 'context_assemble'
+            ? run.status === 'running'
+              ? t.preparingContext
+              : t.preparationStopped
+            : t.legacyContext}
+        </p>
       ) : (
         <>
           {query.isPending && <p>{t.loadDraft}</p>}

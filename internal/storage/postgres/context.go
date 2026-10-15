@@ -19,7 +19,7 @@ func (s *Store) CreatePreparedRun(ctx context.Context, r app.Run, in manuscript.
 		return app.ErrContextMismatch
 	}
 	r.InputDigest = m.Digest
-	return s.createRun(ctx, r, &in)
+	return s.createRun(ctx, r, &in, nil)
 }
 func (s *Store) FrozenContext(ctx context.Context, id string) (manuscript.FrozenInput, error) {
 	return frozenContext(ctx, s.pool, id)

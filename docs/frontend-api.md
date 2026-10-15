@@ -94,5 +94,14 @@ Run 新增 `inputDigest`、`commitId`，终态 `committed`，节点 `commit`；�
 ### I10b：固定范围的相关前情检索
 
 - `GET /api/memory/search?q=查询文字`：作者查看当前 `zhuoliu/ch7/main/沈砚` 的检索结果；范围由后端确定，不能通过 query 参数改项目/分支/POV。返回 `context { view, query, mode, embeddingModel, ranker, hits }`、`excluded` 与 `visibleCount`。`mode` 为 `keyword | hybrid_fake | hybrid_zhipu`；`hits` 保留完整来源记录、digest、origin、commitId、method 与排序分。没有材料时返回空 hits，向量服务失败则返回 422 `retrieval_failed`，不静默降级或假装成功。
-- `POST /api/runs` 在创建 run 前完成上述检索和预算装配；失败返回 422 `context_not_ready`，不启动 Writer。运行中与恢复时只用已冻结材料，不重新搜“最新值”。来源表/知情元数据目前通过本地 `-memory-import` 发布，暂不提供浏览器写入接口。
+- I10 的同步启动检索在 I11a 改为下述后台准备；来源表/知情元数据仍通过本地 `-memory-import` 发布，暂不提供浏览器写入接口。
 - `GET /api/runs/:id/context-manifest` 新增 `retrieval_request / retrieved_fact / retrieved_passage` 来源类别，`method` 区分固定读取和检索；教学来源标题带明确标记。排序分只用于检索，不进入定稿质量门禁。
+
+
+### I11a：异步工具查询准备
+
+- `POST /api/runs` 保存基础输入后返回 202，初始 `status=running,currentNode=context_assemble`，此时无 `inputDigest`。参数错误/基础材料不可用在受理前返回错误；受理后的模型/检索失败写入 run，不能把 HTTP 202 当作创作成功。
+- `Run.lookup = {steps:[{callId,query,status,newSources,refs:[{id,version,digest}]}],stop?}`；步骤状态 `started|completed|rejected|failed`，停止原因 `ready|insufficient|no_gain|rejected|limit|blocked`。错误请求不回显越权参数，未完成步骤在中断后保留原状态，最终以 run 状态为准。
+- SSE 新增 `context.lookup`、`context.ready`，均沿用完整 run 快照和有序游标。最终输入原子封存后才出现 `inputDigest` 并进入 draft；装配助手的 `model.started/finished` 同样计入调用记录与总用量。
+- 无最终输入时页面展示准备状态，不请求清单、不误报为旧运行。`GET /runs/:id/context-manifest` 在输入封存前仍返回 409 `context_mismatch`；有 `inputDigest` 后再读取。
+- 作者改稿使准备失效，未冻结的输入不能启动 Writer；服务中断不自动重放查询。I9/I10 旧快照继续可读，不补造查询记录。
