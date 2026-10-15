@@ -13,7 +13,13 @@ export interface BackendRun extends Omit<RunState, 'status' | 'currentNode'> {
       lookup?: LookupTrace;
       evidence?: {
         hits: {
-          record: { id: string; version: number; kind: 'fact' | 'passage'; text: string };
+          record: {
+            id: string;
+            version: number;
+            kind: 'fact' | 'passage';
+            text: string;
+            knowledge?: { version: number; digest: string };
+          };
           digest: string;
         }[];
       };

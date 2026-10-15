@@ -4,7 +4,7 @@ package memory
 type Hit struct {
 	Record   Record  `json:"record"`
 	Digest   string  `json:"digest"`
-	Origin   string  `json:"origin"` // commit 或 teaching_seed
+	Origin   string  `json:"origin"` // commit / teaching_seed / knowledge
 	CommitID string  `json:"commitId,omitempty"`
 	Method   string  `json:"method"` // keyword / hybrid_fake / hybrid_zhipu
 	Score    float64 `json:"score"`  // 排序分，不是质量门禁

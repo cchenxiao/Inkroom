@@ -31,18 +31,25 @@ type Knowledge struct {
 // Record 必须是可独立授权的小片段。段落混有不同知情范围时应先拆分，
 // 不能因为角色知道其中一句，就让整段秘密通过。
 // 这些元数据由可信资料维护流程提供；本规则不从自然语言自动推断真假/知情。
+// KnowledgeRef 定位产生此事实与知情元数据的不可变知识快照；不携带作者秘密。
+type KnowledgeRef struct {
+	Version int    `json:"version"`
+	Digest  string `json:"digest"`
+}
+
 type Record struct {
-	ID        string      `json:"id"`
-	ProjectID string      `json:"projectId"`
-	BranchID  string      `json:"branchId"`
-	Version   int         `json:"version"`
-	Kind      Kind        `json:"kind"`
-	Status    Status      `json:"status"`
-	ChapterID string      `json:"chapterId"`
-	SegmentID string      `json:"segmentId,omitempty"`
-	At        *Moment     `json:"at"`
-	Text      string      `json:"text"`
-	KnownBy   []Knowledge `json:"knownBy"`
+	Knowledge *KnowledgeRef `json:"knowledge,omitempty"`
+	ID        string        `json:"id"`
+	ProjectID string        `json:"projectId"`
+	BranchID  string        `json:"branchId"`
+	Version   int           `json:"version"`
+	Kind      Kind          `json:"kind"`
+	Status    Status        `json:"status"`
+	ChapterID string        `json:"chapterId"`
+	SegmentID string        `json:"segmentId,omitempty"`
+	At        *Moment       `json:"at"`
+	Text      string        `json:"text"`
+	KnownBy   []Knowledge   `json:"knownBy"`
 }
 
 // Pin 固定整条记录的版本与摘要，包括可见性元数据，不能只固定正文。

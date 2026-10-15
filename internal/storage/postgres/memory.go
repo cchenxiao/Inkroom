@@ -107,7 +107,7 @@ func (s *Store) putMemory(ctx context.Context, r memory.Record, origin, commit s
 	if commit != "" {
 		source = commit
 	}
-	_, err = tx.Exec(ctx, `INSERT INTO memory_records VALUES($1,$2,$3,$4,$5,$6,$7,$8)`, digest, r.ProjectID, r.BranchID, r.ID, r.Version, raw, origin, source)
+	_, err = tx.Exec(ctx, `INSERT INTO memory_records(digest,project_id,branch_id,id,version,record,origin,source_commit_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8)`, digest, r.ProjectID, r.BranchID, r.ID, r.Version, raw, origin, source)
 	if err != nil {
 		return err
 	}

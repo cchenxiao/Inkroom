@@ -21,6 +21,10 @@ import (
 )
 
 func main() {
+	knowledgeSeed := flag.Bool("knowledge-seed", false, "explicitly publish teaching knowledge snapshot to database")
+	knowledgeImport := flag.String("knowledge-import", "", "publish author-confirmed knowledge JSON with expectedVersion and reason")
+	knowledgeShow := flag.Bool("knowledge-show", false, "read current ch7/main author knowledge snapshot from database")
+	knowledgeVersion := flag.Int("knowledge-version", 0, "knowledge-show snapshot version; 0 means current head")
 	knowledge := flag.Bool("knowledge-preview", false, "preview typed timeline, knowledge and foreshadows; offline teaching snapshot")
 	chapter := flag.Int("chapter", 7, "knowledge-preview narrative chapter")
 	storyTime := flag.Int64("story-time", 420, "knowledge-preview story time in project minutes")
@@ -40,11 +44,19 @@ func main() {
 	autoRevise := flag.Bool("auto-revise", true, "authorize P2 edits to the isolated candidate")
 	flag.Parse()
 	invalidKnowledgeOption := false
+	invalidKnowledgeVersion := false
 	flag.Visit(func(f *flag.Flag) {
+		if f.Name == "knowledge-version" && !*knowledgeShow {
+			invalidKnowledgeVersion = true
+		}
 		if (f.Name == "chapter" || f.Name == "story-time") && !*knowledge {
 			invalidKnowledgeOption = true
 		}
 	})
+	if invalidKnowledgeVersion || *knowledgeVersion < 0 {
+		fmt.Fprintln(os.Stderr, "-knowledge-version requires -knowledge-show and a nonnegative version")
+		os.Exit(1)
+	}
 	if invalidKnowledgeOption {
 		fmt.Fprintln(os.Stderr, "-chapter and -story-time require -knowledge-preview")
 		os.Exit(1)
@@ -54,7 +66,7 @@ func main() {
 		os.Exit(1)
 	}
 	modes := 0
-	for _, enabled := range []bool{*knowledge, *evalCritic, *preview, *serve, *list, *seedMemory, *evalMemory, *memoryQuery != "", *memoryImport != ""} {
+	for _, enabled := range []bool{*knowledgeSeed, *knowledgeShow, *knowledgeImport != "", *knowledge, *evalCritic, *preview, *serve, *list, *seedMemory, *evalMemory, *memoryQuery != "", *memoryImport != ""} {
 		if enabled {
 			modes++
 		}
@@ -90,7 +102,9 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	var err error
-	if *evalCritic {
+	if *knowledgeSeed || *knowledgeShow || *knowledgeImport != "" {
+		err = knowledgeCommand(ctx, *knowledgeSeed, *knowledgeImport, *knowledgeVersion)
+	} else if *evalCritic {
 		err = criticEvaluation(ctx, *candidateCritic)
 	} else if *seedMemory || *evalMemory || *memoryQuery != "" || *memoryImport != "" {
 		err = memoryCommand(ctx, *seedMemory, *evalMemory, *memoryImport, *memoryQuery, *pov)

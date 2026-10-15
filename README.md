@@ -501,3 +501,32 @@ go run ./cmd/inkloom -knowledge-preview -chapter 8 -story-time 480
 **边界**：这版是一份快照中每个“主体—事实”一条知情记录，尚不保存误解纠正、遗忘等多次状态变化。伏笔台账展示快照状态，不按预览时点恢复历史；逾期按章节计算，绝不自动回收。回收可通过倒叙完成，因此叙事位置不能早于埋设，但不要求回收场景的故事时间晚于埋设。现有保守可见性规则仍同时要求来源章节与故事时间到达，尚未处理全知叙述等模式。
 
 后续 I12b 再把已确认的知识快照持久化、固定版本与摘要，并接入装配/检索；人物的误解若要进入写作材料，需要独立类型和明确提示边界，不混进 facts。
+
+
+### I12b：知识快照持久化与检索接入
+
+新增迁移 `008_knowledge.sql`：`knowledge_snapshots` 保存不可变的完整作者台账，`knowledge_heads` 指向项目/分支当前版本。发布时用乐观版本检查，在一个事务内保存快照、替换对应事实的检索目录、更新 head；撤下的事实离开当前目录，旧记录仍供历史运行追溯。重复相同发布不会产生新版本，旧版本不能覆盖新 head。
+
+只有 `known` 的角色获知记录随事实投影，查询前继续执行 I10 的可见性过滤；读者所知、误解、时间线摘要、伏笔计划不进入事实文本。投影记录使用 `knowledge/` 命名空间，其版本等于整个知识快照版本，`record.knowledge` 带原快照摘要。这样即使正文事实没变、只改了获知时点，来源版本也会更新。
+
+**如何使用**（下列数据库命令读取本地配置；服务持有数据库独占锁，执行发布命令前需停止对应服务。建议使用独立学习数据库，不要把教学来源混进正式设定）：
+
+```bash
+# 显式导入教学快照；启动服务不会自动执行
+INKLOOM_MODEL=fake INKLOOM_EMBEDDER=none go run ./cmd/inkloom -knowledge-seed
+# 查看当前/指定历史版本（当前教学范围 zhuoliu/main）
+go run ./cmd/inkloom -knowledge-show
+go run ./cmd/inkloom -knowledge-show -knowledge-version 1
+# 作者确认后导入 JSON，不自动调用模型或 embedding
+go run ./cmd/inkloom -knowledge-import /absolute/path/publication.json
+```
+
+导入文件是一个对象：`expectedVersion`（首次 0）、`confirmFacts: true`、`reason` 和完整 `snapshot`。snapshot 结构见 `internal/demo/knowledge.json`，新版本必须是 expectedVersion + 1；这是作者对事实及获知来源的显式确认，不是自动判断正文真假。读写入口分别为 [knowledge.go](cmd/inkloom/knowledge.go)、[仓储事务](internal/storage/postgres/knowledge.go)。目前尚无网页编辑/变更影响预览，作者正式设定的修改仍需自行核对影响；这里不会传播改写正文。
+
+服务运行时可 `GET /api/knowledge` 或 `GET /api/knowledge?version=1` 查看作者快照；未发布返回 404。这个接口不是 Agent 工具，完整台账不能交给 Writer。既有 `GET /api/memory/search?q=铜扣`、装配助手和 Critic 查询自动使用新目录；ContextManifest 的命中项显示“知识快照 vN”，定稿引用保留投影记录与快照摘要。
+
+**固定范围**：每次查询阶段开始时由 `retrieval.Session` 固定目录；采用的命中再冻结进运行输入。若模型不查询或未命中，知识事实不会自动加入 Writer（I11-K1 继续暂缓）。新的查证阶段可能读取较新目录，但不能覆盖 Writer 已冻结输入；同 ID 的冲突由现有证据校验阻断。I12b 不替换原先教学 Beat/人物卡/必需事实，也不把所有知识无条件灌入模型。整份知识快照持久化，当前只有事实与知情范围接入检索；时间线、伏笔的专项审查与网页编辑仍待后续小步建设。
+
+验证使用独立测试库：确认要求、重复发布、版本冲突、撤下事实、事务回滚、旧查询目录稳定、向量调用前过滤、上下文清单与 Fake Writer 均已检查；未调用真实模型，未向主数据库导入教学知识。
+
+待加固的小项：008 的 SQL JSON 来源约束未完全排除 NULL；现有 Go 发布路径始终填入并校验版本/摘要，正常入口不受影响。后续用新增迁移收紧该约束，避免维护脚本绕过应用时写入不完整来源。
