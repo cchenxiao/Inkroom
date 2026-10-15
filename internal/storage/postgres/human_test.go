@@ -162,7 +162,7 @@ func TestHumanCheckpointRecovery(t *testing.T) {
 		t.Fatal(err)
 	}
 	r, err = store.GetRun(ctx, id)
-	if err != nil || r.Status != "approved" {
+	if err != nil || r.Status != "approved" || r.CurrentNode != "human_gate" {
 		t.Fatal("approval did not complete")
 	}
 	if _, err = store.EditSegment(ctx, chapter, "main", state.Segments[0].ID, 3, d.Segments[0].Text+"风也停了。"); err != nil {

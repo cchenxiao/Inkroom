@@ -192,6 +192,7 @@ func RunHuman(ctx context.Context, initial ChapterState, chat model.ChatModel, o
 		s.Findings = nil
 		s.Status = "running"
 		s.CurrentNode = "human_edit"
+		s.NodePhase = "finished"
 		s.StopReason = "作者修改已保存，等待双 Critic 复检"
 		s.Usage = opts.Usage()
 		if err := opts.Save(ctx, key, expected, s, origin); err != nil {
@@ -230,6 +231,7 @@ func RunHuman(ctx context.Context, initial ChapterState, chat model.ChatModel, o
 		s.Route = review.Route(report, s.Segments, s.Context, false, false)
 		s.Status = "waiting_human"
 		s.CurrentNode = "human_gate"
+		s.NodePhase = "finished"
 		s.StopReason = "复检完成，请作者审核新版本"
 		s.Usage = opts.Usage()
 		if err := opts.Save(ctx, key, s.DraftVersion, s, "agent"); err != nil {

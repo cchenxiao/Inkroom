@@ -10,7 +10,6 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"inkloom/internal/agents/model"
 	"inkloom/internal/app"
-	"inkloom/internal/orchestration"
 )
 
 func (s *Store) CreateRun(ctx context.Context, r app.Run) error {
@@ -42,43 +41,23 @@ func (s *Store) CreateRun(ctx context.Context, r app.Run) error {
 	if err != nil {
 		return err
 	}
+	if err = appendEvent(ctx, tx, r.ID, "run.started"); err != nil {
+		return err
+	}
 	return tx.Commit(ctx)
 }
 func (s *Store) GetRun(ctx context.Context, id string) (app.Run, error) {
-	var raw []byte
-	q := "SELECT payload FROM runs WHERE id=$1"
-	args := []any{id}
 	if id == "latest" {
-		q = "SELECT payload FROM runs ORDER BY created_at DESC,id DESC LIMIT 1"
-		args = nil
+		if err := s.pool.QueryRow(ctx, "SELECT id FROM runs ORDER BY created_at DESC,id DESC LIMIT 1").Scan(&id); err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return app.Run{}, app.ErrNotFound
+			}
+			return app.Run{}, err
+		}
 	}
-	err := s.pool.QueryRow(ctx, q, args...).Scan(&raw)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return app.Run{}, app.ErrNotFound
-	}
-	if err != nil {
-		return app.Run{}, err
-	}
-	r, err := decodeRun(raw)
-	if err != nil {
-		return r, err
-	}
-	// 用持久化调用记录汇总，失败/重启时最后的 state 快照可能还没包含那次用量。
-	err = s.pool.QueryRow(ctx, `SELECT COALESCE(sum((record->'usage'->>'inputTokens')::bigint),0),COALESCE(sum((record->'usage'->>'outputTokens')::bigint),0),COALESCE(bool_and(phase='finished' AND (record->'usage'->>'known')::boolean),true) FROM llm_calls WHERE run_id=$1`, r.ID).Scan(&r.Usage.InputTokens, &r.Usage.OutputTokens, &r.Usage.Known)
-	r.Tokens = r.Usage.InputTokens + r.Usage.OutputTokens
-	if r.Result != nil {
-		r.Result.Usage = r.Usage
-	}
-	if err != nil {
-		return r, err
-	}
-	err = s.pool.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM run_checkpoints WHERE run_id=$1 AND workflow_version=$2)", r.ID, orchestration.HumanWorkflowVersion).Scan(&r.CanResume)
-	if r.Result != nil {
-		r.ApprovalBlock = orchestration.ApprovalReason(*r.Result)
-		r.InstructionBlock = orchestration.InstructionReason(*r.Result)
-	}
-	return r, err
+	return snapshot(ctx, s.pool, id)
 }
+
 func (s *Store) ListRuns(ctx context.Context) ([]app.Run, error) {
 	rows, err := s.pool.Query(ctx, "SELECT payload FROM runs ORDER BY created_at DESC,id DESC LIMIT 50")
 	if err != nil {
@@ -162,6 +141,19 @@ func saveProgressTx(ctx context.Context, tx pgx.Tx, r app.Run, expected int) err
 	if _, err = tx.Exec(ctx, "UPDATE runs SET status=$2,payload=$3,updated_at=now() WHERE id=$1", r.ID, r.Status, raw); err != nil {
 		return err
 	}
+	if err = appendEvent(ctx, tx, r.ID, stateEvent(r)); err != nil {
+		return err
+	}
+	if state.NodePhase == "finished" {
+		switch state.CurrentNode {
+		case "aggregate", "human_gate":
+			return appendEvent(ctx, tx, r.ID, "findings.ready")
+		case "micro_edit", "scene_reviser", "structural_reviser":
+			return appendEvent(ctx, tx, r.ID, "revise.round")
+		case "draft", "human_edit":
+			return appendEvent(ctx, tx, r.ID, "draft.saved")
+		}
+	}
 	return nil
 }
 
@@ -196,6 +188,9 @@ func (s *Store) StopRun(ctx context.Context, id, status, reason string) error {
 	if _, err = tx.Exec(ctx, "UPDATE runs SET status=$2,payload=$3,updated_at=now() WHERE id=$1", id, status, raw); err != nil {
 		return err
 	}
+	if err = appendEvent(ctx, tx, id, stateEvent(r)); err != nil {
+		return err
+	}
 	return tx.Commit(ctx)
 }
 func (s *Store) RecordCall(ctx context.Context, runID string, c model.CallRecord) error {
@@ -203,9 +198,25 @@ func (s *Store) RecordCall(ctx context.Context, runID string, c model.CallRecord
 	if err != nil {
 		return err
 	}
-	_, err = s.pool.Exec(ctx, `INSERT INTO llm_calls(run_id,call_number,phase,record) VALUES($1,$2,$3,$4)
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(context.Background())
+	// 同一 run 的并行调用先取 run 锁，再更新调用记录及事件。
+	var exists string
+	if err = tx.QueryRow(ctx, "SELECT id FROM runs WHERE id=$1 FOR UPDATE", runID).Scan(&exists); err != nil {
+		return err
+	}
+	_, err = tx.Exec(ctx, `INSERT INTO llm_calls(run_id,call_number,phase,record) VALUES($1,$2,$3,$4)
  ON CONFLICT(run_id,call_number) DO UPDATE SET phase=EXCLUDED.phase,record=EXCLUDED.record`, runID, c.Number, c.Phase, raw)
-	return err
+	if err != nil {
+		return err
+	}
+	if err = appendEvent(ctx, tx, runID, "model."+c.Phase); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
 }
 func (s *Store) Calls(ctx context.Context, id string) ([]model.CallRecord, error) {
 	if _, err := s.GetRun(ctx, id); err != nil {

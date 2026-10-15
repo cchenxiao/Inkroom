@@ -19,6 +19,7 @@ import (
 	"inkloom/internal/app"
 	"inkloom/internal/config"
 	"inkloom/internal/demo"
+	"inkloom/internal/events"
 	"inkloom/internal/orchestration"
 	"inkloom/internal/storage/postgres"
 )
@@ -29,7 +30,8 @@ type service struct {
 	workers sync.WaitGroup
 	root    context.Context
 	cfg     config.Config
-	repo    app.HumanRepository
+	repo    app.LiveRepository
+	hub     *events.Hub
 }
 
 func Serve(ctx context.Context) error {
@@ -49,13 +51,16 @@ func Serve(ctx context.Context) error {
 	defer repo.Close()
 	root, cancel := context.WithCancel(ctx)
 	defer cancel()
-	s := &service{root: root, cfg: cfg, repo: repo}
+	s := &service{root: root, cfg: cfg, repo: repo, hub: events.NewHub(64)}
+	s.workers.Add(1)
+	go func() { defer s.workers.Done(); events.Dispatch(root, repo, s.hub) }()
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /api/runs", s.start)
 	mux.HandleFunc("POST /api/runs/{id}/actions", s.action)
 	mux.HandleFunc("GET /api/runs/{id}", s.get)
 	mux.HandleFunc("GET /api/runs", s.list)
 	mux.HandleFunc("GET /api/runs/{id}/calls", s.calls)
+	mux.HandleFunc("GET /api/runs/{id}/events", s.events)
 	mux.HandleFunc("GET /api/chapters/{id}", s.draft)
 	mux.HandleFunc("GET /api/chapters/{id}/versions", s.versions)
 	mux.HandleFunc("PATCH /api/segments/{id}", s.edit)

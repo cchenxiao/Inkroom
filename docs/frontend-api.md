@@ -41,7 +41,7 @@
 
 分支合并的 GET 预览包含目标与来源各章节版本映射 `targetVersions` / `sourceVersions`；POST 必须回传捕获的映射。预览之后任一相关版本变化都要求重新预览、重新裁决。合并时每个实际修改的目标章节分别递增版本并作废旧审稿；新增、删除与重排分段按整章结构冲突处理。
 
-## Go 候选接口（I7 已实现）
+## Go 候选接口（I8 已实现）
 
 准备页 `trialApi` 使用独立 `backendApi`；浏览器 `/go-api` 代理至 Go `/api`，不走 MSW。下面是已落地的学习切片，不能将上文完整 Mock 契约视为已全部接入后端。
 
@@ -57,7 +57,7 @@
 
 当前仅 `ch7/main` 可启动。修改候选不修改 MSW 正式稿或 Bible。版本不匹配返回 `409 {code:"version_mismatch",message}`；已有执行返回 `409 run_busy`。人工修改后新版本的 `reviewed=false`，旧报告仅供历史查看；`stale` 不能当成本稿评审。初稿阶段中断仅保留已落库结果；已进入 I7 人审检查点的运行支持显式恢复。
 
-接口类型见 `src/features/prepare/types/backend.ts` 与 `internal/app/repository.go`。I8 再接可靠事件流。
+接口类型见 `src/features/prepare/types/backend.ts` 与 `internal/app/repository.go`。可靠事件见下节；仍与 MSW 的完整产品事件分开。
 
 ### 人工操作与恢复
 
@@ -66,3 +66,15 @@
 Run 新增 `canResume`、`approvalBlock`、`instructionBlock`、`pendingAction`、原运行 `maxCalls/maxTokens`，新增终态 `approved`。`waiting_human` + `canResume` 表示 checkpoint 已真正保存。`approved` 仅为候选批准，不是正式章节定稿。`pendingAction` 表示已受理但未完成的操作，failed/interrupted 时用原内容和 ID 明确继续；不自动重发。
 
 人审写操作再查章/分支最新版本，并和 run 中的版本比较；已完成操作的重取不产生新审批。指令修订保留原轮数上限与运行调用/token 预算；跨章、事实裁决不在该入口自动执行。未经当前版本两个必要 Critic 复检，或仍有阻断 Finding/事实待裁决时不能批准；未校准文本统计仍只提示。
+
+### 真实 SSE 进度（I8）
+
+`GET /runs/:id/events` 返回 `text/event-stream`。可选请求头 `Last-Event-ID: <run_id>:<sequence>`；不带从 0 重放。事件帧含 `id`、`event`、JSON `data`，对应 `BackendRunEvent {runId,sequence,type,createdAt,run}`。`run` 为该事务的完整快照，含 `eventSequence`、`activeRoles`、`result.nodePhase`。单条 GET 返回相同快照契约；列表只提供历史摘要。
+
+已实现类型：`run.started`、`run.updated`、`node.started`、`node.finished`、`model.started/finished/unknown`、`draft.saved`、`findings.ready`、`revise.round`、`gate.waiting`、`run.finished`、`run.failed`、`version.stale`。修订事件的轮数和范围取 `run.reviseRound/maxRounds/result.revisions`；问题只使用与稿本版本匹配的报告。正文是完整 JSON 校验后的候选版本，此阶段没有逐 token `draft.delta`。
+
+- 每 run 序号从 1 连续递增；允许重复传输，消费成功再推进游标；发现缺口重新读取快照。
+- 游标过期返回 `410 cursor_expired`，跨 run / 超出最新序号返回 `400 invalid_cursor`，运行不存在返回 404。重新 GET 快照后以 `eventSequence` 续接。
+- 连接建立先订阅再回放，按持久化历史顺序排空；内存通知仅唤醒读取。慢连接缓冲溢出/写入超时会断开，客户端重连补齐。
+- 客户端重连退避 0.5–8 秒；切换运行/收起面板取消订阅。禁止重试 POST 代替 SSE 重连。旧查询快照按事件序号拦截，依赖资源查询先取消再刷新。
+- 默认保留全部事件；显式维护裁剪后才产生过期游标。I8 之前的运行序号为 0，不补造历史，但后续人工操作仍会产生新事件。

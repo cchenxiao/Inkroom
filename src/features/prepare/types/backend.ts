@@ -2,6 +2,8 @@ import type { Finding, RunState } from '@/types/domain';
 
 /** I3 结果是隔离的单段候选，不是工作台正式稿本。 */
 export interface BackendRun extends Omit<RunState, 'status' | 'currentNode'> {
+  eventSequence: number;
+  activeRoles: string[];
   status: RunState['status'] | 'needs_human' | 'stale' | 'interrupted' | 'approved';
   canResume: boolean;
   approvalBlock?: string;
@@ -18,6 +20,7 @@ export interface BackendRun extends Omit<RunState, 'status' | 'currentNode'> {
   error?: string;
   usage?: { inputTokens: number; outputTokens: number; known: boolean };
   result?: {
+    nodePhase?: 'started' | 'finished';
     route: {
       kind: string;
       targetIds: string[];
@@ -138,4 +141,12 @@ export interface HumanAction {
   instruction?: string;
   segmentId?: string;
   text?: string;
+}
+
+export interface BackendRunEvent {
+  runId: string;
+  sequence: number;
+  type: string;
+  createdAt: string;
+  run: BackendRun;
 }

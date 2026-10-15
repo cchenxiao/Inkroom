@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { ApiError } from '@/shared/api/client';
 import { Button } from '@/shared/ui';
 import { backendMessages as t } from '@/shared/lib/messages-backend';
+import { newerRun } from '../api/run-events';
 import { trialApi } from '../api/backend';
 import type { BackendRun, HumanAction } from '../types/backend';
 
@@ -20,7 +21,7 @@ export default function BackendHumanGate({
     mutationFn: (action: HumanAction) => trialApi.action(run.id, action),
     retry: false,
     onSuccess: (next) => {
-      client.setQueryData(['backend-trial', run.id], next);
+      client.setQueryData<BackendRun>(['backend-trial', run.id], (old) => newerRun(old, next));
       setDraft(null);
       setUncertain(null);
     },

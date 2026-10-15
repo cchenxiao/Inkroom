@@ -15,16 +15,15 @@ export default function BackendRunHistory({
   const [callsOpen, setCallsOpen] = useState(false);
   const runs = useQuery({
     queryKey: ['backend-runs', runId],
-    queryFn: trialApi.runs,
+    queryFn: ({ signal }) => trialApi.runs(signal),
     enabled: open,
     retry: false,
   });
   const calls = useQuery({
     queryKey: ['backend-calls', runId],
-    queryFn: () => trialApi.calls(runId!),
+    queryFn: ({ signal }) => trialApi.calls(runId!, signal),
     enabled: !!runId && callsOpen,
     retry: false,
-    refetchInterval: callsOpen ? 2000 : false,
   });
   return (
     <>

@@ -58,7 +58,10 @@ func saveRun(ctx context.Context, tx pgx.Tx, r app.Run) error {
 		return err
 	}
 	_, err = tx.Exec(ctx, "UPDATE runs SET status=$2,payload=$3,updated_at=now() WHERE id=$1", r.ID, r.Status, raw)
-	return err
+	if err != nil {
+		return err
+	}
+	return appendEvent(ctx, tx, r.ID, stateEvent(r))
 }
 func (s *Store) SaveCheckpoint(ctx context.Context, id string, raw []byte, state orchestration.ChapterState, actionID string) error {
 	tx, err := s.pool.Begin(ctx)
@@ -151,6 +154,12 @@ func (s *Store) ClaimAction(ctx context.Context, id string, a orchestration.Huma
 	r.Status = "running"
 	r.Error = ""
 	r.PendingAction = &a
+	r.CurrentNode = "human_edit"
+	if a.Type == "approve" {
+		r.CurrentNode = "human_gate"
+	}
+	r.Result.CurrentNode = r.CurrentNode
+	r.Result.NodePhase = "started"
 	if err = saveRun(ctx, tx, r); err != nil {
 		return r, false, err
 	}
@@ -235,6 +244,9 @@ func (s *Store) Approve(ctx context.Context, id, actionID string, version int) e
 		return app.ErrGateBlocked
 	}
 	r.Status = "approved"
+	r.CurrentNode = "human_gate"
+	r.Result.CurrentNode = "human_gate"
+	r.Result.NodePhase = "finished"
 	r.Result.Status = "approved"
 	r.Result.StopReason = "作者已批准本版候选；正式章节提交在后续接入"
 	r.PendingAction = nil

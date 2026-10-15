@@ -14,7 +14,7 @@ export default function BackendDraft({ draft }: { draft: StoredDraft }) {
   const [version, setVersion] = useState(0);
   const versions = useQuery({
     queryKey: ['backend-versions', draft.draftVersion],
-    queryFn: trialApi.versions,
+    queryFn: ({ signal }) => trialApi.versions(signal),
     enabled: historyOpen,
   });
   const history = useQuery({

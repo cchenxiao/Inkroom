@@ -26,6 +26,7 @@ type Options struct {
 }
 
 type ChapterState struct {
+	NodePhase     string                   `json:"nodePhase,omitempty"`
 	CriticReviews []CriticReview           `json:"criticReviews"`
 	Route         review.Decision          `json:"route"`
 	Context       manuscript.ContextBundle `json:"context"`
@@ -60,11 +61,13 @@ func NewChapter(ctx context.Context, chat model.ChatModel, opts Options) (compos
 	}
 	start := func(s ChapterState, node string) ChapterState {
 		s.CurrentNode = node
+		s.NodePhase = "started"
 		emit(s)
 		slog.InfoContext(ctx, "node.started", "node", node, "draft_version", s.DraftVersion, "round", s.ReviseRound)
 		return s
 	}
 	done := func(s ChapterState) ChapterState {
+		s.NodePhase = "finished"
 		emit(s)
 		slog.InfoContext(ctx, "node.finished", "node", s.CurrentNode, "draft_version", s.DraftVersion, "round", s.ReviseRound)
 		return s

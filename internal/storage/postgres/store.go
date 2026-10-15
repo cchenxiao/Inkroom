@@ -12,6 +12,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"inkloom/internal/agents/model"
 	"inkloom/internal/app"
 )
 
@@ -20,6 +21,9 @@ var migration string
 
 //go:embed migrations/002_human.sql
 var humanMigration string
+
+//go:embed migrations/003_events.sql
+var eventMigration string
 
 type Store struct {
 	pool  *pgxpool.Pool
@@ -85,7 +89,7 @@ func (s *Store) migrate(ctx context.Context) error {
 	if _, err = tx.Exec(ctx, "CREATE TABLE IF NOT EXISTS schema_migrations(version integer PRIMARY KEY, checksum text NOT NULL)"); err != nil {
 		return err
 	}
-	for i, sql := range []string{migration, humanMigration} {
+	for i, sql := range []string{migration, humanMigration, eventMigration} {
 		version := i + 1
 		checksum := fmt.Sprintf("%x", sha256.Sum256([]byte(sql)))
 		var existing string
@@ -115,13 +119,46 @@ func (s *Store) recoverInterrupted(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	// 恢复中的调用状态也走同一记账事务，保证 model.unknown 可被断线客户端补齐。
+	callRows, err := s.pool.Query(ctx, "SELECT run_id,record FROM llm_calls WHERE phase='started'")
+	if err != nil {
+		return err
+	}
+	type pendingCall struct {
+		id     string
+		record model.CallRecord
+	}
+	pending := []pendingCall{}
+	for callRows.Next() {
+		var p pendingCall
+		var raw []byte
+		if err = callRows.Scan(&p.id, &raw); err != nil {
+			callRows.Close()
+			return err
+		}
+		if err = json.Unmarshal(raw, &p.record); err != nil {
+			callRows.Close()
+			return err
+		}
+		p.record.Phase = "unknown"
+		pending = append(pending, p)
+	}
+	err = callRows.Err()
+	callRows.Close()
+	if err != nil {
+		return err
+	}
+	for _, p := range pending {
+		if err = s.RecordCall(ctx, p.id, p.record); err != nil {
+			return err
+		}
+	}
 	for _, id := range ids {
 		if err = s.StopRun(ctx, id, "interrupted", "服务曾中断，保留已落库候选；本阶段不自动续跑或重发模型调用"); err != nil {
 			return err
 		}
 	}
-	_, err = s.pool.Exec(ctx, `UPDATE llm_calls SET phase='unknown',record=jsonb_set(record,'{phase}','"unknown"') WHERE phase='started'`)
-	return err
+	return nil
 }
 func decodeRun(raw []byte) (app.Run, error) {
 	var r app.Run

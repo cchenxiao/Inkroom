@@ -33,11 +33,12 @@ export async function request<T>(
   return response.json() as Promise<T>;
 }
 /** I3 单段试运行走 Go，其余资源继续由现有 Mock 提供。密钥只保存在后端。 */
-const GO_API_BASE = (import.meta.env.VITE_GO_API_BASE_URL as string | undefined) || '/go-api';
+export const GO_API_BASE =
+  (import.meta.env.VITE_GO_API_BASE_URL as string | undefined) || '/go-api';
 export const backendApi = {
   patch: <T>(p: string, data: unknown) =>
     request<T>(p, { method: 'PATCH', body: JSON.stringify(data) }, GO_API_BASE),
-  get: <T>(p: string) => request<T>(p, {}, GO_API_BASE),
+  get: <T>(p: string, signal?: AbortSignal) => request<T>(p, { signal }, GO_API_BASE),
   post: <T>(p: string, data: unknown) =>
     request<T>(p, { method: 'POST', body: JSON.stringify(data) }, GO_API_BASE),
 };

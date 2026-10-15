@@ -66,7 +66,7 @@ go run ./cmd/inkloom -serve   # 本机 HTTP 服务，127.0.0.1:8080
 pnpm dev
 ```
 
-打开 `/prepare`，展开「单段试运行 · Go 后端」，点击生成后轮询结果。`/go-api` 由 Vite 代理到 Go 的 `/api`，其余功能保持现有 MSW 数据。部署前需要同等反向代理或配置 `VITE_GO_API_BASE_URL`。I6 起需先按下节配置 PostgreSQL，结果重启后仍可查询；同一时刻只执行一条，避免误触并发付费。请求中断后可点击「恢复最近一次运行」，通过 `GET /runs/latest` 找回已保存的结果，不会重新调用模型。
+打开 `/prepare`，展开「单段试运行 · Go 后端」，点击生成后通过 SSE 查看实时进度。`/go-api` 由 Vite 代理到 Go 的 `/api`，其余功能保持现有 MSW 数据。部署前需要同等反向代理或配置 `VITE_GO_API_BASE_URL`。I6 起需先按下节配置 PostgreSQL，结果重启后仍可查询；同一时刻只执行一条，避免误触并发付费。请求中断后可点击「恢复最近一次运行」，通过 `GET /runs/latest` 找回已保存的结果，不会重新调用模型。
 
 学习顺序：
 
@@ -299,3 +299,29 @@ Mock 是确定性的业务模拟器：审稿结论、生成文案与实验数据
 - 实现接口对照：[前端 API 契约](docs/frontend-api.md)（REST/SSE，字段与版本语义不得偏离）。
 
 里程碑：M1 单章闭环 → M2 跨章记忆 → M3 人机共创与变更传播 → M4 评测与成本 → M5 统稿打磨。
+
+### I8：可靠事件与实时进度
+
+```text
+业务事务：稿本 / 评审 / run + run_events + run_outbox 一起提交
+                                    ↓
+                  dispatcher → 有界 Hub → SSE → React Query / React Flow
+                                    ↑
+                     Last-Event-ID 从 PostgreSQL 补齐历史
+```
+
+按顺序读：
+1. [事务事件](internal/storage/postgres/events.go)：每个 run 的序号在行锁内递增。快照和游标同一次读取，失败事务不会留下“幽灵进度”。`run_events` 只追加，投递任务独立存放。
+2. [投递器与 Hub](internal/events)：投递成功再移除 outbox 任务，崩溃可能重复；每个连接最多缓存 64 个唤醒通知，溢出断开，不能拖慢 Agent。
+3. [SSE 接口](internal/server/events.go)：先订阅、再读历史，避免交接缺口；按数据库序号发送，10 秒心跳、每次写入限时 5 秒。断线不取消创作。
+4. [前端消费](src/features/prepare/hooks/useBackendEvents.ts)：只重连 GET；事件去重，旧 REST 快照不能回退新状态，游标过期重新取快照。首个查询未完成时先取消再刷新，避免漏掉最后一次更新。
+
+准备页保存选中的 run，刷新后重取快照并续接 SSE；图上只有当前已实现的两个 Critic。节点进度、并行角色、修订回边、问题和调用记录均来自真实接口。此阶段模型仍返回完整 JSON，未实现逐 token 正文流，不伪造 `draft.delta`。
+
+事件默认全部保留；维护方法 `PruneEvents` 只能裁掉已投递前缀，过期游标返回 410。当前单段使用完整 Run 快照，便于学习和恢复；扩展长篇时再压缩事件体并配置保留周期。
+
+```bash
+curl -N http://127.0.0.1:8080/api/runs/RUN_ID/events
+# 断开后，替换为最后收到的 id（包含 run_id 和序号）
+curl -N -H 'Last-Event-ID: RUN_ID:12' http://127.0.0.1:8080/api/runs/RUN_ID/events
+```

@@ -107,11 +107,22 @@ func (s *Store) EditSegment(ctx context.Context, chapter, branch, id string, exp
 		return app.Draft{}, err
 	}
 	// 与人稿落库同事务作废本章所有旧运行结果；正在返回的 Agent 会在 CAS 处被拦截。
-	if _, err = tx.Exec(ctx, `UPDATE runs SET status='stale',
+	rows, err := tx.Query(ctx, `UPDATE runs SET status='stale',
  payload=jsonb_set(jsonb_set(payload,'{status}','"stale"'),'{error}','"稿本已被作者更新，旧评审与候选修订失效"'),updated_at=now()
- WHERE chapter_id=$1 AND branch_id=$2 AND status NOT IN ('stale','interrupted','failed')`, chapter, branch); err != nil {
+ WHERE chapter_id=$1 AND branch_id=$2 AND status NOT IN ('stale','interrupted','failed') RETURNING id`, chapter, branch)
+	if err != nil {
 		return app.Draft{}, err
 	}
+	ids, err := pgx.CollectRows(rows, pgx.RowTo[string])
+	if err != nil {
+		return app.Draft{}, err
+	}
+	for _, runID := range ids {
+		if err = appendEvent(ctx, tx, runID, "version.stale"); err != nil {
+			return app.Draft{}, err
+		}
+	}
+
 	if err = tx.Commit(ctx); err != nil {
 		return app.Draft{}, err
 	}

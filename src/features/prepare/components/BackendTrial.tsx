@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { lazy, Suspense, useState, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import BackendTrialResult from './BackendTrialResult';
 import BackendHumanGate from './BackendHumanGate';
@@ -8,11 +8,22 @@ import { Badge, Button, Card, Select } from '@/shared/ui';
 import { ApiError } from '@/shared/api/client';
 import { backendMessages as t } from '@/shared/lib/messages-backend';
 import { trialApi } from '../api/backend';
+import { newerRun } from '../api/run-events';
+import { useBackendEvents } from '../hooks/useBackendEvents';
+import type { BackendRun } from '../types/backend';
+const BackendRunFlow = lazy(() => import('./BackendRunFlow'));
 
 export default function BackendTrial() {
-  const [runId, setRunId] = useState<string | null>(null);
+  const [runId, setRunId] = useState<string | null>(() =>
+    localStorage.getItem('inkloom.backendRun'),
+  );
   const client = useQueryClient();
   const [expanded, setExpanded] = useState(false);
+  const streamStatus = useBackendEvents(runId, expanded);
+  useEffect(() => {
+    if (runId) localStorage.setItem('inkloom.backendRun', runId);
+    else localStorage.removeItem('inkloom.backendRun');
+  }, [runId]);
   const health = useQuery({
     queryKey: ['backend-health'],
     enabled: expanded,
@@ -27,7 +38,7 @@ export default function BackendTrial() {
     mutationFn: trialApi.start,
     retry: false,
     onSuccess: (run) => {
-      client.setQueryData(['backend-trial', run.id], run);
+      client.setQueryData<BackendRun>(['backend-trial', run.id], (old) => newerRun(old, run));
       setRunId(run.id);
     },
     onError: (error) => {
@@ -39,17 +50,16 @@ export default function BackendTrial() {
   });
   const query = useQuery({
     queryKey: ['backend-trial', runId],
-    queryFn: () => trialApi.get(runId!),
-    enabled: !!runId,
+    queryFn: ({ signal }) => trialApi.get(runId!, signal),
+    enabled: !!runId && expanded,
     retry: false,
-    refetchInterval: (q) =>
-      q.state.error ? false : q.state.data?.status === 'running' ? 1000 : false,
+    structuralSharing: (old, next) => newerRun(old as BackendRun | undefined, next as BackendRun),
   });
   const recover = useMutation({
     mutationFn: trialApi.latest,
     retry: false,
     onSuccess: (run) => {
-      client.setQueryData(['backend-trial', run.id], run);
+      client.setQueryData<BackendRun>(['backend-trial', run.id], (old) => newerRun(old, run));
       setRunId(run.id);
       start.reset();
     },
@@ -63,10 +73,9 @@ export default function BackendTrial() {
   const run = query.data;
   const draft = useQuery({
     queryKey: ['backend-draft'],
-    queryFn: () => trialApi.draft(),
+    queryFn: ({ signal }) => trialApi.draft(undefined, signal),
     enabled: expanded,
     retry: false,
-    refetchInterval: run?.status === 'running' ? 1000 : false,
   });
   useEffect(() => {
     if (expanded) void client.invalidateQueries({ queryKey: ['backend-draft'] });
@@ -236,6 +245,14 @@ export default function BackendTrial() {
                 {t.nodes[run.currentNode] ?? run.currentNode} · {t.progress} {run.reviseRound}/
                 {run.maxRounds} · {t.version} v{run.draftVersion}
               </p>
+              <p role="status">
+                {t.streamStates[streamStatus]} · {t.eventSequence} {run.eventSequence ?? 0}
+              </p>
+              {expanded && (
+                <Suspense fallback={<p>{t.loadGraph}</p>}>
+                  <BackendRunFlow run={run} />
+                </Suspense>
+              )}
               {run.result?.stopReason && <p role="status">{run.result.stopReason}</p>}
               {run.canResume && (
                 <BackendHumanGate
