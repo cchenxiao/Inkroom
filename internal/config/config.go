@@ -11,6 +11,7 @@ import (
 )
 
 type Config struct {
+	ContextTokens   int
 	DatabaseURL     string
 	Model           string
 	APIKey          string
@@ -41,6 +42,9 @@ func Load() (Config, error) {
 		cfg.ModelName = "scripted-fake"
 	}
 	var err error
+	if cfg.ContextTokens, err = positive("INKLOOM_CONTEXT_TOKENS", 8000); err != nil {
+		return Config{}, err
+	}
 	if cfg.MaxCalls, err = positive("INKLOOM_MAX_CALLS", 14); err != nil {
 		return Config{}, err
 	}

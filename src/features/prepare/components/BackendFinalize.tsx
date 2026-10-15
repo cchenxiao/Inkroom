@@ -1,0 +1,140 @@
+import { useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ApiError } from '@/shared/api/client';
+import { Badge, Button } from '@/shared/ui';
+import { backendMessages as t } from '@/shared/lib/messages-backend';
+import { trialApi } from '../api/backend';
+import { refreshEventQueries } from '../api/refresh-events';
+import type { BackendRun, FinalizeInput } from '../types/backend';
+
+export default function BackendFinalize({
+  run,
+  currentVersion,
+}: {
+  run: BackendRun;
+  currentVersion?: number;
+}) {
+  const client = useQueryClient();
+  const [confirmedVersion, setConfirmedVersion] = useState<number | null>(null);
+  const [uncertain, setUncertain] = useState<FinalizeInput | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const history = useQuery({
+    queryKey: ['backend-commits'],
+    queryFn: ({ signal }) => trialApi.commits(signal),
+    enabled: historyOpen || !!run.commitId,
+    retry: false,
+  });
+  const submit = useMutation({
+    mutationFn: (input: FinalizeInput) => trialApi.finalize(run.id, input),
+    retry: false,
+    onSuccess: () => {
+      setUncertain(null);
+      setHistoryOpen(true);
+    },
+    onError: (error) => {
+      if (error instanceof ApiError && error.status < 500) setUncertain(null);
+    },
+    onSettled: () => {
+      void refreshEventQueries(client, [
+        ['backend-trial', run.id],
+        ['backend-commits'],
+        ['backend-runs'],
+      ]);
+    },
+  });
+  const current = currentVersion === run.draftVersion;
+  const blocked = !run.inputDigest
+    ? t.legacyContext
+    : !current || run.status === 'stale'
+      ? t.staleResult
+      : run.status !== 'approved'
+        ? t.approveBeforeCommit
+        : run.approvalBlock;
+  const confirmed = confirmedVersion === run.draftVersion;
+  const save = (input: FinalizeInput) => {
+    setUncertain(input);
+    submit.mutate(input);
+  };
+  return (
+    <section className="backend-finalize page-stack">
+      <h3>{t.finalizeTitle}</h3>
+      <p>{t.finalizeNote}</p>
+      {run.commitId ? (
+        <p role="status">
+          {t.committed} · <span className="mono">{run.commitId}</span>
+        </p>
+      ) : (
+        <>
+          <label className="check-label">
+            <input
+              type="checkbox"
+              checked={confirmed}
+              disabled={!!blocked || submit.isPending || !!uncertain}
+              onChange={(e) => setConfirmedVersion(e.target.checked ? run.draftVersion : null)}
+            />
+            {t.confirmFacts}
+          </label>
+          <Button
+            variant="human"
+            loading={submit.isPending}
+            disabled={!!blocked || !confirmed || !!uncertain}
+            disabledReason={blocked || (uncertain ? t.commitUncertain : t.confirmFactsRequired)}
+            onClick={() =>
+              save({
+                id: crypto.randomUUID(),
+                draftVersion: run.draftVersion,
+                inputDigest: run.inputDigest!,
+                factsConfirmed: true,
+              })
+            }
+          >
+            {t.finalizeAction} · v{run.draftVersion}
+          </Button>
+          {blocked && <p>{blocked}</p>}
+          {uncertain && !submit.isPending && (
+            <>
+              <p role="alert">{t.commitUncertain}</p>
+              <Button onClick={() => save(uncertain)}>{t.retryAction}</Button>
+            </>
+          )}
+        </>
+      )}
+      {submit.isError && (
+        <p role="alert">
+          {submit.error instanceof ApiError ? submit.error.message : t.commitUncertain}
+        </p>
+      )}
+      <details open={historyOpen} onToggle={(e) => setHistoryOpen(e.currentTarget.open)}>
+        <summary>{t.finalHistory}</summary>
+        {history.isPending && <p>{t.loadDraft}</p>}
+        {history.isError && <Button onClick={() => void history.refetch()}>{t.retry}</Button>}
+        {history.data?.length === 0 && <p>{t.noCommits}</p>}
+        {history.data?.map((commit) => (
+          <details className="backend-commit" key={commit.id}>
+            <summary>
+              <Badge tone="human">v{commit.draftVersion}</Badge>{' '}
+              {new Date(commit.createdAt).toLocaleString('zh-CN')} · {commit.id.slice(0, 12)}
+            </summary>
+            <div className="backend-candidate">
+              {commit.segments.map((segment) => (
+                <p key={segment.id}>{segment.text}</p>
+              ))}
+            </div>
+            <p>
+              {t.frozenRefs} {commit.refs.length} · {t.authorFactsConfirmed}
+            </p>
+            <p className="mono">
+              {t.parentCommit}：{commit.parentCommit || t.firstCommit}
+            </p>
+            {commit.refs.map((ref) => (
+              <p key={`${ref.kind}:${ref.id}`}>
+                <Badge>{t.sourceKinds[ref.kind] ?? ref.kind}</Badge> {ref.id} · v{ref.version} ·{' '}
+                <span title={ref.digest}>{ref.digest.slice(0, 12)}</span>
+              </p>
+            ))}
+          </details>
+        ))}
+      </details>
+    </section>
+  );
+}

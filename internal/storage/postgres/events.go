@@ -75,7 +75,7 @@ func stateEvent(r app.Run) string {
 		return "version.stale"
 	case "failed", "interrupted":
 		return "run.failed"
-	case "approved", "completed":
+	case "approved", "completed", "committed":
 		return "run.finished"
 	case "waiting_human":
 		return "gate.waiting"

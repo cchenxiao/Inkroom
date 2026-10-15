@@ -41,7 +41,7 @@
 
 分支合并的 GET 预览包含目标与来源各章节版本映射 `targetVersions` / `sourceVersions`；POST 必须回传捕获的映射。预览之后任一相关版本变化都要求重新预览、重新裁决。合并时每个实际修改的目标章节分别递增版本并作废旧审稿；新增、删除与重排分段按整章结构冲突处理。
 
-## Go 候选接口（I8 已实现）
+## Go 候选接口（I9 已实现）
 
 准备页 `trialApi` 使用独立 `backendApi`；浏览器 `/go-api` 代理至 Go `/api`，不走 MSW。下面是已落地的学习切片，不能将上文完整 Mock 契约视为已全部接入后端。
 
@@ -78,3 +78,15 @@ Run 新增 `canResume`、`approvalBlock`、`instructionBlock`、`pendingAction`�
 - 连接建立先订阅再回放，按持久化历史顺序排空；内存通知仅唤醒读取。慢连接缓冲溢出/写入超时会断开，客户端重连补齐。
 - 客户端重连退避 0.5–8 秒；切换运行/收起面板取消订阅。禁止重试 POST 代替 SSE 重连。旧查询快照按事件序号拦截，依赖资源查询先取消再刷新。
 - 默认保留全部事件；显式维护裁剪后才产生过期游标。I8 之前的运行序号为 0，不补造历史，但后续人工操作仍会产生新事件。
+
+### 上下文与定稿（I9）
+
+- `GET /runs/:id/context-manifest` → `BackendManifest`：固定的项目/章节/分支、启动稿本版本、assembler 版本、输入 digest、材料 token 估计及预算、预留输出、sources 与 excluded。sources 包含 kind/id/version/digest/method=direct/excerpt；本阶段不是 RAG。
+- `POST /runs/:id/commit` → `BackendCommit`。请求 `{id,draftVersion,inputDigest,factsConfirmed:true}`；id 为本次作者决定的稳定键，不是随机重试键。先前必须存在同版已完成 `approve`，当前正文/评审/冻结输入再次通过校验才提交。事实确认代表作者核对，不代表自动抽取已完成。
+- `GET /commits?chapterId=ch7&branchId=main` → 最近 50 个只读定稿；`GET /commits/:id` → 单个完整快照。含 parentCommit、approvalActionId、factConfirmation、正文、评审、manifest 与对象版本 refs。后续正文修改不改写提交。
+
+Run 新增 `inputDigest`、`commitId`，终态 `committed`，节点 `commit`；成功同事务发送 `run.finished` 与 `commit.created`。`approved` 是已批准候选，`committed` 才是已冻结本次试运行稿。仍不能据此把整个 Mock 章节显示为真实定稿。
+
+拒绝：`409 version_mismatch`（当前稿本不符）、`gate_blocked`（审批/评审未通过）、`context_mismatch`（输入缺失或不符）、`facts_unconfirmed`（事实未确认）、`action_mismatch`（重复 ID 内容不同或同 run 已有其他提交）。相同已完成定稿请求即使稿本后来改变，也只返回原回执。旧 run 无 manifest，不回填伪造来源。
+
+自动事实提取与 BibleUpdater 留待后续；本切片只接受「无需更新设定」的人工确认路径，仍有事实变化时必须先处理。上下文中的前章来自已确认教学种子，未确认候选和其他分支材料不送入模型。

@@ -65,12 +65,14 @@ export function useBackendEvents(runId: string | null, enabled: boolean) {
                   'revise.round',
                   'gate.waiting',
                   'run.finished',
+                  'commit.created',
                 ].includes(event.type)
               ) {
                 void refreshEventQueries(client, [
                   ['backend-draft'],
                   ['backend-versions'],
                   ['backend-runs'],
+                  ['backend-commits'],
                 ]);
               }
             },

@@ -20,6 +20,8 @@ var ErrActionMismatch = errors.New("action id reused with different content")
 var ErrInvalidWrite = errors.New("invalid draft write")
 
 type Run struct {
+	InputDigest       string                      `json:"inputDigest,omitempty"`
+	CommitID          string                      `json:"commitId,omitempty"`
 	EventSequence     int64                       `json:"eventSequence"`
 	ActiveRoles       []string                    `json:"activeRoles"`
 	CanResume         bool                        `json:"canResume"`

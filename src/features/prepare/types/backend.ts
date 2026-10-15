@@ -2,9 +2,11 @@ import type { Finding, RunState } from '@/types/domain';
 
 /** I3 结果是隔离的单段候选，不是工作台正式稿本。 */
 export interface BackendRun extends Omit<RunState, 'status' | 'currentNode'> {
+  inputDigest?: string;
+  commitId?: string;
   eventSequence: number;
   activeRoles: string[];
-  status: RunState['status'] | 'needs_human' | 'stale' | 'interrupted' | 'approved';
+  status: RunState['status'] | 'needs_human' | 'stale' | 'interrupted' | 'approved' | 'committed';
   canResume: boolean;
   approvalBlock?: string;
   instructionBlock?: string;
@@ -149,4 +151,54 @@ export interface BackendRunEvent {
   type: string;
   createdAt: string;
   run: BackendRun;
+}
+
+export interface BackendManifest {
+  runId: string;
+  projectId: string;
+  chapterId: string;
+  branchId: string;
+  baseDraftVersion: number;
+  assemblerVersion: string;
+  digest: string;
+  tokenEstimate: number;
+  budget: number;
+  reservedOutputTokens: number;
+  sources: {
+    id: string;
+    kind: string;
+    title: string;
+    version: number;
+    digest: string;
+    method: 'direct';
+    tokens: number;
+    excerpt: string;
+  }[];
+  excluded: { title: string; reason: string }[];
+}
+export interface FinalizeInput {
+  id: string;
+  draftVersion: number;
+  inputDigest: string;
+  factsConfirmed: boolean;
+}
+export interface BackendCommit {
+  id: string;
+  runId: string;
+  projectId: string;
+  chapterId: string;
+  branchId: string;
+  draftVersion: number;
+  parentCommit?: string;
+  approvalActionId: string;
+  inputDigest: string;
+  createdAt: string;
+  factConfirmation: {
+    draftVersion: number;
+    method: 'author_no_pending_facts';
+    noPendingFacts: boolean;
+  };
+  manifest: BackendManifest;
+  segments: { id: string; text: string; version: number }[];
+  refs: { kind: string; id: string; version: number; digest: string; payload: unknown }[];
 }

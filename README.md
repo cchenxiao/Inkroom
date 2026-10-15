@@ -325,3 +325,16 @@ curl -N http://127.0.0.1:8080/api/runs/RUN_ID/events
 # 断开后，替换为最后收到的 id（包含 run_id 和序号）
 curl -N -H 'Last-Event-ID: RUN_ID:12' http://127.0.0.1:8080/api/runs/RUN_ID/events
 ```
+
+### I9：上下文清单与定稿冻结
+
+学习入口：
+1. [Assembler](internal/contextassembly/assembler.go)：先装锁定 Beat、活跃人物、事实、风格和已确认上章结尾，生成来源版本 / 内容摘要 / 预算 / 排除原因。必需材料超限直接拒绝，绝不悄悄删约束。
+2. [冻结输入](internal/storage/postgres/context.go)：启动事务把输入存入 `run_contexts`；执行、恢复、定稿都核对这份材料。旧运行没有清单时不能从当前配置补造。
+3. [定稿事务](internal/storage/postgres/commits.go)：锁定章与 run，重查当前版本、已完成作者审批、两个必要评审、事实门禁及输入摘要；一次写入 `manuscript_commits`、`commit_refs`、run 终态与 outbox。失败全回滚，同一 ID 重试只返回原提交。
+
+准备页流程：生成 → 双 Critic / 有限返工 → 作者批准 → 核对并确认无待同步事实 →「定稿本次试运行稿」。可以展开上下文清单与只读定稿历史；定稿后继续修改会形成新候选，已冻结正文不变。
+
+当前范围仍为 `ch7/main` 的单段学习切片，未将 Mock 工作台整章切到真实后端。前章结尾是明确标注的已确认教学种子；M2 再从指定 commit 检索。事实自动抽取与 Bible 同步尚未实现，必须由作者确认没有待处理的新事实；已有待裁定 Finding 仍阻断，不能用勾选绕过。旧 run 需重新启动并审核后才可定稿。
+
+`INKLOOM_CONTEXT_TOKENS` 默认 8000；采用输入 JSON 的 UTF-8 字节数保守估计，只计材料，不是供应商精确 token。模型输出另预留，调用护栏仍检查提示词、材料和输出的整体预算。

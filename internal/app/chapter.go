@@ -17,10 +17,22 @@ func ExecuteChapter(ctx context.Context, cfg config.Config, scenario string, opt
 	if cfg.Model != "fake" && scenario != "normal" {
 		return orchestration.ChapterState{}, fmt.Errorf("failure scenarios require INKLOOM_MODEL=fake")
 	}
-	bundle, steps, err := demo.Load(scenario)
+	_, steps, err := demo.Load(scenario)
 	if err != nil {
 		return orchestration.ChapterState{}, err
 	}
+	input := opts.FrozenInput
+	if input == nil {
+		prepared, e := PrepareContext(cfg, scenario, "cli", opts.BaseDraftVersion)
+		if e != nil {
+			return orchestration.ChapterState{}, e
+		}
+		input = &prepared
+	}
+	if err = input.Validate(); err != nil || input.Manifest.BaseDraftVersion != opts.BaseDraftVersion {
+		return orchestration.ChapterState{}, ErrContextMismatch
+	}
+	bundle := input.Bundle
 	steps, err = demo.WithBaseVersion(steps, opts.BaseDraftVersion)
 	if err != nil {
 		return orchestration.ChapterState{}, err

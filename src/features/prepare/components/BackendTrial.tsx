@@ -2,6 +2,8 @@ import { lazy, Suspense, useState, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import BackendTrialResult from './BackendTrialResult';
 import BackendHumanGate from './BackendHumanGate';
+import BackendContextManifest from './BackendContextManifest';
+import BackendFinalize from './BackendFinalize';
 import BackendDraft from './BackendDraft';
 import BackendRunHistory from './BackendRunHistory';
 import { Badge, Button, Card, Select } from '@/shared/ui';
@@ -208,24 +210,30 @@ export default function BackendTrial() {
               <div className="page-actions" aria-live="polite">
                 <Badge
                   tone={
-                    run.status === 'approved' ? 'human' : run.status === 'failed' ? 'danger' : 'ai'
+                    run.status === 'approved' || run.status === 'committed'
+                      ? 'human'
+                      : run.status === 'failed'
+                        ? 'danger'
+                        : 'ai'
                   }
                 >
-                  {run.status === 'approved'
-                    ? t.approved
-                    : run.status === 'stale'
-                      ? t.staleRun
-                      : run.status === 'interrupted'
-                        ? t.interruptedRun
-                        : run.status === 'running'
-                          ? t.running
-                          : run.status === 'completed'
-                            ? t.completed
-                            : run.status === 'waiting_human' || run.status === 'needs_human'
-                              ? t.waitingHuman
-                              : run.status === 'escalated'
-                                ? t.escalated
-                                : t.failed}
+                  {run.status === 'committed'
+                    ? t.committed
+                    : run.status === 'approved'
+                      ? t.approved
+                      : run.status === 'stale'
+                        ? t.staleRun
+                        : run.status === 'interrupted'
+                          ? t.interruptedRun
+                          : run.status === 'running'
+                            ? t.running
+                            : run.status === 'completed'
+                              ? t.completed
+                              : run.status === 'waiting_human' || run.status === 'needs_human'
+                                ? t.waitingHuman
+                                : run.status === 'escalated'
+                                  ? t.escalated
+                                  : t.failed}
                 </Badge>
                 <span>
                   {run.provider} · {run.model}
@@ -254,13 +262,19 @@ export default function BackendTrial() {
                 </Suspense>
               )}
               {run.result?.stopReason && <p role="status">{run.result.stopReason}</p>}
-              {run.canResume && (
+              <BackendContextManifest key={`context-${run.id}`} run={run} />
+              {run.canResume && run.status !== 'committed' && (
                 <BackendHumanGate
                   key={run.id}
                   run={run}
                   currentVersion={draft.data?.draftVersion}
                 />
               )}
+              <BackendFinalize
+                key={`commit-${run.id}`}
+                run={run}
+                currentVersion={draft.data?.draftVersion}
+              />
               {run.result && (
                 <BackendTrialResult
                   result={run.result}

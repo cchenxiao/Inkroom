@@ -30,7 +30,7 @@ type service struct {
 	workers sync.WaitGroup
 	root    context.Context
 	cfg     config.Config
-	repo    app.LiveRepository
+	repo    app.FinalRepository
 	hub     *events.Hub
 }
 
@@ -61,6 +61,10 @@ func Serve(ctx context.Context) error {
 	mux.HandleFunc("GET /api/runs", s.list)
 	mux.HandleFunc("GET /api/runs/{id}/calls", s.calls)
 	mux.HandleFunc("GET /api/runs/{id}/events", s.events)
+	mux.HandleFunc("GET /api/runs/{id}/context-manifest", s.manifest)
+	mux.HandleFunc("POST /api/runs/{id}/commit", s.finalize)
+	mux.HandleFunc("GET /api/commits", s.commits)
+	mux.HandleFunc("GET /api/commits/{id}", s.commit)
 	mux.HandleFunc("GET /api/chapters/{id}", s.draft)
 	mux.HandleFunc("GET /api/chapters/{id}/versions", s.versions)
 	mux.HandleFunc("PATCH /api/segments/{id}", s.edit)
@@ -171,7 +175,14 @@ func (s *service) start(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	run := app.Run{MaxCalls: s.cfg.MaxCalls, MaxTokens: s.cfg.MaxTokens, ID: rand.Text(), CreatedAt: time.Now().UTC(), BaseDraftVersion: *in.DraftVersion, DraftVersion: *in.DraftVersion, ChapterID: in.ChapterID, BranchID: in.BranchID, Scenario: in.Scenario, AllowLocalRewrite: in.AllowLocalRewrite, AutoRevise: in.AutoRevise, MaxRounds: in.MaxRounds, Status: "running", CurrentNode: "draft", Nodes: []any{}, Provider: s.cfg.Model, Model: s.cfg.ModelName}
-	if err := s.repo.CreateRun(r.Context(), run); err != nil {
+	input, err := app.PrepareContext(s.cfg, run.Scenario, run.ID, run.BaseDraftVersion)
+	if err != nil {
+		s.mu.Unlock()
+		fail(w, 422, "context_not_ready", err.Error())
+		return
+	}
+	run.InputDigest = input.Manifest.Digest
+	if err := s.repo.CreatePreparedRun(r.Context(), run, input); err != nil {
 		s.mu.Unlock()
 		storageError(w, err)
 		return
@@ -200,7 +211,15 @@ func (s *service) execute(run app.Run) {
 		run.ElapsedMs = time.Since(started).Milliseconds()
 		run.Result = &state
 	}
+	input, err := s.repo.FrozenContext(ctx, run.ID)
+	if err != nil {
+		finish, stop := context.WithTimeout(context.Background(), 5*time.Second)
+		defer stop()
+		_ = s.repo.StopRun(finish, run.ID, "failed", "冻结输入读取失败，未调用模型")
+		return
+	}
 	result, err := app.ExecuteChapter(ctx, s.cfg, run.Scenario, orchestration.Options{
+		FrozenInput:      &input,
 		BaseDraftVersion: run.BaseDraftVersion, AllowLocalRewrite: run.AllowLocalRewrite, AutoRevise: run.AutoRevise, MaxRounds: run.MaxRounds,
 		OnModelCall: func(_ context.Context, c model.CallRecord) error {
 			// 取消后的最后一次调用结果也要记账；独立短超时，不能发起新的模型调用。
@@ -275,6 +294,10 @@ func (s *service) calls(w http.ResponseWriter, r *http.Request) {
 }
 func storageError(w http.ResponseWriter, err error) {
 	switch {
+	case errors.Is(err, app.ErrContextMismatch):
+		fail(w, 409, "context_mismatch", "冻结输入缺失或不匹配；旧运行不能补造清单，请重新装配并启动")
+	case errors.Is(err, app.ErrFactsUnconfirmed):
+		fail(w, 409, "facts_unconfirmed", "仍需作者确认没有待同步事实；事实变更不得跳过处理直接定稿")
 	case errors.Is(err, app.ErrGateBlocked):
 		fail(w, 409, "gate_blocked", "当前候选不满足此操作条件；请查看待处理问题或先直改复检")
 	case errors.Is(err, app.ErrActionMismatch):

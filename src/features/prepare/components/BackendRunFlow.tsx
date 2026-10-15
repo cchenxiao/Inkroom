@@ -14,6 +14,7 @@ const positions: Record<string, [number, number]> = {
   structural_reviser: [480, 290],
   human_gate: [240, 415],
   human_edit: [480, 415],
+  commit: [240, 510],
 };
 const forward: [string, string][] = [
   ['draft', 'hard_consistency'],
@@ -25,6 +26,7 @@ const forward: [string, string][] = [
   ['aggregate', 'structural_reviser'],
   ['aggregate', 'human_gate'],
   ['human_gate', 'human_edit'],
+  ['human_gate', 'commit'],
 ];
 const repairs = ['micro_edit', 'scene_reviser', 'structural_reviser', 'human_edit'];
 export default function BackendRunFlow({ run }: { run: BackendRun }) {
@@ -38,6 +40,7 @@ export default function BackendRunFlow({ run }: { run: BackendRun }) {
       (roles.includes(id) ||
         (run.currentNode === id && roles.length === 0 && run.result?.nodePhase !== 'finished'));
     const completed = new Set<string>();
+    if (run.status === 'approved' || run.status === 'committed') completed.add('human_gate');
     if (run.result?.segments.length) completed.add('draft');
     for (const critic of run.result?.criticReviews ?? []) {
       if (critic.status === 'completed' && critic.draftVersion === run.draftVersion)

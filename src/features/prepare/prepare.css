@@ -441,3 +441,22 @@ input[type='checkbox'] {
     animation: none;
   }
 }
+
+.backend-manifest,
+.backend-finalize {
+  border: 1px solid var(--border);
+  padding: 16px;
+  border-radius: 12px;
+}
+.backend-source-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.backend-manifest details,
+.backend-commit {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.backend-finalize .check-label {
+  margin: 0;
+}

@@ -26,7 +26,7 @@ func (b ContextBundle) FactSources() []SourceRef {
 }
 
 // Freeze 在进入图时复制全部嵌套切片；整个 run 使用这份基础输入版本。
-// I6 才加入存储层的乐观锁；这里不声称能感知尚未接入的外部编辑。
+// 此处只负责快照复制和来源校验；存储事务负责版本并发控制。
 func (b ContextBundle) Freeze() (ContextBundle, error) {
 	raw, err := json.Marshal(b)
 	if err != nil {
@@ -46,7 +46,11 @@ func (b ContextBundle) Freeze() (ContextBundle, error) {
 		}
 		seen[c.ID] = true
 	}
-	for _, s := range append(append([]SourceRef{}, b.Sources...), b.FactSources()...) {
+	sources := append(append([]SourceRef{}, b.Sources...), b.FactSources()...)
+	if b.PreviousEnding != nil {
+		sources = append(sources, *b.PreviousEnding)
+	}
+	for _, s := range sources {
 		if s.ID == "" || s.Version < 1 || strings.TrimSpace(s.Text) == "" || seen[s.ID] {
 			return frozen, fmt.Errorf("invalid or duplicate source %q", s.ID)
 		}

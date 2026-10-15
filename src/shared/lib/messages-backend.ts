@@ -1,4 +1,40 @@
 export const backendMessages = {
+  contextManifest: '本次上下文清单 · 固定输入版本',
+  legacyContext: '此旧运行未保存上下文清单，不能补造定稿依据。请发起一次新运行。',
+  contextError: '上下文清单读取失败。',
+  contextNote:
+    '这是本次运行的基础材料；各 Agent 按职责取子集。前章结尾是已确认教学种子。Token 按 UTF-8 字节保守估计，不等于实际用量。',
+  contextBudget: '材料估计 / 预算',
+  outputReserve: '预留输出',
+  contextBase: '启动时稿本',
+  directSource: '固定版本读取',
+  contextExcluded: '未纳入材料',
+  sourceKinds: {
+    outline: '大纲 / Beat',
+    character: '人物卡',
+    bible_fact: '事实约束',
+    context_source: '创作材料',
+    previous_ending: '上章结尾',
+    style_policy: '风格约束',
+    manuscript: '正文',
+    review: '评审',
+  } as Record<string, string>,
+  finalizeTitle: '定稿 · 冻结正文与设定版本',
+  finalizeNote:
+    '当前冻结的是这次单段试运行稿；不会改动 Mock 工作台。自动事实抽取和设定同步尚未接入，发现待同步事实时请先处理，不能勾选跳过。定稿后仍可继续写新版本，历史提交保持不变。',
+  finalizeAction: '定稿本次试运行稿',
+  committed: '本版已定稿冻结',
+  approveBeforeCommit: '需先完成本版必要评审并由作者批准。',
+  confirmFacts: '我已核对本版正文，没有待同步的新事实、设定冲突或未裁定的台词谎言 / 误解。',
+  confirmFactsRequired: '请先核对正文并确认事实。',
+  commitUncertain: '定稿结果尚未确认。请读取运行状态，或用同一操作 ID 重试；不会重复创建提交。',
+  finalHistory: '已冻结定稿 · 只读历史',
+  noCommits: '还没有定稿提交。',
+  frozenRefs: '已冻结对象',
+  authorFactsConfirmed: '作者已确认无待同步事实',
+  parentCommit: '上一提交',
+  firstCommit: '首次定稿',
+
   streamStates: {
     idle: '进度连接已暂停',
     connecting: '正在连接实时进度…',
@@ -17,6 +53,7 @@ export const backendMessages = {
   graphFinished: '本节点已结束',
   graphEvidence: '以本次运行快照为准，图中没有执行的节点不会标为通过。',
   graphNodes: {
+    commit: '定稿冻结',
     draft: 'Writer · 初稿',
     hard_consistency: '一致性 Critic',
     ai_taste: 'AI 味 Critic',
@@ -31,7 +68,7 @@ export const backendMessages = {
     '保存作者的新版本后，沿同一运行执行双 Critic 复检，再返回作者审核；不会重写 Writer 初稿。',
   humanGate: '作者审核 · 检查点已保存',
   humanGateNote:
-    '此处等待不占模型请求。修改后从当前稿本复检，不重跑 Writer；批准仅确认本版候选，尚不提交正式章节。',
+    '此处等待不占模型请求。修改后从当前稿本复检，不重跑 Writer；批准确认本版候选；核对事实后，可在下方定稿冻结。',
   approved: '作者已批准本版候选',
   approveCandidate: '批准当前候选',
   instructCandidate: '提出局部修改要求',
@@ -155,6 +192,7 @@ export const backendMessages = {
   burstiness: '句长波动',
   hits: '禁用短语命中',
   nodes: {
+    commit: '定稿冻结',
     human_gate: '作者审核',
     human_edit: '作者修改后待复检',
     draft: '生成初稿',

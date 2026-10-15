@@ -1,6 +1,9 @@
 import { backendApi } from '@/shared/api/client';
 import type {
   BackendRun,
+  BackendManifest,
+  BackendCommit,
+  FinalizeInput,
   HumanAction,
   StoredDraft,
   StoredVersion,
@@ -8,6 +11,12 @@ import type {
 } from '../types/backend';
 
 export const trialApi = {
+  manifest: (id: string, signal?: AbortSignal) =>
+    backendApi.get<BackendManifest>(`/runs/${encodeURIComponent(id)}/context-manifest`, signal),
+  finalize: (id: string, input: FinalizeInput) =>
+    backendApi.post<BackendCommit>(`/runs/${encodeURIComponent(id)}/commit`, input),
+  commits: (signal?: AbortSignal) =>
+    backendApi.get<BackendCommit[]>('/commits?chapterId=ch7&branchId=main', signal),
   action: (runId: string, action: HumanAction) =>
     backendApi.post<BackendRun>(`/runs/${encodeURIComponent(runId)}/actions`, action),
   health: () => backendApi.get<{ provider: string; model: string; scenarios: string[] }>('/health'),

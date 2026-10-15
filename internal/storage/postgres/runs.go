@@ -10,9 +10,11 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"inkloom/internal/agents/model"
 	"inkloom/internal/app"
+	"inkloom/internal/domain/manuscript"
 )
 
-func (s *Store) CreateRun(ctx context.Context, r app.Run) error {
+func (s *Store) CreateRun(ctx context.Context, r app.Run) error { return s.createRun(ctx, r, nil) }
+func (s *Store) createRun(ctx context.Context, r app.Run, input *manuscript.FrozenInput) error {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return err
@@ -40,6 +42,15 @@ func (s *Store) CreateRun(ctx context.Context, r app.Run) error {
 	}
 	if err != nil {
 		return err
+	}
+	if input != nil {
+		raw, err := json.Marshal(input)
+		if err != nil {
+			return err
+		}
+		if _, err = tx.Exec(ctx, "INSERT INTO run_contexts VALUES($1,$2)", r.ID, raw); err != nil {
+			return err
+		}
 	}
 	if err = appendEvent(ctx, tx, r.ID, "run.started"); err != nil {
 		return err
@@ -105,14 +116,21 @@ func saveProgressTx(ctx context.Context, tx pgx.Tx, r app.Run, expected int) err
 	if current != expected {
 		return app.ErrVersionMismatch
 	}
-	var status string
-	if err = tx.QueryRow(ctx, "SELECT status FROM runs WHERE id=$1 FOR UPDATE", r.ID).Scan(&status); err != nil {
+	var status, digest string
+	if err = tx.QueryRow(ctx, "SELECT status,COALESCE(payload->>'inputDigest','') FROM runs WHERE id=$1 FOR UPDATE", r.ID).Scan(&status, &digest); err != nil {
 		return err
 	}
 	if status != "running" {
 		return app.ErrVersionMismatch
 	}
 	state := r.Result
+	if digest != "" {
+		actual, err := manuscript.ContentDigest(state.Context)
+		if err != nil || actual != digest {
+			return app.ErrContextMismatch
+		}
+		r.InputDigest = digest
+	}
 	switch state.DraftVersion {
 	case expected: // 本轮只更新节点或评审，正文版本不变。
 	case expected + 1:

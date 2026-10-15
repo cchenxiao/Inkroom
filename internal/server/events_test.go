@@ -15,7 +15,7 @@ import (
 )
 
 type streamRepo struct {
-	app.HumanRepository
+	app.FinalRepository
 	mu      sync.Mutex
 	hub     *events.Hub
 	history []app.RunEvent
