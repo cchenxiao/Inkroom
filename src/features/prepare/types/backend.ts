@@ -170,7 +170,7 @@ export interface BackendManifest {
     title: string;
     version: number;
     digest: string;
-    method: 'direct';
+    method: 'direct' | 'keyword' | 'hybrid_fake' | 'hybrid_zhipu';
     tokens: number;
     excerpt: string;
   }[];

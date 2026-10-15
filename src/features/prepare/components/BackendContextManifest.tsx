@@ -45,7 +45,7 @@ export default function BackendContextManifest({ run }: { run: BackendRun }) {
                   <summary>
                     {t.sourceKinds[source.kind] ?? source.kind} · {source.title}{' '}
                     <Badge>
-                      v{source.version} · {t.directSource}
+                      v{source.version} · {t.retrievalMethods[source.method] ?? source.method}
                     </Badge>
                   </summary>
                   <p className="backend-source-text">{source.excerpt}</p>

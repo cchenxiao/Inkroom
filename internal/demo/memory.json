@@ -1,0 +1,83 @@
+[
+  {
+    "id": "seed-copper",
+    "projectId": "zhuoliu", "branchId": "main", "version": 1,
+    "kind": "fact", "status": "confirmed", "chapterId": "ch2", "segmentId": "ch2-s1",
+    "at": {"chapter": 2, "storyTime": 120},
+    "text": "铜扣来自沈砚父亲的旧外套。",
+    "knownBy": [
+      {"characterId": "character-shenyan", "since": {"chapter": 3, "storyTime": 180}},
+      {"characterId": "character-luqing", "since": {"chapter": 2, "storyTime": 120}}
+    ]
+  },
+  {
+    "id": "seed-hidden-letter",
+    "projectId": "zhuoliu", "branchId": "main", "version": 1,
+    "kind": "fact", "status": "confirmed", "chapterId": "ch4", "segmentId": "ch4-s2",
+    "at": {"chapter": 4, "storyTime": 240},
+    "text": "陆青把一封旧信藏在渡船座板下。",
+    "knownBy": [
+      {"characterId": "character-luqing", "since": {"chapter": 4, "storyTime": 240}},
+      {"characterId": "character-shenyan", "since": {"chapter": 8, "storyTime": 480}}
+    ]
+  },
+  {
+    "id": "seed-dialogue",
+    "projectId": "zhuoliu", "branchId": "main", "version": 1,
+    "kind": "passage", "status": "confirmed", "chapterId": "ch6", "segmentId": "ch6-s3",
+    "at": {"chapter": 6, "storyTime": 360},
+    "text": "陆青对沈砚说：‘我从没见过那封信。’",
+    "knownBy": [
+      {"characterId": "character-shenyan", "since": {"chapter": 6, "storyTime": 360}},
+      {"characterId": "character-luqing", "since": {"chapter": 6, "storyTime": 360}}
+    ]
+  },
+  {
+    "id": "seed-flashback",
+    "projectId": "zhuoliu", "branchId": "main", "version": 1,
+    "kind": "fact", "status": "confirmed", "chapterId": "ch9", "segmentId": "ch9-s1",
+    "at": {"chapter": 9, "storyTime": 60},
+    "text": "第九章回忆揭示：失踪前，周岑来过旧闸。",
+    "knownBy": [{"characterId": "character-shenyan", "since": {"chapter": 9, "storyTime": 540}}]
+  },
+  {
+    "id": "seed-future-event",
+    "projectId": "zhuoliu", "branchId": "main", "version": 1,
+    "kind": "fact", "status": "confirmed", "chapterId": "ch5", "segmentId": "ch5-s4",
+    "at": {"chapter": 5, "storyTime": 600},
+    "text": "第五章的预叙写到了旧闸最终倒塌。",
+    "knownBy": [{"characterId": "character-shenyan", "since": {"chapter": 10, "storyTime": 600}}]
+  },
+  {
+    "id": "seed-trial-branch",
+    "projectId": "zhuoliu", "branchId": "romance-b", "version": 1,
+    "kind": "fact", "status": "confirmed", "chapterId": "ch4", "segmentId": "ch4-s2",
+    "at": {"chapter": 4, "storyTime": 240},
+    "text": "试写分支中，陆青已经把旧信交给沈砚。",
+    "knownBy": [{"characterId": "character-shenyan", "since": {"chapter": 4, "storyTime": 240}}]
+  },
+  {
+    "id": "seed-unconfirmed",
+    "projectId": "zhuoliu", "branchId": "main", "version": 1,
+    "kind": "fact", "status": "candidate", "chapterId": "ch3", "segmentId": "ch3-s5",
+    "at": {"chapter": 3, "storyTime": 180},
+    "text": "尚未采用的 AI 建议：铜扣背面刻有船号。",
+    "knownBy": [{"characterId": "character-shenyan", "since": {"chapter": 3, "storyTime": 180}}]
+  },
+  {
+    "id": "seed-plan",
+    "projectId": "zhuoliu", "branchId": "main", "version": 1,
+    "kind": "plan", "status": "confirmed", "chapterId": "ch10",
+    "at": {"chapter": 10, "storyTime": 600},
+    "text": "作者规划：第十章让陆青解释藏信的原因。",
+    "knownBy": []
+  },
+  {
+    "id": "seed-outdated",
+    "projectId": "zhuoliu", "branchId": "main", "version": 2,
+    "kind": "fact", "status": "confirmed", "chapterId": "ch3", "segmentId": "ch3-s6",
+    "at": {"chapter": 3, "storyTime": 180},
+    "text": "作者确认的第二版：旧闸的锁还在。",
+    "knownBy": [{"characterId": "character-shenyan", "since": {"chapter": 3, "storyTime": 180}}]
+  }
+]

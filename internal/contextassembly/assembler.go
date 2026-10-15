@@ -4,6 +4,7 @@ package contextassembly
 import (
 	"encoding/json"
 	"fmt"
+	"inkloom/internal/domain/memory"
 
 	"inkloom/internal/domain/manuscript"
 )
@@ -19,6 +20,7 @@ type Options struct {
 	BaseDraftVersion     int
 	Budget               int
 	ReservedOutputTokens int
+	Memory               *memory.RetrievalContext
 	Excluded             []manuscript.ExcludedSource
 }
 
@@ -29,6 +31,25 @@ func Assemble(b manuscript.ContextBundle, previous PreviousChapter, opts Options
 		return manuscript.FrozenInput{}, fmt.Errorf("previous chapter must be confirmed and in the same project/branch")
 	}
 	b.PreviousEnding = &previous.Source
+	// 可选前情按排名逐条装入，不能挤掉固定的 Beat/事实/上章结尾。
+	if opts.Memory != nil {
+		raw, _ := json.Marshal(opts.Memory)
+		var retrieval memory.RetrievalContext
+		if err := json.Unmarshal(raw, &retrieval); err != nil {
+			return manuscript.FrozenInput{}, err
+		}
+		hits := retrieval.Hits
+		retrieval.Hits = []memory.Hit{}
+		b.Retrieval = &retrieval
+		for _, hit := range hits {
+			retrieval.Hits = append(retrieval.Hits, hit)
+			trial, _ := json.Marshal(b)
+			if len(trial) > opts.Budget {
+				retrieval.Hits = retrieval.Hits[:len(retrieval.Hits)-1]
+				opts.Excluded = append(opts.Excluded, manuscript.ExcludedSource{Title: hit.Record.ID, Reason: "相关前情超过本次材料预算，未送入模型"})
+			}
+		}
+	}
 	frozen, err := b.Freeze()
 	if err != nil {
 		return manuscript.FrozenInput{}, err
@@ -61,7 +82,18 @@ func Assemble(b manuscript.ContextBundle, previous PreviousChapter, opts Options
 			_ = json.Unmarshal(ref.Payload, &source)
 			excerpt = source.Text
 		}
-		m.Sources = append(m.Sources, manuscript.ContextSource{ID: ref.ID, Kind: ref.Kind, Title: title, Version: ref.Version, Digest: ref.Digest, Method: "direct", Tokens: len(ref.Payload), Excerpt: excerpt})
+		if frozen.Retrieval != nil {
+			for _, h := range frozen.Retrieval.Hits {
+				if ref.ID == h.Record.ID && ref.Kind == "retrieved_"+string(h.Record.Kind) {
+					title = h.Record.ChapterID + " / " + h.Record.SegmentID
+					excerpt = h.Record.Text
+					if h.Origin == "teaching_seed" {
+						title += "（教学种子）"
+					}
+				}
+			}
+		}
+		m.Sources = append(m.Sources, manuscript.ContextSource{ID: ref.ID, Kind: ref.Kind, Title: title, Version: ref.Version, Digest: ref.Digest, Method: manuscript.ReferenceMethod(frozen, ref), Tokens: len(ref.Payload), Excerpt: excerpt})
 	}
 	in := manuscript.FrozenInput{Bundle: frozen, Manifest: m}
 	return in, in.Validate()

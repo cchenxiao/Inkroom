@@ -3,6 +3,7 @@ package manuscript
 import (
 	"encoding/json"
 	"fmt"
+	"inkloom/internal/domain/memory"
 	"strings"
 )
 
@@ -16,11 +17,35 @@ type CharacterFacts struct {
 	Knows      []SourceRef `json:"knows"`
 }
 
-func (b ContextBundle) FactSources() []SourceRef {
+func (b ContextBundle) baseFactSources() []SourceRef {
 	out := append([]SourceRef{}, b.Facts...)
 	for _, c := range b.Characters {
 		out = append(out, c.HardTraits...)
 		out = append(out, c.Knows...)
+	}
+	return out
+}
+
+// ExplicitFacts 只把检索中的已确认 fact 加入事实输入；台词/原文保留为 passage。
+func (b ContextBundle) ExplicitFacts() []SourceRef {
+	out := append([]SourceRef{}, b.Facts...)
+	if b.Retrieval != nil {
+		for _, h := range b.Retrieval.Hits {
+			if h.Record.Kind == memory.Fact {
+				out = append(out, SourceRef{ID: h.Record.ID, Version: h.Record.Version, Text: h.Record.Text})
+			}
+		}
+	}
+	return out
+}
+func (b ContextBundle) FactSources() []SourceRef {
+	out := b.baseFactSources()
+	if b.Retrieval != nil {
+		for _, h := range b.Retrieval.Hits {
+			if h.Record.Kind == memory.Fact {
+				out = append(out, SourceRef{ID: h.Record.ID, Version: h.Record.Version, Text: h.Record.Text})
+			}
+		}
 	}
 	return out
 }
@@ -39,6 +64,24 @@ func (b ContextBundle) Freeze() (ContextBundle, error) {
 	if b.ChapterID == "" || b.BranchID == "" || b.Beat.ID == "" || b.Beat.SceneID == "" || b.Beat.Version < 1 {
 		return frozen, fmt.Errorf("context requires chapter/branch/beat and a pinned beat version")
 	}
+	if b.Retrieval != nil {
+		v := b.Retrieval.View
+		if err := memory.ValidateRetrieval(*b.Retrieval); err != nil {
+			return frozen, err
+		}
+		if v.ProjectID != b.ProjectID || v.BranchID != b.BranchID || v.POV != b.POVCharacterID {
+			return frozen, fmt.Errorf("retrieval scope does not match manuscript")
+		}
+		found := false
+		for _, c := range b.Characters {
+			if c.ID == v.POV && strings.Contains(b.POV, c.Name) {
+				found = true
+			}
+		}
+		if !found {
+			return frozen, fmt.Errorf("retrieval POV is not the writing POV")
+		}
+	}
 	seen := map[string]bool{b.Beat.ID: true}
 	for _, c := range b.Characters {
 		if c.ID == "" || c.Name == "" || c.Version < 1 || seen[c.ID] {
@@ -49,6 +92,13 @@ func (b ContextBundle) Freeze() (ContextBundle, error) {
 	sources := append(append([]SourceRef{}, b.Sources...), b.FactSources()...)
 	if b.PreviousEnding != nil {
 		sources = append(sources, *b.PreviousEnding)
+	}
+	if b.Retrieval != nil {
+		for _, h := range b.Retrieval.Hits {
+			if h.Record.Kind != memory.Fact {
+				sources = append(sources, SourceRef{ID: h.Record.ID, Version: h.Record.Version, Text: h.Record.Text})
+			}
+		}
 	}
 	for _, s := range sources {
 		if s.ID == "" || s.Version < 1 || strings.TrimSpace(s.Text) == "" || seen[s.ID] {

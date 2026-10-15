@@ -11,16 +11,20 @@ import (
 )
 
 type Config struct {
-	ContextTokens   int
-	DatabaseURL     string
-	Model           string
-	APIKey          string
-	ModelName       string
-	BaseURL         string
-	CallTimeout     time.Duration
-	MaxCalls        int
-	MaxTokens       int
-	MaxOutputTokens int
+	Embedder            string
+	EmbeddingKey        string
+	EmbeddingDimensions int
+	EmbeddingRevision   string
+	ContextTokens       int
+	DatabaseURL         string
+	Model               string
+	APIKey              string
+	ModelName           string
+	BaseURL             string
+	CallTimeout         time.Duration
+	MaxCalls            int
+	MaxTokens           int
+	MaxOutputTokens     int
 }
 
 func Load() (Config, error) {
@@ -41,7 +45,22 @@ func Load() (Config, error) {
 	if name == "fake" {
 		cfg.ModelName = "scripted-fake"
 	}
+	cfg.Embedder = env("INKLOOM_EMBEDDER", "none")
+	cfg.EmbeddingKey = os.Getenv("ZHIPU_API_KEY")
+	cfg.EmbeddingRevision = env("INKLOOM_EMBEDDING_REVISION", "v1")
+	if cfg.Embedder != "none" && cfg.Embedder != "fake" && cfg.Embedder != "zhipu" {
+		return Config{}, fmt.Errorf("INKLOOM_EMBEDDER must be none, fake or zhipu")
+	}
+	if cfg.Embedder == "fake" && name != "fake" {
+		return Config{}, fmt.Errorf("Fake embeddings require Fake chat")
+	}
+	if cfg.Embedder == "zhipu" && cfg.EmbeddingKey == "" {
+		return Config{}, fmt.Errorf("ZHIPU_API_KEY is required")
+	}
 	var err error
+	if cfg.EmbeddingDimensions, err = positive("INKLOOM_EMBEDDING_DIMENSIONS", 1024); err != nil {
+		return Config{}, err
+	}
 	if cfg.ContextTokens, err = positive("INKLOOM_CONTEXT_TOKENS", 8000); err != nil {
 		return Config{}, err
 	}

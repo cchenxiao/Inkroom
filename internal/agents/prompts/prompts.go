@@ -54,6 +54,9 @@ func Render(in model.Input) (model.Input, error) {
 		return in, fmt.Errorf("prompt material and schema must be JSON")
 	}
 	promptVersion := name + ".v1"
+	if name == "writer" {
+		promptVersion = "writer.v2"
+	}
 	if name == "polisher" {
 		promptVersion = "polisher.v2"
 	}

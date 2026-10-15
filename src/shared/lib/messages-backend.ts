@@ -8,8 +8,17 @@ export const backendMessages = {
   outputReserve: '预留输出',
   contextBase: '启动时稿本',
   directSource: '固定版本读取',
+  retrievalMethods: {
+    direct: '固定版本读取',
+    keyword: '关键词检索',
+    hybrid_fake: '混合检索 · 假向量',
+    hybrid_zhipu: '混合检索 · 智谱向量',
+  } as Record<string, string>,
   contextExcluded: '未纳入材料',
   sourceKinds: {
+    retrieved_fact: '检索事实',
+    retrieved_passage: '检索原文（非世界事实）',
+    retrieval_request: '检索范围与方法',
     outline: '大纲 / Beat',
     character: '人物卡',
     bible_fact: '事实约束',

@@ -338,3 +338,69 @@ curl -N -H 'Last-Event-ID: RUN_ID:12' http://127.0.0.1:8080/api/runs/RUN_ID/even
 当前范围仍为 `ch7/main` 的单段学习切片，未将 Mock 工作台整章切到真实后端。前章结尾是明确标注的已确认教学种子；M2 再从指定 commit 检索。事实自动抽取与 Bible 同步尚未实现，必须由作者确认没有待处理的新事实；已有待裁定 Finding 仍阻断，不能用勾选绕过。旧 run 需重新启动并审核后才可定稿。
 
 `INKLOOM_CONTEXT_TOKENS` 默认 8000；采用输入 JSON 的 UTF-8 字节数保守估计，只计材料，不是供应商精确 token。模型输出另预留，调用护栏仍检查提示词、材料和输出的整体预算。
+
+### I10a：先决定哪些旧材料能给角色看
+
+这一小步只做 I10 的前置筛选规则，尚未接搜索、向量模型、pgvector 或 Agent 工具调用，也没有改动现有 Writer 输入。用独立教学记录演示，不把它们当作《浊流》正式设定；无需数据库或模型密钥。
+
+```bash
+go run ./cmd/inkloom -context-preview
+go run ./cmd/inkloom -context-preview -pov character-luqing
+```
+
+第一条以第 7 章沈砚视角输出 2 条可用材料；第二条切换为陆青，增加她已知、沈砚尚未知的藏信事实。作者未来规划单独列出；其他分支、未确认内容、未来章节、未来故事时间及过期版本均被挡住，排除解释不携带秘密原文。听到一句谎言只意味着“听过这句话”，台词片段仍是 `passage`，不会变成世界事实 `fact`。
+
+顺着这三处读代码：
+
+1. [数据结构](internal/domain/memory/types.go)：`Record` 表示一个可独立授权的片段，`At` 是来源的章节/故事时间，`KnownBy.Since` 是角色获知时点；`View` 是当前写作范围。故事时间采用项目统一刻度，演示用分钟。缺失的获知记录按不可用处理，不能据此断言角色在故事里一定不知道。
+2. [筛选规则](internal/domain/memory/visibility.go)：`Select` 是纯函数，依次检查项目/分支 → 确认状态 → 固定版本与摘要 → 章节/故事时间 → 当前角色获知时点。摘要覆盖正文及可见性元数据。返回角色材料、作者规划和排除原因三个独立区域；只筛选，不评价相关性。
+3. [教学入口](internal/demo/memory.go)：先从可信种子建立固定版本目录，再模拟搜索返回旧版材料。真实接入时 Pin 必须来自已固定的来源目录，不能拿搜索结果自己生成摘要、自己证明有效。
+
+**I10b 接入方式见下节**：从数据库读固定版本的旧稿，候选材料先经过上述规则，再执行关键词与向量搜索、确定性重排和装配。工具调用仍在 I11。当前规则依赖可靠的人工/系统元数据，不会自动理解段落里谁知道什么；一个片段混有不同知情范围时，必须先拆分或保守排除整段。
+
+### I10b：数据库检索已接入 Writer
+
+HTTP 启动一轮创作时，现在执行：**读取固定版本目录 → 按角色过滤 → 关键词/向量双通道召回 → 融合与重排 → 按预算装入上下文 → 保存输入 → Writer**。恢复旧 run 仍读取原快照，不重新搜索。前端上下文清单区分“固定读取”“关键词检索”“智谱混合检索”，并明确标注教学来源。检索事实可供一致性 Critic 核对，原文/台词仍保留 `passage` 类型，不自动当作事实。
+
+学习顺序：
+
+1. [来源仓储](internal/storage/postgres/memory.go)：`memory_records` 保存不可变正文和知情元数据，`memory_heads` 指定当前可用版本。真实来源必须来自已定稿 commit 的原段落；更晚定稿存在时，不再召回旧定稿。修改索引不会改动已冻结的运行输入。
+2. [搜索用例](internal/retrieval/service.go)：先复用 I10a 的过滤，再把可用材料送给向量模型；缓存命中后仅为新查询计算向量。中文关键词使用相邻双字；两个通道按名次融合（RRF），再按少量词面覆盖度重排。当前是确定性重排，未接另一个 LLM 或 cross-encoder。
+3. [智谱适配器](internal/embedding/zhipu.go)：独立 `Embedder` 接口，固定智谱官方地址；批量请求按 `index` 还原顺序，检查维度、重复条目、零向量和异常值。默认 `embedding-3` / 1024 维。密钥仅放忽略的 `.env.backend.local`。
+4. [上下文装配](internal/contextassembly/assembler.go)：相关前情是可裁剪材料，不能挤掉 Beat/硬约束/前章结尾。清单记录实际采用的版本、来源、检索方法和未纳入原因。旧 `assembler.v1` 快照仍可读取，新输入是 `assembler.v2`。
+
+PostgreSQL 需先安装 [pgvector](https://github.com/pgvector/pgvector)，迁移 005 会在应用数据库启用扩展；本机已针对 PostgreSQL 17 编译安装。当前用精确向量扫描，未建近似索引。单次最多读取 1024 条当前来源，向量模式最多处理 128 条可见片段；超过则明确报错。I17 再处理异步索引任务。长片段当前需先拆分（智谱适配器采用每条 3000 UTF-8 字节保守上限），不会悄悄截断内容。
+
+配置 `INKLOOM_EMBEDDER=zhipu` 后启用真实语义搜索；`none` 只做关键词搜索，`fake` 是无语义理解的离线流程验证。接口依据 [智谱文本嵌入文档](https://docs.bigmodel.cn/api-reference/模型-api/文本嵌入)。向量缓存按材料完整摘要、供应商/模型、维度和显式 revision 隔离。向量调用费用目前未合并到已有正文模型的 Run 用量栏。
+
+已有服务占用数据库时，CLI 会拒绝并行打开，避免误恢复活动运行。以下教学命令使用独立测试库，先确保该库没有运行中的服务：
+
+```bash
+export INKLOOM_DATABASE_URL='postgres:///inkloom_i6_test?host=/tmp'
+export INKLOOM_MODEL=fake
+export INKLOOM_EMBEDDER=zhipu # 仅搜索使用智谱；不调用正文模型
+
+go run ./cmd/inkloom -memory-seed
+go run ./cmd/inkloom -memory-search '父亲衣物上缺少的纽子'
+go run ./cmd/inkloom -memory-eval
+```
+
+`-memory-seed` 是显式教学数据导入，服务启动不自动导入。评测报告是三个教学样本的 Recall@1 和越界命中数，只是功能探针，不代表全书语义检索质量。主数据库没有可用旧稿时返回空结果，不伪装成完成了全书检索。
+
+真实定稿材料使用 `-memory-import /absolute/path/publication.json` 发布，JSON 示例（替换提交与段落 ID）：
+
+```json
+{
+  "commitId": "已有定稿提交 ID",
+  "expectedVersion": 0,
+  "record": {
+    "projectId": "zhuoliu", "branchId": "main", "version": 1,
+    "kind": "passage", "status": "confirmed", "chapterId": "ch2",
+    "segmentId": "该提交中的段落 ID",
+    "at": {"chapter": 2, "storyTime": 120},
+    "knownBy": [{"characterId": "character-shenyan", "since": {"chapter": 3, "storyTime": 180}}]
+  }
+}
+```
+
+作者明确填写片段的时间和获知范围；`text` 可省略，后端从冻结提交复制原文。若提供的文本与定稿不一致，或试图将原文发布为 `fact`，请求会被拒绝。整段混有不同知情范围时应先在正文中拆分；没有知情元数据的材料不会默认开放。当前尚无自动知识抽取/发布 UI，也没有把 Mock 工作台变成真实章节库；HTTP 写作位置仍固定为 ch7/main/沈砚，整本书编排在后续扩展。

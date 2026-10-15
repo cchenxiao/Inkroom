@@ -19,7 +19,7 @@ func CheckConsistency(ctx context.Context, chat model.ChatModel, segments []manu
 		Segments     []manuscript.Segment        `json:"segments"`
 		Characters   []manuscript.CharacterFacts `json:"characters"`
 		Facts        []manuscript.SourceRef      `json:"facts"`
-	}{version, segments, bundle.Characters, bundle.Facts})
+	}{version, segments, bundle.Characters, bundle.ExplicitFacts()})
 	if err != nil {
 		return nil, model.Usage{}, err
 	}

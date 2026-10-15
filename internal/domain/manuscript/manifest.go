@@ -6,7 +6,7 @@ import (
 	"fmt"
 )
 
-const AssemblerVersion = "assembler.v1"
+const AssemblerVersion = "assembler.v2"
 
 // VersionRef 同时固定版本号与内容摘要：仅有“v1”不能证明两处内容相同。
 type VersionRef struct {
@@ -80,7 +80,7 @@ func ContextRefs(b ContextBundle) ([]VersionRef, error) {
 			return nil, err
 		}
 	}
-	for _, f := range b.FactSources() {
+	for _, f := range b.baseFactSources() {
 		if err := add("bible_fact", f.ID, f.Version, f); err != nil {
 			return nil, err
 		}
@@ -93,6 +93,18 @@ func ContextRefs(b ContextBundle) ([]VersionRef, error) {
 	if b.PreviousEnding != nil {
 		if err := add("previous_ending", b.PreviousEnding.ID, b.PreviousEnding.Version, *b.PreviousEnding); err != nil {
 			return nil, err
+		}
+	}
+	if b.Retrieval != nil {
+		request := *b.Retrieval
+		request.Hits = nil
+		if err := add("retrieval_request", "inkloom-memory-query", 1, request); err != nil {
+			return nil, err
+		}
+		for _, h := range b.Retrieval.Hits {
+			if err := add("retrieved_"+string(h.Record.Kind), h.Record.ID, h.Record.Version, h); err != nil {
+				return nil, err
+			}
 		}
 	}
 	policy := struct {
@@ -116,7 +128,7 @@ func (in FrozenInput) Validate() error {
 	if err != nil {
 		return err
 	}
-	if b.ProjectID == "" || b.PreviousEnding == nil || !b.Beat.Locked || m.AssemblerVersion != AssemblerVersion || m.ProjectID != b.ProjectID || m.ChapterID != b.ChapterID || m.BranchID != b.BranchID || m.BaseDraftVersion < 0 || m.Digest != digest {
+	if b.ProjectID == "" || b.PreviousEnding == nil || !b.Beat.Locked || (m.AssemblerVersion != AssemblerVersion && m.AssemblerVersion != "assembler.v1") || m.ProjectID != b.ProjectID || m.ChapterID != b.ChapterID || m.BranchID != b.BranchID || m.BaseDraftVersion < 0 || m.Digest != digest {
 		return fmt.Errorf("invalid frozen context identity or digest")
 	}
 	raw, _ := json.Marshal(b)
@@ -132,9 +144,21 @@ func (in FrozenInput) Validate() error {
 	}
 	for i, ref := range refs {
 		source := m.Sources[i]
-		if ref.ID != source.ID || ref.Kind != source.Kind || ref.Version != source.Version || ref.Digest != source.Digest || source.Method != "direct" || source.Tokens != len(ref.Payload) {
+		if ref.ID != source.ID || ref.Kind != source.Kind || ref.Version != source.Version || ref.Digest != source.Digest || source.Method != ReferenceMethod(b, ref) || source.Tokens != len(ref.Payload) {
 			return fmt.Errorf("context manifest source mismatch")
 		}
 	}
 	return nil
+}
+
+// ReferenceMethod 由冻结结果推导，避免页面声称“搜索得到”而实际是直接配置。
+func ReferenceMethod(b ContextBundle, ref VersionRef) string {
+	if b.Retrieval != nil {
+		for _, h := range b.Retrieval.Hits {
+			if ref.Kind == "retrieved_"+string(h.Record.Kind) && ref.ID == h.Record.ID {
+				return h.Method
+			}
+		}
+	}
+	return "direct"
 }

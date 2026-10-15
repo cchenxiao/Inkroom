@@ -136,6 +136,7 @@ func TestFinalCommitFreezesMatchingVersions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	verifyCommitPublication(t, s, commit)
 	if commit.ApprovalActionID != a.ID || commit.InputDigest != pinned.Manifest.Digest || commit.DraftVersion != 1 || !commit.FactConfirmation.NoPendingFacts {
 		t.Fatal("commit does not match approval/context")
 	}

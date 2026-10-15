@@ -21,17 +21,19 @@ import (
 	"inkloom/internal/demo"
 	"inkloom/internal/events"
 	"inkloom/internal/orchestration"
+	"inkloom/internal/retrieval"
 	"inkloom/internal/storage/postgres"
 )
 
 type service struct {
-	mu      sync.Mutex
-	active  bool
-	workers sync.WaitGroup
-	root    context.Context
-	cfg     config.Config
-	repo    app.FinalRepository
-	hub     *events.Hub
+	mu        sync.Mutex
+	active    bool
+	workers   sync.WaitGroup
+	root      context.Context
+	cfg       config.Config
+	retriever *retrieval.Service
+	repo      app.FinalRepository
+	hub       *events.Hub
 }
 
 func Serve(ctx context.Context) error {
@@ -51,10 +53,15 @@ func Serve(ctx context.Context) error {
 	defer repo.Close()
 	root, cancel := context.WithCancel(ctx)
 	defer cancel()
-	s := &service{root: root, cfg: cfg, repo: repo, hub: events.NewHub(64)}
+	retriever, err := app.NewRetrieval(cfg, repo)
+	if err != nil {
+		return err
+	}
+	s := &service{root: root, cfg: cfg, repo: repo, retriever: retriever, hub: events.NewHub(64)}
 	s.workers.Add(1)
 	go func() { defer s.workers.Done(); events.Dispatch(root, repo, s.hub) }()
 	mux := http.NewServeMux()
+	mux.HandleFunc("GET /api/memory/search", s.searchMemory)
 	mux.HandleFunc("POST /api/runs", s.start)
 	mux.HandleFunc("POST /api/runs/{id}/actions", s.action)
 	mux.HandleFunc("GET /api/runs/{id}", s.get)
@@ -175,7 +182,7 @@ func (s *service) start(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	run := app.Run{MaxCalls: s.cfg.MaxCalls, MaxTokens: s.cfg.MaxTokens, ID: rand.Text(), CreatedAt: time.Now().UTC(), BaseDraftVersion: *in.DraftVersion, DraftVersion: *in.DraftVersion, ChapterID: in.ChapterID, BranchID: in.BranchID, Scenario: in.Scenario, AllowLocalRewrite: in.AllowLocalRewrite, AutoRevise: in.AutoRevise, MaxRounds: in.MaxRounds, Status: "running", CurrentNode: "draft", Nodes: []any{}, Provider: s.cfg.Model, Model: s.cfg.ModelName}
-	input, err := app.PrepareContext(s.cfg, run.Scenario, run.ID, run.BaseDraftVersion)
+	input, err := app.PrepareRetrievedContext(r.Context(), s.cfg, run.Scenario, run.ID, run.BaseDraftVersion, s.retriever)
 	if err != nil {
 		s.mu.Unlock()
 		fail(w, 422, "context_not_ready", err.Error())

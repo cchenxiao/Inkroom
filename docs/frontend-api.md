@@ -90,3 +90,9 @@ Run 新增 `inputDigest`、`commitId`，终态 `committed`，节点 `commit`；�
 拒绝：`409 version_mismatch`（当前稿本不符）、`gate_blocked`（审批/评审未通过）、`context_mismatch`（输入缺失或不符）、`facts_unconfirmed`（事实未确认）、`action_mismatch`（重复 ID 内容不同或同 run 已有其他提交）。相同已完成定稿请求即使稿本后来改变，也只返回原回执。旧 run 无 manifest，不回填伪造来源。
 
 自动事实提取与 BibleUpdater 留待后续；本切片只接受「无需更新设定」的人工确认路径，仍有事实变化时必须先处理。上下文中的前章来自已确认教学种子，未确认候选和其他分支材料不送入模型。
+
+### I10b：固定范围的相关前情检索
+
+- `GET /api/memory/search?q=查询文字`：作者查看当前 `zhuoliu/ch7/main/沈砚` 的检索结果；范围由后端确定，不能通过 query 参数改项目/分支/POV。返回 `context { view, query, mode, embeddingModel, ranker, hits }`、`excluded` 与 `visibleCount`。`mode` 为 `keyword | hybrid_fake | hybrid_zhipu`；`hits` 保留完整来源记录、digest、origin、commitId、method 与排序分。没有材料时返回空 hits，向量服务失败则返回 422 `retrieval_failed`，不静默降级或假装成功。
+- `POST /api/runs` 在创建 run 前完成上述检索和预算装配；失败返回 422 `context_not_ready`，不启动 Writer。运行中与恢复时只用已冻结材料，不重新搜“最新值”。来源表/知情元数据目前通过本地 `-memory-import` 发布，暂不提供浏览器写入接口。
+- `GET /api/runs/:id/context-manifest` 新增 `retrieval_request / retrieved_fact / retrieved_passage` 来源类别，`method` 区分固定读取和检索；教学来源标题带明确标记。排序分只用于检索，不进入定稿质量门禁。

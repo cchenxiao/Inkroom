@@ -21,6 +21,12 @@ import (
 )
 
 func main() {
+	evalMemory := flag.Bool("memory-eval", false, "evaluate Recall@1 on the explicitly seeded teaching corpus")
+	seedMemory := flag.Bool("memory-seed", false, "explicitly import teaching memory records into configured database")
+	memoryQuery := flag.String("memory-search", "", "search confirmed database memory; returns pinned retrieval context")
+	memoryImport := flag.String("memory-import", "", "publish one frozen commit segment with author-provided visibility metadata from JSON")
+	preview := flag.Bool("context-preview", false, "preview material visibility with teaching records; no model or database calls")
+	pov := flag.String("pov", "character-shenyan", "context-preview POV: character-shenyan or character-luqing")
 	scenario := flag.String("scenario", "normal", "offline scenario (see -list-scenarios)")
 	list := flag.Bool("list-scenarios", false, "list offline scenarios")
 	serve := flag.Bool("serve", false, "serve the local PostgreSQL-backed HTTP API")
@@ -28,6 +34,27 @@ func main() {
 	localRewrite := flag.Bool("allow-local-rewrite", false, "authorize current scene/beat candidate rewriting, preserving locked facts and event outcome")
 	autoRevise := flag.Bool("auto-revise", true, "authorize P2 edits to the isolated candidate")
 	flag.Parse()
+	modes := 0
+	for _, enabled := range []bool{*preview, *serve, *list, *seedMemory, *evalMemory, *memoryQuery != "", *memoryImport != ""} {
+		if enabled {
+			modes++
+		}
+	}
+	if modes > 1 {
+		fmt.Fprintln(os.Stderr, "choose only one command mode")
+		os.Exit(1)
+	}
+	if *preview {
+		if *serve || *list {
+			fmt.Fprintln(os.Stderr, "-context-preview cannot be combined with -serve or -list-scenarios")
+			os.Exit(1)
+		}
+		if err := contextPreview(os.Stdout, *pov); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	}
 	if *list {
 		for _, name := range demo.Scenarios {
 			fmt.Println(name)
@@ -37,7 +64,9 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	var err error
-	if *serve {
+	if *seedMemory || *evalMemory || *memoryQuery != "" || *memoryImport != "" {
+		err = memoryCommand(ctx, *seedMemory, *evalMemory, *memoryImport, *memoryQuery, *pov)
+	} else if *serve {
 		err = server.Serve(ctx)
 	} else {
 		err = run(ctx, *scenario, orchestration.Options{AllowLocalRewrite: *localRewrite, MaxRounds: *maxRounds, AutoRevise: *autoRevise})
