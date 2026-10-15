@@ -1,0 +1,35 @@
+{
+  "projectId": "zhuoliu", "branchId": "main", "version": 1, "confirmed": true,
+  "characters": ["character-shenyan", "character-luqing"],
+  "facts": [
+    {"id":"knowledge-copper","version":1,"text":"铜扣来自沈砚父亲的旧外套。","source":{"chapterId":"ch2","segmentId":"ch2-s1","at":{"chapter":2,"storyTime":120}}},
+    {"id":"knowledge-letter","version":1,"text":"陆青把旧信藏在渡船座板下。","source":{"chapterId":"ch4","segmentId":"ch4-s2","at":{"chapter":4,"storyTime":240}}},
+    {"id":"knowledge-lamp","version":1,"text":"渡口那盏灯是陆青点亮的。","source":{"chapterId":"ch5","segmentId":"ch5-s1","at":{"chapter":5,"storyTime":300}}},
+    {"id":"knowledge-visitor","version":1,"text":"周岑失踪前来过旧闸。","source":{"chapterId":"ch9","segmentId":"ch9-s1","at":{"chapter":9,"storyTime":60}}}
+  ],
+  "timeline": [
+    {"id":"event-visitor","summary":"周岑来过旧闸，后来才通过回忆披露。","source":{"chapterId":"ch9","segmentId":"ch9-s1","at":{"chapter":9,"storyTime":60}},"factIds":["knowledge-visitor"],"causalBefore":[]},
+    {"id":"event-copper","summary":"陆青找到旧外套的铜扣。","source":{"chapterId":"ch2","segmentId":"ch2-s1","at":{"chapter":2,"storyTime":120}},"factIds":["knowledge-copper"],"causalBefore":[]},
+    {"id":"event-hide","summary":"陆青把信藏进座板。","source":{"chapterId":"ch4","segmentId":"ch4-s2","at":{"chapter":4,"storyTime":240}},"factIds":["knowledge-letter"],"causalBefore":["event-discover"]},
+    {"id":"event-lamp","summary":"陆青点灯，沈砚误以为是周岑。","source":{"chapterId":"ch5","segmentId":"ch5-s1","at":{"chapter":5,"storyTime":300}},"factIds":["knowledge-lamp"],"causalBefore":[]},
+    {"id":"event-discover","summary":"沈砚掀开座板，发现旧信。","source":{"chapterId":"ch8","segmentId":"ch8-s1","at":{"chapter":8,"storyTime":480}},"factIds":["knowledge-letter"],"causalBefore":[]}
+  ],
+  "information": [
+    {"factId":"knowledge-copper","subjectId":"character-shenyan","state":"known","source":{"chapterId":"ch3","segmentId":"ch3-s1","at":{"chapter":3,"storyTime":180}}},
+    {"factId":"knowledge-copper","subjectId":"character-luqing","state":"known","source":{"chapterId":"ch2","segmentId":"ch2-s1","at":{"chapter":2,"storyTime":120}}},
+    {"factId":"knowledge-copper","subjectId":"reader","state":"known","source":{"chapterId":"ch3","segmentId":"ch3-s1","at":{"chapter":3,"storyTime":180}}},
+    {"factId":"knowledge-letter","subjectId":"character-luqing","state":"known","source":{"chapterId":"ch4","segmentId":"ch4-s2","at":{"chapter":4,"storyTime":240}}},
+    {"factId":"knowledge-letter","subjectId":"character-shenyan","state":"known","source":{"chapterId":"ch8","segmentId":"ch8-s1","at":{"chapter":8,"storyTime":480}}},
+    {"factId":"knowledge-letter","subjectId":"reader","state":"known","source":{"chapterId":"ch4","segmentId":"ch4-s2","at":{"chapter":4,"storyTime":240}}},
+    {"factId":"knowledge-lamp","subjectId":"character-luqing","state":"known","source":{"chapterId":"ch5","segmentId":"ch5-s1","at":{"chapter":5,"storyTime":300}}},
+    {"factId":"knowledge-lamp","subjectId":"character-shenyan","state":"belief","belief":"沈砚以为点灯的人是周岑。","source":{"chapterId":"ch5","segmentId":"ch5-s2","at":{"chapter":5,"storyTime":301}}},
+    {"factId":"knowledge-lamp","subjectId":"reader","state":"known","source":{"chapterId":"ch5","segmentId":"ch5-s1","at":{"chapter":5,"storyTime":300}}},
+    {"factId":"knowledge-visitor","subjectId":"character-shenyan","state":"known","source":{"chapterId":"ch9","segmentId":"ch9-s1","at":{"chapter":9,"storyTime":540}}},
+    {"factId":"knowledge-visitor","subjectId":"reader","state":"known","source":{"chapterId":"ch9","segmentId":"ch9-s1","at":{"chapter":9,"storyTime":540}}}
+  ],
+  "foreshadows": [
+    {"id":"clue-copper","title":"旧铜扣","planted":{"chapterId":"ch2","segmentId":"ch2-s1","at":{"chapter":2,"storyTime":120}},"payload":"让沈砚辨认出父亲旧外套的线索。","planResolveChapter":3,"status":"closed","importance":"P1","resolved":{"chapterId":"ch3","segmentId":"ch3-s1","at":{"chapter":3,"storyTime":180}}},
+    {"id":"clue-letter","title":"松动的座板","planted":{"chapterId":"ch4","segmentId":"ch4-s2","at":{"chapter":4,"storyTime":240}},"payload":"旧信将解释陆青隐瞒行踪的动机。","planResolveChapter":8,"status":"open","importance":"P0"},
+    {"id":"clue-lamp","title":"渡口灯影","planted":{"chapterId":"ch5","segmentId":"ch5-s1","at":{"chapter":5,"storyTime":300}},"payload":"曾计划让灯影暗示另一条渡船。","planResolveChapter":7,"status":"abandoned","importance":"P2","abandonReason":"作者取消另一条渡船的支线，保留点灯事件。"}
+  ]
+}

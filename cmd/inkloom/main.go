@@ -21,12 +21,17 @@ import (
 )
 
 func main() {
+	knowledge := flag.Bool("knowledge-preview", false, "preview typed timeline, knowledge and foreshadows; offline teaching snapshot")
+	chapter := flag.Int("chapter", 7, "knowledge-preview narrative chapter")
+	storyTime := flag.Int64("story-time", 420, "knowledge-preview story time in project minutes")
+	candidateCritic := flag.Bool("critic-eval-candidate", false, "use experimental consistency prompt v3 for -critic-eval only")
+	evalCritic := flag.Bool("critic-eval", false, "evaluate 5 fixed critic evidence cases; uses configured chat model, no database or embeddings")
 	evalMemory := flag.Bool("memory-eval", false, "evaluate Recall@1 on the explicitly seeded teaching corpus")
 	seedMemory := flag.Bool("memory-seed", false, "explicitly import teaching memory records into configured database")
 	memoryQuery := flag.String("memory-search", "", "search confirmed database memory; returns pinned retrieval context")
 	memoryImport := flag.String("memory-import", "", "publish one frozen commit segment with author-provided visibility metadata from JSON")
 	preview := flag.Bool("context-preview", false, "preview material visibility with teaching records; no model or database calls")
-	pov := flag.String("pov", "character-shenyan", "context-preview POV: character-shenyan or character-luqing")
+	pov := flag.String("pov", "character-shenyan", "preview POV: character-shenyan or character-luqing")
 	scenario := flag.String("scenario", "normal", "offline scenario (see -list-scenarios)")
 	list := flag.Bool("list-scenarios", false, "list offline scenarios")
 	serve := flag.Bool("serve", false, "serve the local PostgreSQL-backed HTTP API")
@@ -34,8 +39,22 @@ func main() {
 	localRewrite := flag.Bool("allow-local-rewrite", false, "authorize current scene/beat candidate rewriting, preserving locked facts and event outcome")
 	autoRevise := flag.Bool("auto-revise", true, "authorize P2 edits to the isolated candidate")
 	flag.Parse()
+	invalidKnowledgeOption := false
+	flag.Visit(func(f *flag.Flag) {
+		if (f.Name == "chapter" || f.Name == "story-time") && !*knowledge {
+			invalidKnowledgeOption = true
+		}
+	})
+	if invalidKnowledgeOption {
+		fmt.Fprintln(os.Stderr, "-chapter and -story-time require -knowledge-preview")
+		os.Exit(1)
+	}
+	if *candidateCritic && !*evalCritic {
+		fmt.Fprintln(os.Stderr, "-critic-eval-candidate requires -critic-eval")
+		os.Exit(1)
+	}
 	modes := 0
-	for _, enabled := range []bool{*preview, *serve, *list, *seedMemory, *evalMemory, *memoryQuery != "", *memoryImport != ""} {
+	for _, enabled := range []bool{*knowledge, *evalCritic, *preview, *serve, *list, *seedMemory, *evalMemory, *memoryQuery != "", *memoryImport != ""} {
 		if enabled {
 			modes++
 		}
@@ -43,6 +62,13 @@ func main() {
 	if modes > 1 {
 		fmt.Fprintln(os.Stderr, "choose only one command mode")
 		os.Exit(1)
+	}
+	if *knowledge {
+		if err := knowledgePreview(os.Stdout, *pov, *chapter, *storyTime); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
 	}
 	if *preview {
 		if *serve || *list {
@@ -64,7 +90,9 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	var err error
-	if *seedMemory || *evalMemory || *memoryQuery != "" || *memoryImport != "" {
+	if *evalCritic {
+		err = criticEvaluation(ctx, *candidateCritic)
+	} else if *seedMemory || *evalMemory || *memoryQuery != "" || *memoryImport != "" {
 		err = memoryCommand(ctx, *seedMemory, *evalMemory, *memoryImport, *memoryQuery, *pov)
 	} else if *serve {
 		err = server.Serve(ctx)

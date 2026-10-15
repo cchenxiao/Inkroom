@@ -20,17 +20,35 @@ var templates embed.FS
 // 解析管线仍只处理输出，Guard 得到完整提示词后再计算预算。
 func Bind(next model.ChatModel) model.ChatModel { return &prompted{next: next} }
 
-type prompted struct{ next model.ChatModel }
+// BindConsistencyCandidate 仅供评测对照；正式链路继续使用 Bind 的默认版本。
+func BindConsistencyCandidate(next model.ChatModel) model.ChatModel {
+	return &prompted{next: next, consistencyCandidate: true}
+}
+
+type prompted struct {
+	next                 model.ChatModel
+	consistencyCandidate bool
+}
 
 func (p *prompted) Generate(ctx context.Context, in model.Input) (model.Output, model.Usage, error) {
-	in, err := Render(in)
+	var err error
+	if p.consistencyCandidate {
+		if in.Role != "hard_consistency" {
+			return model.Output{}, model.Usage{}, fmt.Errorf("candidate prompt only supports consistency critic")
+		}
+		in, err = render(in, "hard_consistency.v3")
+	} else {
+		in, err = Render(in)
+	}
 	if err != nil {
 		return model.Output{}, model.Usage{}, err
 	}
 	return p.next.Generate(ctx, in)
 }
 
-func Render(in model.Input) (model.Input, error) {
+func Render(in model.Input) (model.Input, error) { return render(in, "") }
+
+func render(in model.Input, candidate string) (model.Input, error) {
 	name := in.Role
 	in.Temperature = 0.2
 	switch name {
@@ -70,6 +88,9 @@ func Render(in model.Input) (model.Input, error) {
 	}
 	if name == "structural_reviser" || name == "scene_reviser" {
 		promptVersion = "reviser.v2"
+	}
+	if candidate != "" && in.Purpose != model.Repair {
+		promptVersion = candidate
 	}
 	t, err := template.ParseFS(templates, promptVersion+".tmpl")
 	if err != nil {

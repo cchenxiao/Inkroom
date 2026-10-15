@@ -264,3 +264,12 @@ HumanGate、版本比较、批准和幂等恢复全部由 Go 程序与数据库�
 `hard_consistency.v2.tmpl` 保留 v1 的独立冷读、逐字证据、台词谎言与人工边界，增加按需原生 `search_memory({query})`。输入只含 draftVersion、segments、characters、facts；不含 Writer 对话、Beat 大纲或其他 Critic 的结论。工具结果中的 fact 与 passage 必须分开，搜不到不等于不存在。
 
 最终评审仍用 `ConsistencySchema` 的 findings；工具模式另允许 `{"decision":"insufficient"}`，表示缺证停止，不能用空 findings 代替，也不能输出 ready。Go 校验最终 Schema、稿本版本、原文引文和事实来源；模型声称有证据不代表通过。每轮最多 3 次工具查询、4 次模型决策，工具模式不额外修复坏 JSON；失败保留轨迹并阻止本轮通过。每轮证据独立保存，不回写 Writer 基础输入或正式设定。
+
+
+## I11c · 提示词对照实验
+
+正式绑定 `Bind` 仍选 `hard_consistency.v2`。评测参数 `-critic-eval-candidate` 才使用 `BindConsistencyCandidate` 和 `hard_consistency.v3.tmpl`；业务 API 不开放切换。
+
+v3 先辨别台词/误解，再核对已有事实，再要求对缺失的前文断言查证，普通新细节不应误报。输入、Schema、工具、预算和检索语料保持一致，不强制工具调用。五样本各跑两次：v2 均 2/5，v3 均 3/5；台词样本改善，缺证查询仍未触发，部分伪造/不完整证据被程序拒绝。因此不将 v3 升为正式版本，也不把这五例称为准确率校准。
+
+按作者决定，查证策略优化暂缓（I11-K1）：样本中的人物回忆直接包含章节编号，不符合正常叙事，不能用其分数推断生产质量。保留 v3 及原始结果作历史实验，不继续针对这组文案优化，不实现显式查证计划；先推进 I12。

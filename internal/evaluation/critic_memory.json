@@ -1,0 +1,9 @@
+[
+  {
+    "id":"eval-lock-intact","projectId":"zhuoliu","branchId":"main","version":1,
+    "kind":"fact","status":"confirmed","chapterId":"ch3","segmentId":"eval-ch3-lock",
+    "at":{"chapter":3,"storyTime":180},
+    "text":"第三章沈砚检查旧闸时，铁锁完好，没有断裂；他与陆青没有进入闸门。",
+    "knownBy":[{"characterId":"character-shenyan","since":{"chapter":3,"storyTime":180}}]
+  }
+]

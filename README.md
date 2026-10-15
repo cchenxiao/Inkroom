@@ -434,4 +434,70 @@ I11a 负责装配；一致性 Critic 自主查证见下方 I11b。章内 CLI 演
 
 准备页的后端试运行面板新增“一致性查证记录”，按稿本版本展示查询、来源和结果；点击来源可读原文并区分事实/片段。零查询显示“模型判断已有材料足够”。本阶段 HTTP 的自动评审和人改复检启用工具，CLI 仍保留固定输入的学习演示。总调用预算不增加；多次查证可能提前耗尽预算并停止/上报人工。向量成本暂未并入聊天用量；查证能力仍需真实故事集评测。
 
-本次真实验证需分开看：明确要求查证的协议样本成功完成一次 DeepSeek 工具调用、智谱检索和基于来源的 P0 判定；自主评审样本仍出现应查前文却直接返回空清单的情况。另一个无效引用被程序拦截。因此 I11b 已接通机制，尚不能把“零问题/零查询”当作可靠查证证明；下一轮应优先补少量缺证场景评测再调整策略。
+本次真实验证需分开看：明确要求查证的协议样本完成一次 DeepSeek 工具调用、智谱检索和 P0 输出的结构校验（I11c 复查发现原证据“锁还在”不足以证明“锁完好”，因此不作为语义正确的证据）；自主评审样本仍出现应查前文却直接返回空清单的情况。另一个无效引用被程序拦截。因此 I11b 已接通机制，尚不能把“零问题/零查询”当作可靠查证证明；下一轮应优先补少量缺证场景评测再调整策略。
+
+
+### I11c：用固定样本评测 Critic
+
+本步学习 **Agent 评测**：预先写下期望行为，调用真实 Agent，再用程序检查“该不该查、结论和证据是否正确”，而不是只看接口有没有报错。
+
+- 样本：[critic_cases.json](internal/evaluation/critic_cases.json)，期望标签只给评分器；真实模型只收到正文、设定及工具返回。
+- 执行与评分：[critic.go](internal/evaluation/critic.go)，复用生产 Critic、工具循环、预算与关键词检索。内存教学语料隔离数据库和向量检索，固定 5 个样本。
+- 入口：[critic_eval.go](cmd/inkloom/critic_eval.go)，JSON 写标准输出，摘要写标准错误；任一样本失败或执行中断，进程返回非零。报告保留模型、提示词/Schema/数据集版本与摘要、查询轨迹和用量；中断也保留全部计划样本数。
+
+```bash
+# 离线：只验证管线与评分器，不证明模型能力
+INKLOOM_MODEL=fake INKLOOM_EMBEDDER=none go run ./cmd/inkloom -critic-eval
+
+# 真实对照：读取本地配置的 DeepSeek；会产生模型费用
+INKLOOM_MODEL=deepseek INKLOOM_EMBEDDER=none go run ./cmd/inkloom -critic-eval > /tmp/critic-current.json
+INKLOOM_MODEL=deepseek INKLOOM_EMBEDDER=none go run ./cmd/inkloom -critic-eval -critic-eval-candidate > /tmp/critic-candidate.json
+```
+
+每样本最多 4 次模型调用、3 次工具请求；token/单次超时沿用配置，全部评测最多 3 分钟。`-critic-eval-candidate` 仅影响本次评测，不能与服务模式组合，正式链路继续使用 v2。
+
+2026-10-15，DeepSeek `deepseek-flash` 对照结果（每版各跑两次，汇总结果相同）：
+
+| 固定教学样本 | 正式 v2 | 实验 v3 |
+| --- | --- | --- |
+| 现有事实已足够 | 通过 | 通过 |
+| 前文断言缺证、来源可查 | 未查询，失败 | 未查询，失败 |
+| 前文断言缺证、来源不存在 | 未查询，失败 | 未查询，失败 |
+| 角色台词可能撒谎，应交作者 | 失败 | P3、不确定、交作者，通过 |
+| 普通新细节 | 通过 | 通过 |
+| 通过数 | 2/5 | 3/5 |
+
+第二次原始报告：[v2](docs/evaluations/2026-10-15-critic-current.json)、[v3](docs/evaluations/2026-10-15-critic-candidate.json)。对应输入/输出 tokens 为 10386/30、10086/710。报告保存后评分器进一步拒绝额外误报及把台词真伪标成确定事实；复核这些输出的判定不变。新报告另含 attempted 与顶层 error，旧报告保留原貌。
+
+v3 调整了台词与缺证判断的提示顺序，但没有解决自主漏查，**不替换正式提示词**。五个样本不是校准准确率；Fake 的 5/5 仅证明管线可运行。教学证据专门写明“铁锁完好，没有断裂”，不把旧素材“锁还在”推断成“锁完好”。
+
+已知问题 **I11-K1**：自主漏查暂缓优化，不阻塞 I12。缺证样本把“第三章”写进人物回忆，混淆叙事与来源定位；上述分数只描述人工样本，不能代表实际创作质量。原始样本/报告保留追溯，不再围绕其文案调提示词，也不继续实现显式查证计划。后续以自然故事文本和独立章节元数据重新评估。
+
+
+### I12a：时间线、伏笔与人物知情建模
+
+本步先建立 Go 领域模型与可运行的离线预览；还没有写入数据库、接入现有 Writer/查证工具或替换网页的 Mock Bible。使用独立教学快照，不把它当成正式作品设定。
+
+```bash
+# 同一时点：沈砚只拿到铜扣事实，陆青拿到铜扣、藏信、点灯三条事实
+go run ./cmd/inkloom -knowledge-preview
+go run ./cmd/inkloom -knowledge-preview -pov character-luqing
+
+# 章节到了，故事时间未到，仍不能提前获知藏信
+go run ./cmd/inkloom -knowledge-preview -chapter 8 -story-time 420
+# 两个时点都到达后，沈砚可以拿到藏信事实
+go run ./cmd/inkloom -knowledge-preview -chapter 8 -story-time 480
+```
+
+这里的章节编号只放在来源定位中；事实文本与人物认知不含“我记得第三章”之类的叙述。
+
+建议顺序阅读：
+
+1. [types.go](internal/domain/knowledge/types.go)：`Fact.Source` 记录事实出处；`InfoState.Source` 记录谁在何时获知。读者是单独主体，`belief` 是人物理解，不能转成世界事实。`TimelineEvent.causalBefore` 指向必须后发生的事件；`Foreshadow` 分开保存埋设、计划、实际回收依据。
+2. [validate.go](internal/domain/knowledge/validate.go)：程序检查引用、重复状态、因果环、时间倒置和回收依据。这里只验证显式数据自洽，不判断自然语言真假。
+3. [projection.go](internal/domain/knowledge/projection.go)：`Project` 将可信快照的已知事实转换成现有 `memory.Record`，复用 I10 的项目/分支、来源版本、章节、故事时间与 POV 过滤。返回值不包含作者计划、读者知识或误解文本。
+4. [knowledge.json](internal/demo/knowledge.json) → [knowledge_preview.go](cmd/inkloom/knowledge_preview.go)：先看输入，再看预览如何分开输出角色材料、作者时间线、信息差矩阵与伏笔台账。整个过程不加载密钥、不调用模型。
+
+**边界**：这版是一份快照中每个“主体—事实”一条知情记录，尚不保存误解纠正、遗忘等多次状态变化。伏笔台账展示快照状态，不按预览时点恢复历史；逾期按章节计算，绝不自动回收。回收可通过倒叙完成，因此叙事位置不能早于埋设，但不要求回收场景的故事时间晚于埋设。现有保守可见性规则仍同时要求来源章节与故事时间到达，尚未处理全知叙述等模式。
+
+后续 I12b 再把已确认的知识快照持久化、固定版本与摘要，并接入装配/检索；人物的误解若要进入写作材料，需要独立类型和明确提示边界，不混进 facts。

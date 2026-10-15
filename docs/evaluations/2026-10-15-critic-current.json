@@ -1,0 +1,143 @@
+{
+  "dataset": "critic-lookup-v1",
+  "datasetDigest": "a7a70b1fa4a101eee73fa64a45ff7de6988f7531f9700cff58f52b2b65bc4c81",
+  "provider": "deepseek",
+  "model": "deepseek-flash",
+  "searchMode": "controlled-corpus/production-keyword",
+  "variant": "current",
+  "startedAt": "2026-10-15T14:12:07.933781Z",
+  "passed": 2,
+  "total": 5,
+  "usage": {
+    "inputTokens": 10386,
+    "outputTokens": 30,
+    "known": true
+  },
+  "results": [
+    {
+      "id": "known_fact",
+      "name": "现有事实已足够",
+      "expectSearch": false,
+      "expected": "clear",
+      "inputDigest": "6db012b58e838b1c5f2c52132fa821520bd45e517bdc42193891fe9268f1ec3d",
+      "promptVersion": "hard_consistency.v2",
+      "promptDigest": "35aa0b3e5ae46978c5baef0937ac7cda156f0229da2482fab5e9ee1000c888a2",
+      "schemaVersion": "hard_consistency.tools.v1",
+      "calls": 1,
+      "usage": {
+        "inputTokens": 2062,
+        "outputTokens": 6,
+        "known": true
+      },
+      "trace": {
+        "steps": [],
+        "stop": "ready"
+      },
+      "findings": [],
+      "queryMatched": true,
+      "outcomeMatched": true,
+      "unsafeEmptyPass": false,
+      "passed": true
+    },
+    {
+      "id": "missing_prior",
+      "name": "前文断言缺证且可查",
+      "expectSearch": true,
+      "expected": "hard_conflict",
+      "inputDigest": "6a65d6bae9ed7ffbc21f9edc6072ca38c65a34d5f647ceadceb88389433f8796",
+      "promptVersion": "hard_consistency.v2",
+      "promptDigest": "35aa0b3e5ae46978c5baef0937ac7cda156f0229da2482fab5e9ee1000c888a2",
+      "schemaVersion": "hard_consistency.tools.v1",
+      "calls": 1,
+      "usage": {
+        "inputTokens": 2066,
+        "outputTokens": 6,
+        "known": true
+      },
+      "trace": {
+        "steps": [],
+        "stop": "ready"
+      },
+      "findings": [],
+      "queryMatched": false,
+      "outcomeMatched": false,
+      "unsafeEmptyPass": true,
+      "passed": false
+    },
+    {
+      "id": "unavailable_prior",
+      "name": "前文断言缺证且查不到",
+      "expectSearch": true,
+      "expected": "insufficient",
+      "inputDigest": "a90bfc896e8ebd6354d21104a8b13c776a90f2952c4856706901e176005b0145",
+      "promptVersion": "hard_consistency.v2",
+      "promptDigest": "35aa0b3e5ae46978c5baef0937ac7cda156f0229da2482fab5e9ee1000c888a2",
+      "schemaVersion": "hard_consistency.tools.v1",
+      "calls": 1,
+      "usage": {
+        "inputTokens": 2066,
+        "outputTokens": 6,
+        "known": true
+      },
+      "trace": {
+        "steps": [],
+        "stop": "ready"
+      },
+      "findings": [],
+      "queryMatched": false,
+      "outcomeMatched": false,
+      "unsafeEmptyPass": true,
+      "passed": false
+    },
+    {
+      "id": "dialogue_lie",
+      "name": "角色台词可能撒谎",
+      "expectSearch": false,
+      "expected": "human_lie",
+      "inputDigest": "4e1c6223c8d0e2f478e37730b6c623dbe43c8f0dbd4ff99369bbbcbf0a4cb70f",
+      "promptVersion": "hard_consistency.v2",
+      "promptDigest": "35aa0b3e5ae46978c5baef0937ac7cda156f0229da2482fab5e9ee1000c888a2",
+      "schemaVersion": "hard_consistency.tools.v1",
+      "calls": 1,
+      "usage": {
+        "inputTokens": 2130,
+        "outputTokens": 6,
+        "known": true
+      },
+      "trace": {
+        "steps": [],
+        "stop": "ready"
+      },
+      "findings": [],
+      "queryMatched": true,
+      "outcomeMatched": false,
+      "unsafeEmptyPass": true,
+      "passed": false
+    },
+    {
+      "id": "new_detail",
+      "name": "普通新细节不应误报",
+      "expectSearch": false,
+      "expected": "clear",
+      "inputDigest": "0891ee2a975a4c1f127c618ce94dc6fa5d4c5b48951f1a1282b5f62b156f8100",
+      "promptVersion": "hard_consistency.v2",
+      "promptDigest": "35aa0b3e5ae46978c5baef0937ac7cda156f0229da2482fab5e9ee1000c888a2",
+      "schemaVersion": "hard_consistency.tools.v1",
+      "calls": 1,
+      "usage": {
+        "inputTokens": 2062,
+        "outputTokens": 6,
+        "known": true
+      },
+      "trace": {
+        "steps": [],
+        "stop": "ready"
+      },
+      "findings": [],
+      "queryMatched": true,
+      "outcomeMatched": true,
+      "unsafeEmptyPass": false,
+      "passed": true
+    }
+  ]
+}

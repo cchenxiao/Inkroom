@@ -1,0 +1,7 @@
+[
+  {"id":"known_fact","name":"现有事实已足够","scenario":"normal","text":"陆青把铜扣递给沈砚。沈砚认出那是父亲旧外套上的扣子。","memoryIds":[],"expectSearch":false,"expect":"clear"},
+  {"id":"missing_prior","name":"前文断言缺证且可查","scenario":"normal","text":"沈砚记得第三章那次经过旧闸，铁锁当时已经断了。他推开门，示意陆青跟上。","memoryIds":["eval-lock-intact"],"expectSearch":true,"expect":"hard_conflict","expectedRule":"eval-lock-intact"},
+  {"id":"unavailable_prior","name":"前文断言缺证且查不到","scenario":"normal","text":"沈砚记得第三章那次经过旧闸，铁锁当时已经断了。他推开门，示意陆青跟上。","memoryIds":[],"expectSearch":true,"expect":"insufficient"},
+  {"id":"dialogue_lie","name":"角色台词可能撒谎","scenario":"dialogue-lie","text":"陆青把铜扣放到桌沿。沈砚藏着受伤的右手，说：“我的右手早好了。”陆青没有接话。","memoryIds":[],"expectSearch":false,"expect":"human_lie","expectedRule":"fact-hand-injury"},
+  {"id":"new_detail","name":"普通新细节不应误报","scenario":"normal","text":"一滴雨落在桌沿。沈砚把杯子挪开，听见陆青敲了敲门。","memoryIds":[],"expectSearch":false,"expect":"clear"}
+]
