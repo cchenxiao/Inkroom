@@ -2,7 +2,7 @@
 
 面向作者的多智能体中短篇小说协作工作台。稿件是主界面，AI 提交候选，作者决定方向与定稿。当前仓库已包含可运行的前端工程；Go 后端仍按原设计分模块开发。
 
-## Go 后端：当前进度 I0–I3
+## Go 后端：当前进度 I0–I4
 
 Go 1.24.1+，Eino 固定为 v0.9.21。在项目根目录运行：
 
@@ -15,9 +15,9 @@ go vet ./...
 go build ./...
 ```
 
-默认执行 `writer → critic → aggregate`，stdout 输出候选正文和一条 P2 问题，stderr 输出节点日志。`bad-json-repaired` 演示一次格式修复；`invalid-quote` 在 Critic 的内容校验阶段失败并以非零状态退出，不输出成功报告。
+默认执行 `writer → critic → aggregate → 按需 polisher → critic`，stdout 输出候选正文、逐轮 patch 和评审历史，stderr 输出节点日志。`bad-json-repaired` 演示一次格式修复；`invalid-quote` 在 Critic 的内容校验阶段失败并以非零状态退出，不输出成功报告。
 
-无配置时使用离线 Fake。I3 支持 DeepSeek 与最小 HTTP / 前端轮询；尚未接数据库、自动返工或可靠 SSE。每次运行新建隔离的单段候选 v1，不更新工作台第 7 章 v3。Fake 用量为 0，不代表真实生成成本。
+无配置时使用离线 Fake。I3 支持 DeepSeek 与最小 HTTP / 前端轮询；I4 已支持授权范围内的句级返工；尚未接数据库或可靠 SSE。每次运行新建隔离的单段候选 v1，不更新工作台第 7 章 v3。Fake 用量为 0，不代表真实生成成本。
 
 建议按以下顺序读代码：
 
@@ -28,7 +28,7 @@ go build ./...
 5. [评审规则](internal/domain/review/review.go)：校验引用与版本、去重、按严重度排序。
 6. [运行入口](cmd/inkloom/main.go)：把模型、演示材料和图装配起来。
 
-修改 [演示数据](internal/demo/chapter.json) 可以观察正文、引用和评审结果的关系。此阶段不新增自动化测试文件，以编译、静态检查和 CLI 场景验收。Eino API 参考其 [官方 Graph 文档](https://www.cloudwego.io/zh/docs/eino/core_modules/chain_and_graph_orchestration/chain_graph_introduction/)。
+修改 [演示数据](internal/demo/chapter.json) 可以观察正文、引用和评审结果的关系。I0–I3 以编译、静态检查和 CLI 场景验收；I4 仅增加循环边界、patch 原子校验、指标三组关键测试。Eino API 参考其 [官方 Graph 文档](https://www.cloudwego.io/zh/docs/eino/core_modules/chain_and_graph_orchestration/chain_graph_introduction/)。
 
 ### I2：模型输出如何变成可信数据
 
@@ -51,9 +51,9 @@ Schema 与响应类型放在 [contracts](internal/agents/contracts/contracts.go)
 | `invalid-quote` / `invalid-version` / `repair-invalid-quote` | 报 `invalid_content`，修复后的内容也不能绕过业务校验 |
 | `refused` / `truncated` / `empty` | 分别报 `model_refused` / `model_truncated` / `empty_response`，不修复 |
 
-日志 `model.call` 区分 `generate` 与 `repair`。正常流程调用两次模型，有格式修复时共三次；用量累加包含修复调用。`errors.As` 提取错误类别，调用方无需匹配错误文本。
+日志 `model.call` 区分 `generate` 与 `repair`。仅初审（`-auto-revise=false`）调用两次模型，有格式修复时共三次；I4 每轮返工另需 Polisher 与 Critic 两次调用，用量均累加。`errors.As` 提取错误类别，调用方无需匹配错误文本。
 
-本阶段校验 Finding 的引用、稿本版本和修复范围枚举，还不执行正文修改；patch 的 oldText、受保护实体与执行授权随 I4–I5 修订能力实现。Schema 合法也不等于文学判断正确，真实模型效果与修复内容是否忠实需要 I3 开始的真实样本评估。
+本阶段校验 Finding 的引用、稿本版本和修复范围枚举，I4 在此基础上加入 patch 的 oldText、受保护词与执行授权校验。Schema 合法也不等于文学判断正确，真实模型效果与修复内容是否忠实需要 I3 开始的真实样本评估。
 
 ### I3：真实模型与前端试运行
 
@@ -72,14 +72,45 @@ pnpm dev
 
 1. [模板渲染](internal/agents/prompts/prompts.go)：`prompts.Bind(guard)` 用同一模型接口包住护栏，每次生成和格式修复都重新渲染。角色边界与 Schema 放 system，任务与转义后的材料放 user；Schema 直接复用契约文件。
 2. [DeepSeek 适配器](internal/agents/adapters/deepseek.go)：通过 Eino 调供应商，把响应转换成自己的 Output / Usage。
-3. [调用护栏](internal/agents/model/guard.go)：单次 60 秒、整次运行 2 分钟；默认 6 次调用与 24000 token 预算，格式修复和重试均计入。
+3. [调用护栏](internal/agents/model/guard.go)：单次 60 秒、整次运行 2 分钟；默认 10 次调用与 24000 token 预算，格式修复和重试均计入。
 4. [应用用例](internal/app/chapter.go) 与 [HTTP 外壳](internal/server/server.go)：CLI / 网页调用同一张图；HTTP 立即返回 run_id，执行不依赖浏览器请求一直挂着。
 
 调用前用 UTF-8 字节数加最大输出作保守预算估算，收到 usage 后回填实际值；未知用量保留预留量并标记 `known=false`，不能认为没有费用。仅明确的 HTTP 429/503 最多重试一次，超时不自动重发。`llm_call` 日志记录版本、耗时、用量与结果，不记录密钥、原始请求或隐藏推理。
 
-本阶段未新增测试文件：沿用 14 个 Fake CLI 场景；本地可控 HTTP 服务验证 429 有限重试、超时、取消、缺失 usage，另检查调用/token 预算耗尽；真实模型及浏览器轮询另行验收。
+I3 验收未新增测试文件：沿用 14 个 Fake CLI 场景；本地可控 HTTP 服务验证 429 有限重试、超时、取消、缺失 usage，另检查调用/token 预算耗尽；真实模型及浏览器轮询另行验收。
 
 DeepSeek 使用 `json_object`，字段与引用仍由 I2 管线校验；具体角色边界见 [提示词设计](docs/agent-prompts.md)。模型名可配置，当前默认 `deepseek-flash`。Go 1.24.0 存在 Sonic 链接兼容问题，因此最低要求为 1.24.1，见 [上游说明](https://github.com/bytedance/sonic/issues/771)。
+
+### I4：P2 句级修订与有限返工
+
+```text
+Writer → Critic（正文 + 程序统计）→ Aggregate
+                                   ├─ 无 P2 → completed（仅语言检查完成）
+                                   ├─ 未授权 → waiting_human
+                                   ├─ 达返工上限 → escalated
+                                   └─ Polisher → 校验并应用 patch → 新版本 → Critic
+```
+
+页面的「允许自动微改本次候选稿」决定是否自动应用；默认最多 2 轮，可选 3。CLI 默认授权隔离候选稿，可用 `-auto-revise=false` 关闭。正式稿本与 Bible 均不更新。初审不计返工轮数；一次 Polish 尝试计一轮，JSON 格式修复只占调用预算。
+
+```bash
+INKLOOM_MODEL=fake go run ./cmd/inkloom
+INKLOOM_MODEL=fake go run ./cmd/inkloom -scenario revise-limit
+INKLOOM_MODEL=fake go run ./cmd/inkloom -scenario revise-limit -max-rounds 3
+INKLOOM_MODEL=fake go run ./cmd/inkloom -scenario revise-stale
+INKLOOM_MODEL=fake go run ./cmd/inkloom -scenario revise-unsafe
+INKLOOM_MODEL=fake go run ./cmd/inkloom -auto-revise=false
+go test ./...
+```
+
+- [条件图](internal/orchestration/chapter.go)：`AddBranch` 决定回到 Polisher 还是结束；`WithMaxRunSteps` 是图执行的额外兜底，业务轮数仍由 state 判断。
+- [Patch 规则](internal/domain/revision/patch.go)：基准版本、P2 授权、引文唯一命中（包括重叠命中）、整批范围不重叠、受保护实体/阿拉伯数字/带常见量词的中文数量/否定词检查。只允许替换或删除引文及紧邻必要标点。全批验证成功后才生成新切片并递增版本；失败交人，原稿不变。
+- [程序统计](internal/domain/style/metrics.go)：作者明确的禁用短语不能被模型漏报绕过；句长均值、总体方差、burstiness 为未校准提示，不能阻断。句界为句末标点/换行，长度为非空白非标点的 Unicode 字符数。
+- [Polisher](internal/agents/polisher.go)：只得到命中问题、对应段和保护词，不收到 Writer 的解释或大纲。输出 Schema 与模板单独版本化。
+
+`POST /api/runs` 新增 `autoRevise`（未传为 false）和生效的 `maxRounds`（2/3）。轮询返回当前节点、候选版本、轮次，以及 `result.revisions/reviews/metrics/stopReason`。本版未复检时不展示旧版评审为通过；预算耗尽、失败也保留最后候选。`waiting_human/escalated` 当前是停止态，续跑与持久化人审留待后续迭代。
+
+默认 Fake 一轮删除套话后到 v2；`revise-limit` 刻意来回换套话，证明第 2 轮失败停在 v3，不启动第 3 轮。当前词级保护不等于语义一致性证明；未登记实体、新事实或含蓄因果变化仍需 I5 一致性 Critic 检查。
 
 ## 启动
 

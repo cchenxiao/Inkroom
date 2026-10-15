@@ -15,6 +15,7 @@ import (
 	"inkloom/internal/app"
 	"inkloom/internal/config"
 	"inkloom/internal/demo"
+	"inkloom/internal/orchestration"
 	"inkloom/internal/server"
 )
 
@@ -22,6 +23,8 @@ func main() {
 	scenario := flag.String("scenario", "normal", "offline scenario (see -list-scenarios)")
 	list := flag.Bool("list-scenarios", false, "list offline scenarios")
 	serve := flag.Bool("serve", false, "serve the local I3 HTTP API")
+	maxRounds := flag.Int("max-rounds", 2, "maximum revision rounds: 2 or 3")
+	autoRevise := flag.Bool("auto-revise", true, "authorize P2 edits to the isolated candidate")
 	flag.Parse()
 	if *list {
 		for _, name := range demo.Scenarios {
@@ -35,7 +38,7 @@ func main() {
 	if *serve {
 		err = server.Serve(ctx)
 	} else {
-		err = run(ctx, *scenario)
+		err = run(ctx, *scenario, orchestration.Options{MaxRounds: *maxRounds, AutoRevise: *autoRevise})
 	}
 	if err != nil {
 		code := "run_error"
@@ -48,7 +51,7 @@ func main() {
 	}
 }
 
-func run(ctx context.Context, scenario string) error {
+func run(ctx context.Context, scenario string, opts orchestration.Options) error {
 	cfg, err := config.Load()
 	if err != nil {
 		return err
@@ -56,7 +59,7 @@ func run(ctx context.Context, scenario string) error {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 	defer cancel()
 	slog.InfoContext(ctx, "run.started", "model", cfg.Model, "scenario", scenario)
-	result, err := app.ExecuteChapter(ctx, cfg, scenario)
+	result, err := app.ExecuteChapter(ctx, cfg, scenario, opts)
 	if err != nil {
 		return err
 	}

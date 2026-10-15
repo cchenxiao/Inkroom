@@ -339,3 +339,35 @@ input[type='checkbox'] {
   font-family: 'Noto Serif SC', 'Source Han Serif', Songti, serif;
   line-height: 1.9;
 }
+.backend-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+}
+.backend-controls label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.backend-controls select {
+  width: 88px;
+}
+.backend-revision {
+  padding: 16px 0;
+  border-bottom: 1px solid var(--border);
+}
+.backend-inline-diff {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 12px 0;
+}
+.backend-inline-diff del {
+  color: var(--p0);
+}
+.backend-inline-diff ins {
+  color: var(--text);
+  background: color-mix(in srgb, var(--ai) 25%, transparent);
+  text-decoration: none;
+}

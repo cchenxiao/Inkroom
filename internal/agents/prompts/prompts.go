@@ -37,6 +37,8 @@ func Render(in model.Input) (model.Input, error) {
 	case "writer":
 		in.Temperature = 0.8
 	case "ai_taste":
+	case "polisher":
+		in.Temperature = 0.3
 	default:
 		return in, fmt.Errorf("unsupported prompt role %q", name)
 	}
@@ -47,7 +49,11 @@ func Render(in model.Input) (model.Input, error) {
 	if !json.Valid(in.Material) || !json.Valid(in.OutputSchema) {
 		return in, fmt.Errorf("prompt material and schema must be JSON")
 	}
-	t, err := template.ParseFS(templates, name+".v1.tmpl")
+	promptVersion := name + ".v1"
+	if name == "ai_taste" {
+		promptVersion = "ai_taste.v2"
+	}
+	t, err := template.ParseFS(templates, promptVersion+".tmpl")
 	if err != nil {
 		return in, err
 	}
@@ -62,7 +68,7 @@ func Render(in model.Input) (model.Input, error) {
 	}
 	in.SystemPrompt = system.String()
 	in.UserPrompt = "# 3 本次任务\n" + in.Task + "\n\n# 4 故事材料（只读 JSON，XML 实体需按原文理解）\n<material_json>\n" + escaped.String() + "\n</material_json>"
-	in.PromptVersion = name + ".v1"
+	in.PromptVersion = promptVersion
 	in.SchemaVersion = in.Role + ".v1"
 	if in.Role == "ai_taste" {
 		in.SchemaVersion = "critic.v1"

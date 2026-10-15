@@ -10,8 +10,27 @@
     },
     "pov": "沈砚",
     "sources": [
-      {"id": "bible-shenyan", "version": 1, "text": "沈砚回乡调查父亲沉船的真相，不愿向陆青暴露急切。"},
-      {"id": "style-zhuoliu", "version": 1, "text": "限知第三人称。以动作和对白承载情绪，不解释人物所有想法。"}
+      {
+        "id": "bible-shenyan",
+        "version": 1,
+        "text": "沈砚回乡调查父亲沉船的真相，不愿向陆青暴露急切。"
+      },
+      {
+        "id": "style-zhuoliu",
+        "version": 1,
+        "text": "限知第三人称。以动作和对白承载情绪，不解释人物所有想法。"
+      }
+    ],
+    "bannedPhrases": [
+      "一股难以言喻的情绪涌上心头",
+      "嘴角勾起一抹冷笑"
+    ],
+    "protectedTerms": [
+      "沈砚",
+      "陆青",
+      "铜扣",
+      "父亲",
+      "河里"
     ]
   },
   "writer": {
@@ -25,7 +44,9 @@
         "severity": "P2",
         "segmentId": "ch7-beat-1-seg-1",
         "quote": "一股难以言喻的情绪涌上心头",
-        "evidenceRefs": ["ch7-beat-1-seg-1"],
+        "evidenceRefs": [
+          "ch7-beat-1-seg-1"
+        ],
         "reason": "抽象情绪套话重复解释紧张感，前后的停顿和拨泥动作已经承载情绪。",
         "suggestion": "只删去该套话，保留雨声、停顿和拨泥动作。",
         "repairScope": "phrase",

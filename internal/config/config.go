@@ -40,7 +40,7 @@ func Load() (Config, error) {
 		cfg.ModelName = "scripted-fake"
 	}
 	var err error
-	if cfg.MaxCalls, err = positive("INKLOOM_MAX_CALLS", 6); err != nil {
+	if cfg.MaxCalls, err = positive("INKLOOM_MAX_CALLS", 10); err != nil {
 		return Config{}, err
 	}
 	if cfg.MaxTokens, err = positive("INKLOOM_MAX_TOKENS", 24000); err != nil {

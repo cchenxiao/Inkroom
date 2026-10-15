@@ -10,14 +10,16 @@ import (
 	"inkloom/internal/agents/parse"
 	"inkloom/internal/domain/manuscript"
 	"inkloom/internal/domain/review"
+	"inkloom/internal/domain/style"
 )
 
 // Critique 冷读正文，不接收 Writer 的消息历史或自我解释。
-func Critique(ctx context.Context, chat model.ChatModel, segments []manuscript.Segment, version int) ([]review.Finding, model.Usage, error) {
+func Critique(ctx context.Context, chat model.ChatModel, segments []manuscript.Segment, version int, metrics []style.Stats) ([]review.Finding, model.Usage, error) {
 	material, err := json.Marshal(struct {
+		Metrics      []style.Stats        `json:"metrics"`
 		DraftVersion int                  `json:"draftVersion"`
 		Segments     []manuscript.Segment `json:"segments"`
-	}{version, segments})
+	}{metrics, version, segments})
 	if err != nil {
 		return nil, model.Usage{}, err
 	}

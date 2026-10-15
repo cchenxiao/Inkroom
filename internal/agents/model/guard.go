@@ -9,6 +9,8 @@ import (
 	"time"
 )
 
+var ErrBudgetExhausted = errors.New("run model budget exhausted before call")
+
 type Limits struct {
 	Calls, Tokens, OutputTokens int
 	Timeout                     time.Duration
@@ -41,7 +43,7 @@ func (g *Guard) Generate(ctx context.Context, in Input) (Output, Usage, error) {
 		g.mu.Lock()
 		if g.calls >= g.limits.Calls || g.reserved+estimate > g.limits.Tokens {
 			g.mu.Unlock()
-			return Output{}, total, fmt.Errorf("run model budget exhausted before call")
+			return Output{}, total, ErrBudgetExhausted
 		}
 		g.calls++
 		g.reserved += estimate

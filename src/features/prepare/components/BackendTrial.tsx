@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Badge, Button, Card } from '@/shared/ui';
+import BackendTrialResult from './BackendTrialResult';
+import { Badge, Button, Card, Select } from '@/shared/ui';
 import { ApiError } from '@/shared/api/client';
 import { backendMessages as t } from '@/shared/lib/messages-backend';
 import { trialApi } from '../api/backend';
@@ -8,6 +9,8 @@ import { trialApi } from '../api/backend';
 export default function BackendTrial() {
   const [runId, setRunId] = useState<string | null>(null);
   const client = useQueryClient();
+  const [autoRevise, setAutoRevise] = useState(true);
+  const [maxRounds, setMaxRounds] = useState<2 | 3>(2);
   const start = useMutation({
     mutationFn: trialApi.start,
     retry: false,
@@ -50,12 +53,35 @@ export default function BackendTrial() {
         <summary>{t.title}</summary>
         <div className="page-stack">
           <p className="text-dim">{t.description}</p>
+          <div className="backend-controls">
+            <label>
+              <input
+                type="checkbox"
+                checked={autoRevise}
+                disabled={busy || uncertain}
+                onChange={(e) => setAutoRevise(e.target.checked)}
+              />{' '}
+              {t.autoRevise}
+            </label>
+            <label>
+              {t.maxRounds}
+              <Select
+                aria-label={t.maxRounds}
+                value={maxRounds}
+                disabled={busy || uncertain}
+                onChange={(e) => setMaxRounds(Number(e.target.value) as 2 | 3)}
+              >
+                <option value={2}>2 {t.rounds}</option>
+                <option value={3}>3 {t.rounds}</option>
+              </Select>
+            </label>
+          </div>
           <Button
             variant="default"
             loading={busy}
             disabled={uncertain}
             disabledReason={uncertain ? t.unknown : t.pending}
-            onClick={() => start.mutate()}
+            onClick={() => start.mutate({ autoRevise, maxRounds })}
           >
             {t.start}
           </Button>
@@ -91,7 +117,11 @@ export default function BackendTrial() {
                     ? t.running
                     : run.status === 'completed'
                       ? t.completed
-                      : t.failed}
+                      : run.status === 'waiting_human'
+                        ? t.waitingHuman
+                        : run.status === 'escalated'
+                          ? t.escalated
+                          : t.failed}
                 </Badge>
                 <span>
                   {run.provider} · {run.model}
@@ -107,26 +137,12 @@ export default function BackendTrial() {
                   {run.error}
                 </p>
               )}
-              {run.result && (
-                <>
-                  <h3>{t.candidate}</h3>
-                  <div className="backend-candidate">
-                    {run.result.segments.map((s) => (
-                      <p key={s.id}>{s.text}</p>
-                    ))}
-                  </div>
-                  <h3>{t.findings}</h3>
-                  {run.result.report.findings.length === 0 && <p>{t.noFindings}</p>}
-                  {run.result.report.findings.map((f) => (
-                    <div key={f.id} className="page-stack">
-                      <Badge tone="info">{f.severity}</Badge>
-                      <blockquote>{f.quote}</blockquote>
-                      <p>{f.reason}</p>
-                      <p>{f.suggestion}</p>
-                    </div>
-                  ))}
-                </>
-              )}
+              <p>
+                {t.nodes[run.currentNode] ?? run.currentNode} · {t.progress} {run.reviseRound}/
+                {run.maxRounds} · {t.version} v{run.draftVersion}
+              </p>
+              {run.result?.stopReason && <p role="status">{run.result.stopReason}</p>}
+              {run.result && <BackendTrialResult result={run.result} />}
             </>
           )}
         </div>

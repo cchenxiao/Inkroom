@@ -13,7 +13,7 @@ import (
 	"inkloom/internal/orchestration"
 )
 
-func ExecuteChapter(ctx context.Context, cfg config.Config, scenario string) (orchestration.ChapterState, error) {
+func ExecuteChapter(ctx context.Context, cfg config.Config, scenario string, opts orchestration.Options) (orchestration.ChapterState, error) {
 	if cfg.Model != "fake" && scenario != "normal" {
 		return orchestration.ChapterState{}, fmt.Errorf("failure scenarios require INKLOOM_MODEL=fake")
 	}
@@ -31,13 +31,25 @@ func ExecuteChapter(ctx context.Context, cfg config.Config, scenario string) (or
 		name = cfg.ModelName
 	}
 	guard := model.NewGuard(chat, model.Limits{Calls: cfg.MaxCalls, Tokens: cfg.MaxTokens, OutputTokens: cfg.MaxOutputTokens, Timeout: cfg.CallTimeout, ModelName: name})
-	graph, err := orchestration.NewChapter(ctx, prompts.Bind(guard))
+	var latest orchestration.ChapterState
+	observer := opts.OnProgress
+	opts.OnProgress = func(state orchestration.ChapterState) {
+		state.Usage = guard.Usage()
+		latest = state
+		if observer != nil {
+			observer(state)
+		}
+	}
+	graph, err := orchestration.NewChapter(ctx, prompts.Bind(guard), opts)
 	if err != nil {
 		return orchestration.ChapterState{}, fmt.Errorf("compile graph: %w", err)
 	}
 	result, err := graph.Invoke(ctx, bundle)
-	result.Usage = guard.Usage()
 	if err != nil {
+		result = orchestration.TerminalError(latest, err)
+	}
+	result.Usage = guard.Usage()
+	if err != nil && result.Status != "escalated" {
 		return result, fmt.Errorf("execute chapter: %w", err)
 	}
 	return result, nil

@@ -13,6 +13,9 @@ var WriterSchema []byte
 //go:embed critic.v1.json
 var CriticSchema []byte
 
+//go:embed polisher.v1.json
+var PolisherSchema []byte
+
 type WriterOutput struct {
 	Text string `json:"text"`
 }

@@ -29,9 +29,11 @@ type SourceRef struct {
 
 // ContextBundle 是给 Writer 的材料包，不是数据库查询器。
 type ContextBundle struct {
-	ChapterID string      `json:"chapterId"`
-	BranchID  string      `json:"branchId"`
-	Beat      Beat        `json:"beat"`
-	POV       string      `json:"pov"`
-	Sources   []SourceRef `json:"sources"`
+	BannedPhrases  []string    `json:"bannedPhrases"`
+	ProtectedTerms []string    `json:"protectedTerms"`
+	ChapterID      string      `json:"chapterId"`
+	BranchID       string      `json:"branchId"`
+	Beat           Beat        `json:"beat"`
+	POV            string      `json:"pov"`
+	Sources        []SourceRef `json:"sources"`
 }

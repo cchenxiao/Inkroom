@@ -20,6 +20,7 @@ import (
 )
 
 type Run struct {
+	AutoRevise   bool                        `json:"autoRevise"`
 	Usage        model.Usage                 `json:"usage"`
 	ID           string                      `json:"id"`
 	ChapterID    string                      `json:"chapterId"`
@@ -86,9 +87,10 @@ func (s *service) start(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var in struct {
-		ChapterID string `json:"chapterId"`
-		BranchID  string `json:"branchId"`
-		MaxRounds int    `json:"maxRounds"`
+		ChapterID  string `json:"chapterId"`
+		BranchID   string `json:"branchId"`
+		MaxRounds  int    `json:"maxRounds"`
+		AutoRevise bool   `json:"autoRevise"`
 	}
 	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096))
 	decoder.DisallowUnknownFields()
@@ -121,7 +123,7 @@ func (s *service) start(w http.ResponseWriter, r *http.Request) {
 		delete(s.runs, s.order[0])
 		s.order = s.order[1:]
 	}
-	run := Run{ID: rand.Text(), ChapterID: in.ChapterID, BranchID: in.BranchID, DraftVersion: 1, Status: "running", CurrentNode: "draft", MaxRounds: in.MaxRounds, Nodes: []any{}, Provider: s.cfg.Model, Model: s.cfg.ModelName}
+	run := Run{ID: rand.Text(), ChapterID: in.ChapterID, BranchID: in.BranchID, DraftVersion: 1, Status: "running", CurrentNode: "draft", MaxRounds: in.MaxRounds, AutoRevise: in.AutoRevise, Nodes: []any{}, Provider: s.cfg.Model, Model: s.cfg.ModelName}
 	s.runs[run.ID] = run
 	s.order = append(s.order, run.ID)
 	s.active = true
@@ -134,7 +136,19 @@ func (s *service) execute(run Run) {
 	ctx, cancel := context.WithTimeout(s.root, 2*time.Minute)
 	defer cancel()
 	started := time.Now()
-	result, err := app.ExecuteChapter(ctx, s.cfg, "normal")
+	result, err := app.ExecuteChapter(ctx, s.cfg, "normal", orchestration.Options{MaxRounds: run.MaxRounds, AutoRevise: run.AutoRevise, OnProgress: func(state orchestration.ChapterState) {
+		s.mu.Lock()
+		current := s.runs[run.ID]
+		current.CurrentNode = state.CurrentNode
+		current.DraftVersion = state.DraftVersion
+		current.ReviseRound = state.ReviseRound
+		current.Usage = state.Usage
+		current.Tokens = state.Usage.InputTokens + state.Usage.OutputTokens
+		current.ElapsedMs = time.Since(started).Milliseconds()
+		current.Result = &state
+		s.runs[run.ID] = current
+		s.mu.Unlock()
+	}})
 	run.Usage = result.Usage
 	run.ElapsedMs = time.Since(started).Milliseconds()
 	run.Tokens = result.Usage.InputTokens + result.Usage.OutputTokens
@@ -142,10 +156,12 @@ func (s *service) execute(run Run) {
 		run.Status = "failed"
 		run.Error = err.Error()
 	} else {
-		run.Status = "completed"
-		run.CurrentNode = "aggregate"
-		run.Result = &result
+		run.Status = result.Status
 	}
+	run.CurrentNode = result.CurrentNode
+	run.DraftVersion = result.DraftVersion
+	run.ReviseRound = result.ReviseRound
+	run.Result = &result
 	s.mu.Lock()
 	s.runs[run.ID] = run
 	s.active = false

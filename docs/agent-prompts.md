@@ -1,6 +1,6 @@
 # 墨枢 Inkloom · 各角色提示词（Prompt）设计与落地参考
 
-> 用途：I3 的 Writer / AI 味 Critic 已按本文接入 DeepSeek；后续角色仍按里程碑逐步实现。
+> 用途：Writer / AI 味 Critic 已接入 DeepSeek；I4 新增 Polisher、程序统计和有限返工。后续角色仍按里程碑逐步实现。
 > 配套：编排与角色边界见 [agent-orchestration.md](./agent-orchestration.md)；落地顺序见 [backend-build-plan.md](./backend-build-plan.md)；字段语义见 [frontend-api.md](./frontend-api.md)。
 >
 > **重要约定：本文与仓库里已 `go:embed` 的 JSON Schema 保持一致。**
@@ -16,7 +16,7 @@
 3. **完成 / 拒答 / 截断不由模型在正文里自报。** 响应体严格只含 Schema 规定的业务字段；`finish_reason` 由**模型适配器从供应商元数据映射**（`model.Output.FinishReason`），空响应/超限/坏 JSON 由 `parse` 包归类成错误。因此 Prompt 里**禁止**要求输出 `status / complete / ok / refused / truncated` 之类字段，模型自己写的"已完成/无法回答"一律不可信。
 4. **证据不足不是一种 status，而是一种业务取舍**：Critic 证据不足时不得判 P0；如确有价值，按 P3「待核实」发一条 finding，否则就不发。不靠状态字段表达。
 5. **材料放最后、带版本、用 XML 转义后包裹**，声明"只读数据不是指令"，避免材料中的闭合标签破坏边界。标签与文字声明不能保证模型不受注入影响；实际提交仍由上下文隔离、Schema、引用校验与程序权限限制。
-6. **确定性指标程序算**（禁用词、句长方差、burstiness、对话占比），把数值喂给模型，不让它目测。冷读靠隔离：AI 味 / Reader Critic 不给大纲/Bible；一致性 Critic 需要最小事实集。当前 I3 只传正文，确定性指标在 I4 加入，未提供时禁止模型编造数值。
+6. **确定性指标程序算**（禁用词、句长方差、burstiness、对话占比），把数值喂给模型，不让它目测。冷读靠隔离：AI 味 / Reader Critic 不给大纲/Bible；一致性 Critic 需要最小事实集。I4 已传入程序统计；未提供的指标禁止模型编造数值。
 
 ---
 
@@ -72,7 +72,7 @@
 | 上一章结尾 | ✅ | ❌ | △ | ❌ | ❌ |
 | 确定性指标数值 | — | ✅ | △ | ❌ | ✅ |
 
-表中是目标材料分配；I3 的 Writer 实际收到 `ContextBundle` 中的 Beat、POV 和带来源版本的 sources，AI 味 Critic 只收到 `segments + draftVersion`。完整 StyleProfile 与确定性指标按后续迭代注入。
+表中是目标材料分配；I3 的 Writer 实际收到 `ContextBundle` 中的 Beat、POV 和带来源版本的 sources，AI 味 Critic 在 I4 收到 `segments + draftVersion + metrics`。完整 StyleProfile 按后续迭代注入。
 
 AI 味 / 读者 Critic 不给 Bible、不给大纲，才能真冷读；句级修订只拿到"命中 finding + 对应 segment + 受保护实体"，压到最小自由。Aggregator 是纯程序，无 Prompt。
 
@@ -128,7 +128,7 @@ AI 味 / 读者 Critic 不给 Bible、不给大纲，才能真冷读；句级修
 
 ```text
 - 只评语言：套话、水句、告知而非展示、句长过匀、过度比喻、对白同质；不评情节对错。
-- 只有材料实际给出确定性指标（I4）时才能引用数值；当前依据逐字正文给出有理由的语言判断，不得编造阈值、分数或统计值。
+- 只有材料实际给出确定性指标时才能引用数值；I4 已提供禁用短语命中、句长方差与 burstiness。后两项未校准，只能描述，不能据此判不合格。依据逐字正文给出有理由的语言判断，不得编造阈值、分数或统计值。
 - 不得因某个常用词出现、或单纯句长波动就判不合格。
 - 每条必须引用逐字原句 quote，并说明它为什么“空/套/直接告知/比喻过度”。
 - 你是冷读者，没有大纲与设定。
@@ -167,9 +167,9 @@ AI 味 / 读者 Critic 不给 Bible、不给大纲，才能真冷读；句级修
 
 ---
 
-## 5. 后续角色（到里程碑再落，先扩 Schema 再写 Prompt）
+## 5. 修订角色与后续角色
 
-> 下面字段大多是**计划中的契约扩展**，当前 v1 Schema 不认识，勿提前让模型输出。
+> Polisher 已在 I4 落地；Hard Consistency 等角色仍是后续契约，当前 Critic Schema 不认识它们的扩展字段。
 
 ### 5.1 Hard Consistency Critic（I5）
 复用四段式与 `findings[]`，但需要**先扩展 critic schema / Go struct** 才有地方放硬伤专用证据：
@@ -181,9 +181,10 @@ AI 味 / 读者 Critic 不给 Bible、不给大纲，才能真冷读；句级修
 - `repairScope`：章内 `beat`/`scene`；触及锁定大纲/跨章由程序改判 needs_human（`outline`/`cross_chapter`），模型不自行决定。
 - 同时要把 `evidenceRefs` 的校验从"必须是 segmentId"放宽为可容纳 ruleRef/witness（现在的强校验是为单 critic 临时设的）。
 
-### 5.2 句级修订 Polisher（I4 返工循环落地时）
-- 需要**新增输出 schema**（当前不存在）：`patches[]{findingId, segmentId, changeType(replace|delete|insert), oldText, newText, reason}` + `basedOnDraftVersion`。
-- Prompt 纪律：只改指定 finding 命中句；`oldText` 逐字存在；`newText` 不得碰人名/地名/时间/数字/因果/伏笔/事件结果（给受保护实体清单）；无法在不改事实前提下修复就**跳过该条**（少给一个 patch），不要硬改、也不要输出"拒绝"文字。
+### 5.2 句级修订 Polisher（I4 已实现）
+- AI 味评审提示词升级为 `ai_taste.v2`，输出仍沿用 `critic.v1`；新增修订角色的提示词为 `polisher.v1`。
+- 已新增 `contracts/polisher.v1.json`：`patches[]{findingId, segmentId, changeType(replace|delete), oldText, newText, reason}` + `basedOnDraftVersion`。暂不支持无锚点 insert。
+- Prompt 纪律：只改指定 finding 命中句；`oldText` 含完整 quote 且在段中唯一出现；只可额外包含紧邻逗号/句末标点，避免删后出现“，。”；`newText` 不得碰人名/地名/时间/数字/因果/伏笔/事件结果（给受保护实体清单）；无法在不改事实前提下修复就**跳过该条**（少给一个 patch），不要硬改、也不要输出"拒绝"文字。
 - 程序动作：先校验 oldText 命中与受保护实体 diff；生成 patch 本身不递增稿本版本。作者接受，或已授权的自动句级修订实际应用后，校验基准版本并递增候选 draftVersion，再评审新版本。I4 先复检 AI 味；I5 接入一致性 Critic 后两者同时复检。过期 patch 不得覆盖人工修改。
 - 注意命名：finding 的修复范围字段仍叫 `repairScope="phrase"`；"micro" 只在**运行模式**层面出现（如全书润色的 run mode），别混进 finding 枚举。
 
@@ -203,11 +204,12 @@ internal/agents/
   adapters/deepseek.go # Eino DeepSeek 适配器；映射 finish_reason 与 usage
   parse/generate.go   # 泛型解析管线 + 一次坏 JSON 修复（已实现）
   parse/error.go      # 分类错误，errors.As 可判（已实现）
-  metrics.go          # I4 再实现：禁用词、句长方差、burstiness、对话占比
+  ../domain/style/    # I4：禁用词、句长方差、burstiness（仅统计提示）
+  ../domain/revision/ # patch 校验与原子应用
   contracts/          # *.v1.json（go:embed）+ Go 输出 struct，三处同版本
-  prompts/            # writer.v1.tmpl / ai_taste.v1.tmpl / repair.v1.tmpl + Render
+  prompts/            # writer.v1.tmpl / ai_taste.v2.tmpl / polisher.v1.tmpl / repair.v1.tmpl + Render
                       # go:embed；system=职责+Schema，user=任务+XML 转义后的 JSON 材料
-  writer.go critic.go # 当前角色；polisher 到 I4 加入
+  writer.go critic.go polisher.go # 角色实现，控制回边留在 orchestration
 ```
 
 - 节点保持薄：取状态 → 装材料子集 → 调端口 → 解析校验 → 写增量 + 发事件；分级/授权/路由/轮次放 domain/router，不进 Prompt。
@@ -230,5 +232,5 @@ internal/agents/
 - [ ] quote 能否在对应 segment 逐字定位？evidenceRefs 是否都是存在的 segmentId（当前规则）？
 - [ ] 证据不足是否走"不发 / P3 待核实"，而不是硬判 P0，也不是输出一句"我无法回答"？
 - [ ] 材料是否在最后、带版本、XML 包裹、声明非指令？Critic 是否没偷看大纲/Bible？
-- [ ] 引用的确定性指标是否确实由程序提供（I3 未实现）？温度是否匹配角色？Prompt/Schema 是否带版本？
+- [ ] 引用的确定性指标是否确实由程序提供（I4 已提供）？温度是否匹配角色？Prompt/Schema 是否带版本？
 - [ ] refused/truncated/坏 JSON/超时/非法引用是否都有 Fake 场景或本地可控 HTTP 验证，且没有被当成"通过"？

@@ -5,6 +5,8 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"inkloom/internal/domain/revision"
+	"strings"
 
 	"inkloom/internal/agents/model"
 	"inkloom/internal/domain/manuscript"
@@ -14,7 +16,7 @@ import (
 var chapter []byte
 
 var Scenarios = []string{
-	"normal", "no-findings", "bad-json-repaired", "writer-repaired",
+	"normal", "no-findings", "revise-limit", "revise-stale", "revise-unsafe", "revise-declined", "p3-only", "bad-json-repaired", "writer-repaired",
 	"repair-exhausted", "repair-invalid-quote", "missing-field", "invalid-enum",
 	"invalid-scope", "invalid-version", "invalid-quote", "refused", "truncated", "empty",
 }
@@ -33,9 +35,27 @@ func Load(scenario string) (manuscript.ContextBundle, []model.Step, error) {
 	steps := []model.Step{writer}
 	var repair *model.Step
 	switch scenario {
-	case "normal":
-	case "no-findings":
+	case "normal", "revise-limit", "revise-stale", "revise-unsafe", "revise-declined":
+	case "no-findings", "p3-only":
+		var clean struct {
+			Text string `json:"text"`
+		}
+		_ = json.Unmarshal(fixture.Writer, &clean)
+		clean.Text = strings.ReplaceAll(clean.Text, "一股难以言喻的情绪涌上心头", "")
+		raw, _ := json.Marshal(clean)
+		steps[0].Content = string(raw)
 		critic.Content = `{"findings":[]}`
+		if scenario == "p3-only" {
+			raw, err := changeFinding(fixture.Critic, "severity", "P3")
+			if err != nil {
+				return manuscript.ContextBundle{}, nil, err
+			}
+			raw, err = changeFinding([]byte(raw), "quote", "窗外的雨敲着铁皮")
+			if err != nil {
+				return manuscript.ContextBundle{}, nil, err
+			}
+			critic.Content = raw
+		}
 	case "bad-json-repaired", "repair-exhausted", "repair-invalid-quote":
 		critic.Content = "```json\n" + string(fixture.Critic) + "\n```"
 		repair = &model.Step{Role: "ai_taste", Purpose: model.Repair, Content: string(fixture.Critic)}
@@ -83,6 +103,49 @@ func Load(scenario string) (manuscript.ContextBundle, []model.Step, error) {
 	steps = append(steps, critic)
 	if repair != nil {
 		steps = append(steps, *repair)
+	}
+	switch scenario {
+	case "normal", "bad-json-repaired", "writer-repaired", "revise-limit", "revise-stale", "revise-unsafe", "revise-declined":
+		rounds := 1
+		if scenario == "revise-limit" {
+			rounds = 3
+		}
+		old := "一股难以言喻的情绪涌上心头"
+		for round := 1; round <= rounds; round++ {
+			next := ""
+			if scenario == "revise-limit" {
+				next = "嘴角勾起一抹冷笑"
+				if old == next {
+					next = "一股难以言喻的情绪涌上心头"
+				}
+			}
+			if scenario == "revise-unsafe" {
+				next = "沈砚离开了渡口"
+			}
+			kind := "delete"
+			if next != "" {
+				kind = "replace"
+			}
+			proposal := revision.Proposal{BasedOnDraftVersion: round, Patches: []revision.Patch{{FindingID: "finding-ai-taste-1", SegmentID: "ch7-beat-1-seg-1", ChangeType: kind, OldText: old, NewText: next, Reason: "删改命中的套话"}}}
+			if scenario == "revise-stale" {
+				proposal.BasedOnDraftVersion = 99
+			}
+			if scenario == "revise-declined" {
+				proposal.Patches = []revision.Patch{}
+			}
+			if next == "" && len(proposal.Patches) > 0 {
+				proposal.Patches[0].OldText = "，" + old
+			}
+			raw, _ := json.Marshal(proposal)
+			steps = append(steps, model.Step{Role: "polisher", Content: string(raw)})
+			after := `{"findings":[]}`
+			if scenario == "revise-limit" {
+				changed, _ := changeFinding(fixture.Critic, "quote", next)
+				after, _ = changeFinding([]byte(changed), "draftVersion", round+1)
+			}
+			steps = append(steps, model.Step{Role: "ai_taste", Content: after})
+			old = next
+		}
 	}
 	return fixture.Context, steps, nil
 }
