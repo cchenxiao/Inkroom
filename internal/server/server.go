@@ -238,6 +238,7 @@ func (s *service) execute(run app.Run) {
 		return
 	}
 	result, err := app.ExecuteChapter(ctx, s.cfg, run.Scenario, orchestration.Options{
+		ConsistencyCheck: app.NewConsistencyCheck(s.retriever, s.repo, run.ID),
 		FrozenInput:      &input,
 		CallHistory:      history,
 		BaseDraftVersion: run.BaseDraftVersion, AllowLocalRewrite: run.AllowLocalRewrite, AutoRevise: run.AutoRevise, MaxRounds: run.MaxRounds,

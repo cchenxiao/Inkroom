@@ -18,7 +18,8 @@ const snapshotSQL = `SELECT r.payload,r.event_sequence,
  COALESCE((SELECT sum((record->'usage'->>'inputTokens')::bigint) FROM llm_calls WHERE run_id=r.id),0),
  COALESCE((SELECT sum((record->'usage'->>'outputTokens')::bigint) FROM llm_calls WHERE run_id=r.id),0),
  COALESCE((SELECT bool_and(phase='finished' AND (record->'usage'->>'known')::boolean) FROM llm_calls WHERE run_id=r.id),true),
- ARRAY(SELECT record->>'role' FROM llm_calls WHERE run_id=r.id AND phase='started' ORDER BY call_number)
+ ARRAY(SELECT record->>'role' FROM llm_calls WHERE run_id=r.id AND phase='started' ORDER BY call_number),
+ COALESCE((SELECT jsonb_agg(payload ORDER BY draft_version) FROM critic_lookups WHERE run_id=r.id),'[]'::jsonb)
  FROM runs r WHERE r.id=$1`
 
 type queryRow interface {
@@ -26,9 +27,9 @@ type queryRow interface {
 }
 
 func snapshot(ctx context.Context, q queryRow, id string) (app.Run, error) {
-	var raw []byte
+	var raw, checks []byte
 	var r app.Run
-	err := q.QueryRow(ctx, snapshotSQL, id, orchestration.HumanWorkflowVersion).Scan(&raw, &r.EventSequence, &r.CanResume, &r.Usage.InputTokens, &r.Usage.OutputTokens, &r.Usage.Known, &r.ActiveRoles)
+	err := q.QueryRow(ctx, snapshotSQL, id, orchestration.HumanWorkflowVersion).Scan(&raw, &r.EventSequence, &r.CanResume, &r.Usage.InputTokens, &r.Usage.OutputTokens, &r.Usage.Known, &r.ActiveRoles, &checks)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return r, app.ErrNotFound
 	}
@@ -40,6 +41,9 @@ func snapshot(ctx context.Context, q queryRow, id string) (app.Run, error) {
 		return r, err
 	}
 	stored.EventSequence, stored.CanResume, stored.Usage, stored.ActiveRoles = r.EventSequence, r.CanResume, r.Usage, r.ActiveRoles
+	if err = json.Unmarshal(checks, &stored.CriticLookups); err != nil {
+		return r, err
+	}
 	stored.Tokens = r.Usage.InputTokens + r.Usage.OutputTokens
 	if stored.Result != nil {
 		stored.Result.Usage = r.Usage

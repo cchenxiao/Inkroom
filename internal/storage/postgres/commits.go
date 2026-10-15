@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"reflect"
 	"time"
 
@@ -102,6 +103,45 @@ func (s *Store) Finalize(ctx context.Context, id string, in app.FinalizeInput) (
 	refs, err := manuscript.ContextRefs(frozen.Bundle)
 	if err != nil {
 		return app.FinalCommit{}, err
+	}
+	// 保存所有轮次的查证材料；当前版必须与已审核 Critic 结果完全一致。
+	rows, err := tx.Query(ctx, "SELECT payload FROM critic_lookups WHERE run_id=$1 ORDER BY draft_version", id)
+	if err != nil {
+		return app.FinalCommit{}, err
+	}
+	checks, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (app.CriticLookup, error) {
+		var raw []byte
+		var c app.CriticLookup
+		if e := row.Scan(&raw); e != nil {
+			return c, e
+		}
+		e := json.Unmarshal(raw, &c)
+		return c, e
+	})
+	if err != nil {
+		return app.FinalCommit{}, err
+	}
+	for _, check := range checks {
+		if check.DraftVersion == in.DraftVersion {
+			match := false
+			for _, c := range r.Result.CriticReviews {
+				if c.Critic == "hard_consistency" && reflect.DeepEqual(c, check.Review) {
+					match = true
+				}
+			}
+			if !match || check.Review.Status != "completed" {
+				return app.FinalCommit{}, app.ErrGateBlocked
+			}
+		}
+		payload, e := json.Marshal(check)
+		if e != nil {
+			return app.FinalCommit{}, e
+		}
+		hash, e := manuscript.ContentDigest(check)
+		if e != nil {
+			return app.FinalCommit{}, e
+		}
+		refs = append(refs, manuscript.VersionRef{Kind: "critic_evidence", ID: fmt.Sprintf("%s/v%d", id, check.DraftVersion), Version: check.DraftVersion, Digest: hash, Payload: payload})
 	}
 	c := app.FinalCommit{ID: in.ID, RunID: id, ProjectID: frozen.Bundle.ProjectID, ChapterID: r.ChapterID, BranchID: r.BranchID, DraftVersion: in.DraftVersion, ApprovalActionID: approval, InputDigest: in.InputDigest, CreatedAt: time.Now().UTC(), FactConfirmation: app.FactConfirmation{DraftVersion: in.DraftVersion, Method: "author_no_pending_facts", NoPendingFacts: true}, Manifest: frozen.Manifest, Segments: segments, Report: report, Refs: refs}
 	err = tx.QueryRow(ctx, "SELECT id FROM manuscript_commits WHERE chapter_id=$1 AND branch_id=$2 ORDER BY created_at DESC,id DESC LIMIT 1", r.ChapterID, r.BranchID).Scan(&c.ParentCommit)

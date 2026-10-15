@@ -56,6 +56,9 @@ func Render(in model.Input) (model.Input, error) {
 		return in, fmt.Errorf("prompt material and schema must be JSON")
 	}
 	promptVersion := name + ".v1"
+	if name == "hard_consistency" {
+		promptVersion = "hard_consistency.v2"
+	}
 	if name == "writer" {
 		promptVersion = "writer.v2"
 	}
@@ -85,6 +88,9 @@ func Render(in model.Input) (model.Input, error) {
 	in.UserPrompt = "# 3 本次任务\n" + in.Task + "\n\n# 4 故事材料（只读 JSON，XML 实体需按原文理解）\n<material_json>\n" + escaped.String() + "\n</material_json>"
 	in.PromptVersion = promptVersion
 	in.SchemaVersion = in.Role + ".v1"
+	if in.Role == "hard_consistency" && len(in.Tools) > 0 {
+		in.SchemaVersion = "hard_consistency.tools.v1"
+	}
 	if in.Role == "ai_taste" {
 		in.SchemaVersion = "critic.v1"
 	}

@@ -37,14 +37,15 @@ func init() {
 }
 
 type HumanOptions struct {
-	Checkpoints compose.CheckPointStore
-	RunID       string
-	Action      *HumanAction
-	Pause       func(ChapterState, string)
-	Load        func(context.Context, string) (ChapterState, bool, error)
-	Save        func(context.Context, string, int, ChapterState, string) error
-	Approve     func(context.Context, int) error
-	Usage       func() model.Usage
+	ConsistencyCheck ConsistencyCheck
+	Checkpoints      compose.CheckPointStore
+	RunID            string
+	Action           *HumanAction
+	Pause            func(ChapterState, string)
+	Load             func(context.Context, string) (ChapterState, bool, error)
+	Save             func(context.Context, string, int, ChapterState, string) error
+	Approve          func(context.Context, int) error
+	Usage            func() model.Usage
 }
 
 // ApprovalReason 是程序门禁，不由模型自报 approved。通过仅表示候选审核，正式 commit 在 I9。
@@ -170,7 +171,11 @@ func RunHuman(ctx context.Context, initial ChapterState, chat model.ChatModel, o
 			if s.Route.Kind == "micro" {
 				p, _, err = agents.PolishWithInstruction(ctx, chat, s.Segments, s.Report.Findings, s.DraftVersion, s.Context.ProtectedTerms, in.Action.Instruction)
 			} else {
-				p, _, err = agents.RewriteWithInstruction(ctx, chat, s.Segments, s.Report, s.Context, s.Route, in.Action.Instruction)
+				evidence, e := s.ReviewContext()
+				if e != nil {
+					return in, e
+				}
+				p, _, err = agents.RewriteWithInstruction(ctx, chat, s.Segments, s.Report, evidence, s.Route, in.Action.Instruction)
 			}
 			if err != nil {
 				return in, err
@@ -213,7 +218,7 @@ func RunHuman(ctx context.Context, initial ChapterState, chat model.ChatModel, o
 		}
 		s := in.Chapter
 		s.Metrics = style.Analyze(s.Segments, s.Context.BannedPhrases)
-		critics, _, err := reviewTogether(ctx, chat, s)
+		critics, _, err := reviewTogether(ctx, chat, s, opts.ConsistencyCheck)
 		if err != nil {
 			return in, err
 		}
@@ -222,7 +227,11 @@ func RunHuman(ctx context.Context, initial ChapterState, chat model.ChatModel, o
 		for _, c := range critics {
 			fs = append(fs, c.Findings...)
 		}
-		report, err := review.Aggregate(fs, s.Segments, s.DraftVersion, s.Context.FactSources()...)
+		evidence, err := s.ReviewContext()
+		if err != nil {
+			return in, err
+		}
+		report, err := review.Aggregate(fs, s.Segments, s.DraftVersion, evidence.FactSources()...)
 		if err != nil {
 			return in, err
 		}

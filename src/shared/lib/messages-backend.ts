@@ -2,6 +2,18 @@ export const backendMessages = {
   preparingContext:
     '正在准备上下文；准备完成后才冻结最终清单并启动 Writer。失败或中断时不会补造清单。',
   preparationStopped: '上下文准备已停止，未生成最终清单，Writer 尚未启动。',
+  lookupStopped: '查询已停止',
+  criticLookupInterrupted:
+    '运行已停止或稿本已变更，本轮查证未完成；以上为最后保存的记录，不代表评审通过。',
+  criticLookupTitle: '一致性查证记录',
+  criticLookupNote: '按本轮稿本独立查证；证据与写作输入分开保存，不修改正文和设定。最多查询 3 次。',
+  criticFact: '已确认事实',
+  criticPassage: '原文片段 · 不等于世界事实',
+  lookupNotNeeded: '模型判断已有材料足够，本次未额外检索。',
+  criticLookupStops: {
+    ready: '本轮查证与评审完成；结论见一致性问题清单',
+    blocked: '本轮查证或输出校验未完成，不视为评审通过',
+  } as Record<string, string>,
   lookupTitle: '装配查询记录',
   lookupNote: '最多查询 3 次，范围由服务端固定。空结果不代表事实不存在；只记录公开工具行为。',
   lookupEmpty: '尚未调用工具；材料充分时可直接完成准备。',
@@ -38,6 +50,7 @@ export const backendMessages = {
   } as Record<string, string>,
   contextExcluded: '未纳入材料',
   sourceKinds: {
+    critic_evidence: '一致性查证快照',
     retrieved_fact: '检索事实',
     retrieved_passage: '检索原文（非世界事实）',
     retrieval_request: '检索范围与方法',

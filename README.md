@@ -418,4 +418,20 @@ go run ./cmd/inkloom -memory-eval
 4. [准备事务](internal/storage/postgres/preparation.go)：迁移 006 增加 `run_preparations` 保存基础输入；最终材料独立写入 `run_contexts`。封存前核对作者稿本版本，不覆盖既有快照。工具轨迹与 SSE 事件同事务；准备阶段重启标记中断，不自动重复调用。
 5. [用例接入](internal/app/lookup.go)：复用 Guard，工具 schema 和历史消息计入预算估计；Writer 与人审继续使用已落库调用历史，编号和预算不重置。页面“装配查询记录”展示查询、新增来源、版本与停止原因。
 
-当前仅开放装配助手的工具调用，一致性 Critic 自主查证属于 I11b。章内 CLI 演示仍使用固定输入；HTTP 才执行后台查询准备。工具请求失败不静默改成“无问题”，检索空结果不是事实不存在的证明；向量调用用量仍未合并到 Chat 用量栏。
+I11a 负责装配；一致性 Critic 自主查证见下方 I11b。章内 CLI 演示仍使用固定输入；HTTP 才执行后台查询准备。工具请求失败不静默改成“无问题”，检索空结果不是事实不存在的证明；向量调用用量仍未合并到 Chat 用量栏。
+
+
+### I11b：一致性 Critic 自主查证
+
+与装配助手不同，Critic 拿到的是本轮正文和明确事实。它可直接给出评审，也可先请求 `search_memory`，最多 3 次查询 / 4 次模型决策，最后输出 `findings`；明确缺证无法判断时输出 `decision=insufficient` 并停止。两种角色复用同一个有界循环；模型决定查什么，Go 决定能否执行。工具模式最终 JSON/Schema/证据校验失败即停止本轮，不额外调用格式修复；失败不算通过。
+
+学习顺序：
+
+1. [Critic 工具入口](internal/agents/consistency_tools.go)与[提示词 v2](internal/agents/prompts/hard_consistency.v2.tmpl)：冷读当前稿本，不接 Writer 历史、大纲和 AI 味结论；查询结果仍是只读数据。
+2. [证据边界](internal/domain/manuscript/evidence.go)：检索结果再次验证范围，已冻结同 ID 来源不能换版本/内容；只有 `fact` 可作硬规则，`passage` 只作原文。额外证据用于评审与授权修订，不修改 `run_contexts` 或 Bible。
+3. [用例与恢复](internal/app/consistency_lookup.go)：每轮固定来源目录，复用整条 run 的 Guard 预算。已完成且正文/基础材料摘要相符的查证可复用；未完成查证只能在作者显式恢复时重试，仍受累计预算限制。
+4. [证据事务](internal/storage/postgres/critic_lookup.go)：迁移 007 增加 `critic_lookups`，按 run + draftVersion 保存工具轨迹、原文和结论；与 `critic.lookup` SSE 同事务。作者改稿后拒绝迟到查证，定稿额外冻结各轮查证引用。
+
+准备页的后端试运行面板新增“一致性查证记录”，按稿本版本展示查询、来源和结果；点击来源可读原文并区分事实/片段。零查询显示“模型判断已有材料足够”。本阶段 HTTP 的自动评审和人改复检启用工具，CLI 仍保留固定输入的学习演示。总调用预算不增加；多次查证可能提前耗尽预算并停止/上报人工。向量成本暂未并入聊天用量；查证能力仍需真实故事集评测。
+
+本次真实验证需分开看：明确要求查证的协议样本成功完成一次 DeepSeek 工具调用、智谱检索和基于来源的 P0 判定；自主评审样本仍出现应查前文却直接返回空清单的情况。另一个无效引用被程序拦截。因此 I11b 已接通机制，尚不能把“零问题/零查询”当作可靠查证证明；下一轮应优先补少量缺证场景评测再调整策略。

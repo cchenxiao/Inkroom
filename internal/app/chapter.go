@@ -37,7 +37,7 @@ func ExecuteChapter(ctx context.Context, cfg config.Config, scenario string, opt
 	if err != nil {
 		return orchestration.ChapterState{}, err
 	}
-	var chat model.ChatModel = model.NewFake(steps)
+	var chat model.ChatModel = lookupFake{next: model.NewFake(steps)}
 	name := "fake"
 	if cfg.Model == "deepseek" {
 		chat, err = adapters.NewDeepSeek(cfg)

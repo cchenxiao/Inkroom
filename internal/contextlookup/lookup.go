@@ -25,10 +25,44 @@ var finalSchema = json.RawMessage(`{"type":"object","properties":{"decision":{"t
 // Run 最多3次工具请求、4次模型决策（第三次查询后仍需决定是否足够）。
 // Guard 另限制实际模型调用/重试/token。任何失败都不允许开始 Writer。
 func Run(ctx context.Context, chat model.ChatModel, bundle manuscript.ContextBundle, search Search, observe Observe) (result retrieval.Result, err error) {
+	raw, err := json.Marshal(bundle)
+	if err != nil {
+		return result, err
+	}
+	in, err := prompts.Render(model.Input{Role: "context_assembler", Purpose: model.Generate, Task: "检查固定材料；如有必要查询前情，最后明确 ready 或 insufficient。", Material: raw, OutputSchema: finalSchema})
+	if err != nil {
+		return result, err
+	}
+	result, _, err = Execute(ctx, chat, in, search, func(trace memory.LookupTrace, _ retrieval.Result) error {
+		if observe != nil {
+			return observe(trace)
+		}
+		return nil
+	}, func(out model.Output, _ retrieval.Result) error {
+		var final struct {
+			Decision string `json:"decision"`
+		}
+		if e := decode(out.Content, &final); e != nil || (final.Decision != "ready" && final.Decision != "insufficient") {
+			return fmt.Errorf("invalid context decision")
+		}
+		if final.Decision == "insufficient" {
+			return ErrInsufficient
+		}
+		return nil
+	})
+	return result, err
+}
+
+// ErrInsufficient 表示模型明确要求补充材料，不是空 findings 通过。
+var ErrInsufficient = fmt.Errorf("context remains insufficient; author input required")
+
+// Execute 是共享的有界工具循环。finish 校验各角色自己的最终输出，observe 仅接收公开行为及实际检索结果。
+func Execute(ctx context.Context, chat model.ChatModel, in model.Input, search Search, observe func(memory.LookupTrace, retrieval.Result) error, finish func(model.Output, retrieval.Result) error) (result retrieval.Result, usage model.Usage, err error) {
+	usage.Known = true
 	trace := memory.LookupTrace{Steps: []memory.LookupStep{}}
 	emit := func() error {
 		if observe != nil {
-			return observe(trace)
+			return observe(trace, result)
 		}
 		return nil
 	}
@@ -40,14 +74,6 @@ func Run(ctx context.Context, chat model.ChatModel, bundle manuscript.ContextBun
 			err = e
 		}
 	}()
-	raw, err := json.Marshal(bundle)
-	if err != nil {
-		return result, err
-	}
-	in, err := prompts.Render(model.Input{Role: "context_assembler", Purpose: model.Generate, Task: "检查固定材料；如有必要查询前情，最后明确 ready 或 insufficient。", Material: raw, OutputSchema: finalSchema})
-	if err != nil {
-		return result, err
-	}
 	in.Tools = []model.ToolDefinition{tool}
 	queries := map[string]bool{}
 	ids := map[string]bool{}
@@ -55,31 +81,31 @@ func Run(ctx context.Context, chat model.ChatModel, bundle manuscript.ContextBun
 	noGain := 0
 	for decision := 0; decision < 4; decision++ {
 		if e := ctx.Err(); e != nil {
-			return result, e
+			return result, usage, e
 		}
-		out, _, e := chat.Generate(ctx, in)
+		out, used, e := chat.Generate(ctx, in)
+		usage.InputTokens += used.InputTokens
+		usage.OutputTokens += used.OutputTokens
+		usage.Known = usage.Known && used.Known
 		if e != nil {
-			return result, e
+			return result, usage, e
 		}
 		if out.FinishReason == model.Complete && len(out.ToolCalls) == 0 {
-			var final struct {
-				Decision string `json:"decision"`
+			if e := finish(out, result); e != nil {
+				if e == ErrInsufficient {
+					trace.Stop = "insufficient"
+				}
+				return result, usage, e
 			}
-			if e := decode(out.Content, &final); e != nil || (final.Decision != "ready" && final.Decision != "insufficient") {
-				return result, fmt.Errorf("invalid context decision")
-			}
-			trace.Stop = final.Decision
-			if final.Decision != "ready" {
-				return result, fmt.Errorf("context remains insufficient; author input required")
-			}
-			return result, nil
+			trace.Stop = "ready"
+			return result, usage, nil
 		}
 		if out.FinishReason != model.ToolRequested || len(out.ToolCalls) != 1 {
-			return result, fmt.Errorf("expected exactly one native tool call")
+			return result, usage, fmt.Errorf("expected exactly one native tool call")
 		}
 		if len(trace.Steps) >= 3 {
 			trace.Stop = "limit"
-			return result, fmt.Errorf("context tool limit reached (3)")
+			return result, usage, fmt.Errorf("context tool limit reached (3)")
 		}
 		call := out.ToolCalls[0]
 		step := memory.LookupStep{CallID: call.ID, Status: "rejected", Refs: []memory.LookupRef{}}
@@ -97,11 +123,11 @@ func Run(ctx context.Context, chat model.ChatModel, bundle manuscript.ContextBun
 		}
 		trace.Steps = append(trace.Steps, step)
 		if e := emit(); e != nil {
-			return result, e
+			return result, usage, e
 		}
 		if !valid {
 			trace.Stop = "rejected"
-			return result, fmt.Errorf("tool name, arguments, ID or duplicate query rejected")
+			return result, usage, fmt.Errorf("tool name, arguments, ID or duplicate query rejected")
 		}
 		queries[key] = true
 		ids[call.ID] = true
@@ -111,12 +137,12 @@ func Run(ctx context.Context, chat model.ChatModel, bundle manuscript.ContextBun
 		n := len(trace.Steps) - 1
 		if e != nil {
 			trace.Steps[n].Status = "failed"
-			return result, e
+			return result, usage, e
 		}
 		// 稳定目录中同一来源不能在多轮查询里突然换版。
 		for _, h := range found.Context.Hits {
 			if old, ok := seen[h.Record.ID]; ok && old != h.Digest {
-				return result, fmt.Errorf("source changed during context lookup")
+				return result, usage, fmt.Errorf("source changed during context lookup")
 			}
 			trace.Steps[n].Refs = append(trace.Steps[n].Refs, memory.LookupRef{ID: h.Record.ID, Version: h.Record.Version, Digest: h.Digest})
 			if _, ok := seen[h.Record.ID]; !ok {
@@ -142,11 +168,11 @@ func Run(ctx context.Context, chat model.ChatModel, bundle manuscript.ContextBun
 			noGain = 0
 		}
 		if e := emit(); e != nil {
-			return result, e
+			return result, usage, e
 		}
 		if noGain >= 2 {
 			trace.Stop = "no_gain"
-			return result, fmt.Errorf("two searches produced no new sources; author input required")
+			return result, usage, fmt.Errorf("two searches produced no new sources; author input required")
 		}
 		// 只把筛选后的实际返回记录交给模型；不传被排除的文本或诊断详情。
 		response, _ := json.Marshal(struct {
@@ -154,12 +180,12 @@ func Run(ctx context.Context, chat model.ChatModel, bundle manuscript.ContextBun
 			Remaining int          `json:"remainingCalls"`
 		}{found.Context.Hits, 3 - len(trace.Steps)})
 		if len(response) > 16000 {
-			return result, fmt.Errorf("tool result exceeds context limit")
+			return result, usage, fmt.Errorf("tool result exceeds context limit")
 		}
 		in.Messages = append(in.Messages, model.Message{Role: "assistant", ToolCalls: out.ToolCalls}, model.Message{Role: "tool", ToolCallID: call.ID, Content: string(response)})
 	}
 	trace.Stop = "limit"
-	return result, fmt.Errorf("context decision limit reached")
+	return result, usage, fmt.Errorf("context decision limit reached")
 }
 func decode(raw string, out any) error {
 	if len(raw) > 4096 {

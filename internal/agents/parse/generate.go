@@ -107,3 +107,13 @@ func decode[T any](out model.Output, schema *jsonschema.Schema, validate func(T)
 	}
 	return value, nil
 }
+
+// Decode validates a final tool-loop response without making another model call.
+func Decode[T any](out model.Output, rawSchema []byte, validate func(T) error) (T, error) {
+	schema, err := compileSchema(rawSchema)
+	if err != nil {
+		var zero T
+		return zero, err
+	}
+	return decode(out, schema, validate)
+}

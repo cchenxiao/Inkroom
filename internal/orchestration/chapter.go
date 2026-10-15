@@ -17,6 +17,7 @@ import (
 )
 
 type Options struct {
+	ConsistencyCheck  ConsistencyCheck
 	CallHistory       []model.CallRecord
 	FrozenInput       *manuscript.FrozenInput // HTTP 在 Writer 前持久化；CLI 可由应用层即时装配。
 	BaseDraftVersion  int                     // 已持久化的章节版本；初稿从它递增。
@@ -97,7 +98,7 @@ func NewChapter(ctx context.Context, chat model.ChatModel, opts Options) (compos
 		state.CriticReviews = []CriticReview{}
 		state = start(state, "critics")
 		state.Metrics = style.Analyze(state.Segments, state.Context.BannedPhrases)
-		results, usage, err := reviewTogether(ctx, chat, state)
+		results, usage, err := reviewTogether(ctx, chat, state, opts.ConsistencyCheck)
 		state.CriticReviews = results
 		state.Usage.InputTokens += usage.InputTokens
 		state.Usage.OutputTokens += usage.OutputTokens
@@ -115,7 +116,11 @@ func NewChapter(ctx context.Context, chat model.ChatModel, opts Options) (compos
 	}
 	if err := g.AddLambdaNode("aggregate", compose.InvokableLambda(func(ctx context.Context, state ChapterState) (ChapterState, error) {
 		state = start(state, "aggregate")
-		report, err := review.Aggregate(state.Findings, state.Segments, state.DraftVersion, state.Context.FactSources()...)
+		evidence, err := state.ReviewContext()
+		if err != nil {
+			return state, err
+		}
+		report, err := review.Aggregate(state.Findings, state.Segments, state.DraftVersion, evidence.FactSources()...)
 		if err != nil {
 			return state, err
 		}
@@ -155,7 +160,11 @@ func NewChapter(ctx context.Context, chat model.ChatModel, opts Options) (compos
 			if node == "polisher" {
 				proposal, usage, err = agents.Polish(ctx, chat, state.Segments, state.Report.Findings, state.DraftVersion, state.Context.ProtectedTerms)
 			} else {
-				proposal, usage, err = agents.Rewrite(ctx, chat, state.Segments, state.Report, state.Context, state.Route)
+				var evidence manuscript.ContextBundle
+				evidence, err = state.ReviewContext()
+				if err == nil {
+					proposal, usage, err = agents.Rewrite(ctx, chat, state.Segments, state.Report, evidence, state.Route)
+				}
 			}
 			if err != nil {
 				return state, err

@@ -105,3 +105,11 @@ Run 新增 `inputDigest`、`commitId`，终态 `committed`，节点 `commit`；�
 - SSE 新增 `context.lookup`、`context.ready`，均沿用完整 run 快照和有序游标。最终输入原子封存后才出现 `inputDigest` 并进入 draft；装配助手的 `model.started/finished` 同样计入调用记录与总用量。
 - 无最终输入时页面展示准备状态，不请求清单、不误报为旧运行。`GET /runs/:id/context-manifest` 在输入封存前仍返回 409 `context_mismatch`；有 `inputDigest` 后再读取。
 - 作者改稿使准备失效，未冻结的输入不能启动 Writer；服务中断不自动重放查询。I9/I10 旧快照继续可读，不补造查询记录。
+
+
+### I11b：一致性查证
+
+- Run 增加 `criticLookups: [{draftVersion,inputDigest,review}]`。此处 `inputDigest` 是当前正文与基础材料的校验摘要，与顶层 Writer 冻结输入摘要不同；`review` 含 critic、draftVersion、status、findings、lookup、evidence。lookup 格式同装配轨迹；evidence 为实际检索结果（View、查询、来源完整原文/版本/摘要/种类）。
+- SSE 新增 `critic.lookup`，完整快照含所有轮次轨迹。查询进行中可先于 `result.criticReviews` 完成；成功时 stop=ready，表示查证和评审输出已校验，不表示问题清零。失败为 insufficient/blocked/rejected/no_gain/limit，不计评审通过。服务中断时保留最后步骤，须结合 run 状态展示。
+- 轨迹绑定稿本版本，已完成记录不可覆盖；正文变化使旧记录仅供历史查看。自动返工和人工修改的复检都使用该工具入口；已完成且输入摘要匹配的同版查证在显式恢复时复用。
+- 顶层 inputDigest/ContextManifest 不因 Critic 查证变化。定稿 refs 增加 `kind=critic_evidence`，id 为 run_id/v稿本版本，payload 包含该轮查证证据与轨迹，便于复现当时判定依据。

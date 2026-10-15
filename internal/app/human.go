@@ -30,14 +30,14 @@ func (s *gateStore) Set(ctx context.Context, id string, raw []byte) error {
 	return s.repo.SaveCheckpoint(ctx, id, raw, s.pending, s.actionID)
 }
 
-func ExecuteHuman(ctx context.Context, cfg config.Config, r Run, repo HumanRepository) error {
+func ExecuteHuman(ctx context.Context, cfg config.Config, r Run, repo HumanRepository, checks ...orchestration.ConsistencyCheck) error {
 	if r.Result == nil {
 		return ErrGateBlocked
 	}
 	var chat model.ChatModel
 	var err error
 	if r.Provider == "fake" {
-		chat = demo.NewHumanFake(*r.Result)
+		chat = lookupFake{next: demo.NewHumanFake(*r.Result)}
 	} else {
 		if cfg.Model != r.Provider || cfg.ModelName != r.Model {
 			return fmt.Errorf("恢复需要与原运行相同的供应商和模型配置")
@@ -56,13 +56,17 @@ func ExecuteHuman(ctx context.Context, cfg config.Config, r Run, repo HumanRepos
 		defer cancel()
 		return repo.RecordCall(save, r.ID, c)
 	}})
+	var check orchestration.ConsistencyCheck
+	if len(checks) > 0 {
+		check = checks[0]
+	}
 	cp := &gateStore{repo: repo, runID: r.ID}
 	actionID := ""
 	if r.PendingAction != nil {
 		actionID = r.PendingAction.ID
 	}
 	_, err = orchestration.RunHuman(ctx, *r.Result, prompts.Bind(guard), orchestration.HumanOptions{
-		RunID: r.ID, Action: r.PendingAction, Checkpoints: cp, Usage: guard.Usage,
+		ConsistencyCheck: check, RunID: r.ID, Action: r.PendingAction, Checkpoints: cp, Usage: guard.Usage,
 		Pause: func(s orchestration.ChapterState, id string) {
 			s.Usage = guard.Usage()
 			cp.pending = s

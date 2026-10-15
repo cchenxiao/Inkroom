@@ -2,16 +2,23 @@ import type { Finding, RunState } from '@/types/domain';
 
 /** I3 结果是隔离的单段候选，不是工作台正式稿本。 */
 export interface BackendRun extends Omit<RunState, 'status' | 'currentNode'> {
-  lookup?: {
-    steps: {
-      callId: string;
-      query: string;
+  lookup?: LookupTrace;
+  criticLookups?: {
+    draftVersion: number;
+    inputDigest: string;
+    review: {
+      critic: string;
+      draftVersion: number;
       status: string;
-      newSources: number;
-      refs: { id: string; version: number; digest: string }[];
-    }[];
-    stop?: string;
-  };
+      lookup?: LookupTrace;
+      evidence?: {
+        hits: {
+          record: { id: string; version: number; kind: 'fact' | 'passage'; text: string };
+          digest: string;
+        }[];
+      };
+    };
+  }[];
   inputDigest?: string;
   commitId?: string;
   eventSequence: number;
@@ -211,4 +218,15 @@ export interface BackendCommit {
   manifest: BackendManifest;
   segments: { id: string; text: string; version: number }[];
   refs: { kind: string; id: string; version: number; digest: string; payload: unknown }[];
+}
+
+export interface LookupTrace {
+  steps: {
+    callId: string;
+    query: string;
+    status: string;
+    newSources: number;
+    refs: { id: string; version: number; digest: string }[];
+  }[];
+  stop?: string;
 }

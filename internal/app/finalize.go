@@ -43,6 +43,7 @@ type FinalCommit struct {
 	Refs             []manuscript.VersionRef    `json:"refs"`
 }
 type FinalRepository interface {
+	CriticLookupRepository
 	CreatePreparingRun(context.Context, Run, manuscript.FrozenInput) error
 	PreparationInput(context.Context, string) (manuscript.FrozenInput, error)
 	SaveLookup(context.Context, string, memory.LookupTrace) error

@@ -9,7 +9,9 @@ export default function BackendLookupTrace({ run }: { run: BackendRun }) {
         {t.lookupTitle} · {run.lookup?.steps.length ?? 0}/3
       </summary>
       <p>{t.lookupNote}</p>
-      {!run.lookup?.steps.length && <p>{t.lookupEmpty}</p>}
+      {!run.lookup?.steps.length && (
+        <p>{run.lookup?.stop === 'ready' ? t.lookupNotNeeded : t.lookupEmpty}</p>
+      )}
       {run.lookup?.steps.map((step, index) => (
         <div key={`${index}-${step.callId}`}>
           <strong>

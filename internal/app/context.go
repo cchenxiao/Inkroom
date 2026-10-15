@@ -18,6 +18,7 @@ func prepareContext(cfg config.Config, scenario, runID string, base int, result 
 	if err != nil {
 		return manuscript.FrozenInput{}, err
 	}
+	bundle.POVCharacterID = CurrentMemoryView().POV
 	budget, output := cfg.ContextTokens, cfg.MaxOutputTokens
 	if budget == 0 {
 		budget = 8000

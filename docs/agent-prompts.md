@@ -256,4 +256,11 @@ HumanGate、版本比较、批准和幂等恢复全部由 Go 程序与数据库�
 
 模板为 `internal/agents/prompts/context_assembler.v1.tmpl`，沿用职责/契约/任务/只读材料的分隔。此角色使用原生 `tool_calls`，不把工具名和参数伪装成普通正文 JSON。工具只开放 `search_memory({query})`；查完后输出 `{"decision":"ready"}` 或 `{"decision":"insufficient"}`，这是“材料是否足够”的业务决定，不是自行声明 API 调用成功；供应商 finish_reason 仍由适配器校验。
 
-工具 schema 与结束决策 schema 在 `internal/contextlookup/lookup.go` 单处定义。Go 执行白名单、参数/重复检查、次数与用量限制；模型输出不授予权限。回传只包含可见来源原文、版本与剩余调用数，不包含被过滤的秘密文本。材料中的指令只作为数据；不保存隐藏思维链，不允许模型直接提交改写或提炼出的新事实。当前一致性 Critic 仍不调用工具。
+工具 schema 与结束决策 schema 在 `internal/contextlookup/lookup.go` 单处定义。Go 执行白名单、参数/重复检查、次数与用量限制；模型输出不授予权限。回传只包含可见来源原文、版本与剩余调用数，不包含被过滤的秘密文本。材料中的指令只作为数据；不保存隐藏思维链，不允许模型直接提交改写或提炼出的新事实。一致性 Critic 的工具契约见下节。
+
+
+## I11b · 一致性 Critic 工具提示词
+
+`hard_consistency.v2.tmpl` 保留 v1 的独立冷读、逐字证据、台词谎言与人工边界，增加按需原生 `search_memory({query})`。输入只含 draftVersion、segments、characters、facts；不含 Writer 对话、Beat 大纲或其他 Critic 的结论。工具结果中的 fact 与 passage 必须分开，搜不到不等于不存在。
+
+最终评审仍用 `ConsistencySchema` 的 findings；工具模式另允许 `{"decision":"insufficient"}`，表示缺证停止，不能用空 findings 代替，也不能输出 ready。Go 校验最终 Schema、稿本版本、原文引文和事实来源；模型声称有证据不代表通过。每轮最多 3 次工具查询、4 次模型决策，工具模式不额外修复坏 JSON；失败保留轨迹并阻止本轮通过。每轮证据独立保存，不回写 Writer 基础输入或正式设定。
