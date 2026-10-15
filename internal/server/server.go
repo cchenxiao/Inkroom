@@ -1,4 +1,4 @@
-// Package server 是 I3 最小 HTTP 外壳，内存运行记录不承担持久化恢复。
+// Package server 提供本地 HTTP；候选稿与运行记录由 Repository 持久化。
 package server
 
 import (
@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -19,37 +20,16 @@ import (
 	"inkloom/internal/config"
 	"inkloom/internal/demo"
 	"inkloom/internal/orchestration"
+	"inkloom/internal/storage/postgres"
 )
 
-type Run struct {
-	AllowLocalRewrite bool                        `json:"allowLocalRewrite"`
-	Scenario          string                      `json:"scenario"`
-	AutoRevise        bool                        `json:"autoRevise"`
-	Usage             model.Usage                 `json:"usage"`
-	ID                string                      `json:"id"`
-	ChapterID         string                      `json:"chapterId"`
-	BranchID          string                      `json:"branchId"`
-	DraftVersion      int                         `json:"draftVersion"`
-	Status            string                      `json:"status"`
-	CurrentNode       string                      `json:"currentNode"`
-	ReviseRound       int                         `json:"reviseRound"`
-	MaxRounds         int                         `json:"maxRounds"`
-	Tokens            int                         `json:"tokens"`
-	ElapsedMs         int64                       `json:"elapsedMs"`
-	Nodes             []any                       `json:"nodes"`
-	Provider          string                      `json:"provider"`
-	Model             string                      `json:"model"`
-	Result            *orchestration.ChapterState `json:"result,omitempty"`
-	Error             string                      `json:"error,omitempty"`
-}
-
 type service struct {
-	mu     sync.Mutex
-	runs   map[string]Run
-	order  []string
-	active bool
-	root   context.Context
-	cfg    config.Config
+	mu      sync.Mutex
+	active  bool
+	workers sync.WaitGroup
+	root    context.Context
+	cfg     config.Config
+	repo    app.Repository
 }
 
 func Serve(ctx context.Context) error {
@@ -57,28 +37,70 @@ func Serve(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	if cfg.DatabaseURL == "" {
+		return fmt.Errorf("INKLOOM_DATABASE_URL is required for HTTP mode; CLI remains available without a database")
+	}
+	setup, cancelSetup := context.WithTimeout(ctx, 15*time.Second)
+	repo, err := postgres.Open(setup, cfg.DatabaseURL)
+	cancelSetup()
+	if err != nil {
+		return err
+	}
+	defer repo.Close()
 	root, cancel := context.WithCancel(ctx)
 	defer cancel()
-	s := &service{runs: map[string]Run{}, root: root, cfg: cfg}
+	s := &service{root: root, cfg: cfg, repo: repo}
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /api/runs", s.start)
 	mux.HandleFunc("GET /api/runs/{id}", s.get)
+	mux.HandleFunc("GET /api/runs", s.list)
+	mux.HandleFunc("GET /api/runs/{id}/calls", s.calls)
+	mux.HandleFunc("GET /api/chapters/{id}", s.draft)
+	mux.HandleFunc("GET /api/chapters/{id}/versions", s.versions)
+	mux.HandleFunc("PATCH /api/segments/{id}", s.edit)
 	mux.HandleFunc("GET /api/health", func(w http.ResponseWriter, r *http.Request) {
 		scenarios := []string{"normal"}
 		if cfg.Model == "fake" {
 			scenarios = demo.Scenarios
 		}
-		send(w, 200, map[string]any{"status": "ok", "provider": cfg.Model, "model": cfg.ModelName, "scenarios": scenarios})
+		send(w, 200, map[string]any{"status": "ok", "provider": cfg.Model, "model": cfg.ModelName, "scenarios": scenarios, "storage": "postgres"})
 	})
-	srv := &http.Server{Addr: "127.0.0.1:8080", Handler: mux, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second, WriteTimeout: 10 * time.Second, IdleTimeout: 60 * time.Second}
+	srv := &http.Server{Addr: "127.0.0.1:8080", Handler: mux, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second, WriteTimeout: 15 * time.Second, IdleTimeout: 60 * time.Second}
+	monitorDone := make(chan struct{})
+	go func() {
+		defer close(monitorDone)
+		ticker := time.NewTicker(3 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-root.Done():
+				return
+			case <-ticker.C:
+				check, stop := context.WithTimeout(root, 2*time.Second)
+				err := repo.Ping(check)
+				stop()
+				if err != nil {
+					slog.Error("database service lease lost; stopping execution")
+					cancel()
+					return
+				}
+			}
+		}
+	}()
+	shutdownDone := make(chan struct{})
 	go func() {
 		<-root.Done()
-		shutdownCtx, stop := context.WithTimeout(context.Background(), 5*time.Second)
+		shutdown, stop := context.WithTimeout(context.Background(), 5*time.Second)
 		defer stop()
-		_ = srv.Shutdown(shutdownCtx)
+		_ = srv.Shutdown(shutdown)
+		close(shutdownDone)
 	}()
-	slog.Info("server.started", "address", srv.Addr, "provider", cfg.Model)
+	slog.Info("server.started", "address", srv.Addr, "provider", cfg.Model, "storage", "postgres")
 	err = srv.ListenAndServe()
+	cancel()
+	<-shutdownDone
+	<-monitorDone
+	s.workers.Wait()
 	if errors.Is(err, http.ErrServerClosed) {
 		return nil
 	}
@@ -95,6 +117,7 @@ func (s *service) start(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var in struct {
+		DraftVersion      *int   `json:"draftVersion"`
 		AllowLocalRewrite bool   `json:"allowLocalRewrite"`
 		Scenario          string `json:"scenario"`
 		ChapterID         string `json:"chapterId"`
@@ -113,7 +136,7 @@ func (s *service) start(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if in.ChapterID != "ch7" || in.BranchID != "main" {
-		fail(w, 400, "unsupported_scope", "I3 仅支持内置 ch7/main 的单段试运行")
+		fail(w, 400, "unsupported_scope", "当前仅支持内置 ch7/main 的单段候选")
 		return
 	}
 	if in.MaxRounds == 0 {
@@ -136,69 +159,127 @@ func (s *service) start(w http.ResponseWriter, r *http.Request) {
 		fail(w, 409, "run_busy", "已有试运行，请等待完成")
 		return
 	}
-	if len(s.order) >= 50 {
-		delete(s.runs, s.order[0])
-		s.order = s.order[1:]
+	if in.DraftVersion == nil || *in.DraftVersion < 0 {
+		s.mu.Unlock()
+		fail(w, 400, "missing_version", "请先读取当前稿本，再携带 draftVersion 启动")
+		return
 	}
-	run := Run{AllowLocalRewrite: in.AllowLocalRewrite, Scenario: in.Scenario, ID: rand.Text(), ChapterID: in.ChapterID, BranchID: in.BranchID, DraftVersion: 1, Status: "running", CurrentNode: "draft", MaxRounds: in.MaxRounds, AutoRevise: in.AutoRevise, Nodes: []any{}, Provider: s.cfg.Model, Model: s.cfg.ModelName}
-	s.runs[run.ID] = run
-	s.order = append(s.order, run.ID)
+	run := app.Run{ID: rand.Text(), CreatedAt: time.Now().UTC(), BaseDraftVersion: *in.DraftVersion, DraftVersion: *in.DraftVersion, ChapterID: in.ChapterID, BranchID: in.BranchID, Scenario: in.Scenario, AllowLocalRewrite: in.AllowLocalRewrite, AutoRevise: in.AutoRevise, MaxRounds: in.MaxRounds, Status: "running", CurrentNode: "draft", Nodes: []any{}, Provider: s.cfg.Model, Model: s.cfg.ModelName}
+	if err := s.repo.CreateRun(r.Context(), run); err != nil {
+		s.mu.Unlock()
+		storageError(w, err)
+		return
+	}
 	s.active = true
+	s.workers.Add(1)
 	s.mu.Unlock()
 	go s.execute(run)
 	send(w, http.StatusAccepted, run)
 }
 
-func (s *service) execute(run Run) {
+func (s *service) execute(run app.Run) {
+	defer s.workers.Done()
+	defer func() { s.mu.Lock(); s.active = false; s.mu.Unlock() }()
 	ctx, cancel := context.WithTimeout(s.root, 2*time.Minute)
 	defer cancel()
 	started := time.Now()
-	result, err := app.ExecuteChapter(ctx, s.cfg, run.Scenario, orchestration.Options{AllowLocalRewrite: run.AllowLocalRewrite, MaxRounds: run.MaxRounds, AutoRevise: run.AutoRevise, OnProgress: func(state orchestration.ChapterState) {
-		s.mu.Lock()
-		current := s.runs[run.ID]
-		current.CurrentNode = state.CurrentNode
-		current.DraftVersion = state.DraftVersion
-		current.ReviseRound = state.ReviseRound
-		current.Usage = state.Usage
-		current.Tokens = state.Usage.InputTokens + state.Usage.OutputTokens
-		current.ElapsedMs = time.Since(started).Milliseconds()
-		current.Result = &state
-		s.runs[run.ID] = current
-		s.mu.Unlock()
-	}})
-	run.Usage = result.Usage
-	run.ElapsedMs = time.Since(started).Milliseconds()
-	run.Tokens = result.Usage.InputTokens + result.Usage.OutputTokens
-	if err != nil {
-		run.Status = "failed"
-		run.Error = err.Error()
-	} else {
-		run.Status = result.Status
+	expected := run.BaseDraftVersion
+	var persistErr error
+	update := func(state orchestration.ChapterState) {
+		run.CurrentNode = state.CurrentNode
+		run.DraftVersion = state.DraftVersion
+		run.ReviseRound = state.ReviseRound
+		run.Usage = state.Usage
+		run.Tokens = state.Usage.InputTokens + state.Usage.OutputTokens
+		run.ElapsedMs = time.Since(started).Milliseconds()
+		run.Result = &state
 	}
-	run.CurrentNode = result.CurrentNode
-	run.DraftVersion = result.DraftVersion
-	run.ReviseRound = result.ReviseRound
-	run.Result = &result
-	s.mu.Lock()
-	s.runs[run.ID] = run
-	s.active = false
-	s.mu.Unlock()
+	result, err := app.ExecuteChapter(ctx, s.cfg, run.Scenario, orchestration.Options{
+		BaseDraftVersion: run.BaseDraftVersion, AllowLocalRewrite: run.AllowLocalRewrite, AutoRevise: run.AutoRevise, MaxRounds: run.MaxRounds,
+		OnModelCall: func(_ context.Context, c model.CallRecord) error {
+			// 取消后的最后一次调用结果也要记账；独立短超时，不能发起新的模型调用。
+			save, stop := context.WithTimeout(context.Background(), 5*time.Second)
+			defer stop()
+			return s.repo.RecordCall(save, run.ID, c)
+		},
+		OnProgress: func(state orchestration.ChapterState) {
+			if persistErr != nil {
+				return
+			}
+			update(state)
+			if persistErr = s.repo.SaveProgress(ctx, run, expected); persistErr != nil {
+				cancel()
+				return
+			}
+			expected = state.DraftVersion
+		},
+	})
+	finish, stop := context.WithTimeout(context.Background(), 5*time.Second)
+	defer stop()
+	if persistErr != nil || err != nil {
+		status, reason := "failed", "运行未完成，保留最后成功落库的稿本"
+		if errors.Is(persistErr, app.ErrVersionMismatch) {
+			status = "stale"
+			reason = "稿本已变更，旧评审和迟到修订失效"
+		} else if s.root.Err() != nil {
+			status = "interrupted"
+			reason = "服务中断，已保存数据保留；本阶段不自动续跑"
+		}
+		if saveErr := s.repo.StopRun(finish, run.ID, status, reason); saveErr != nil {
+			slog.Error("run stop could not be persisted")
+		}
+		return
+	}
+	update(result)
+	run.Status = result.Status
+	if saveErr := s.repo.SaveProgress(finish, run, expected); saveErr != nil {
+		status, reason := "failed", "最终状态写入失败，保留已落库稿本"
+		if errors.Is(saveErr, app.ErrVersionMismatch) {
+			status = "stale"
+			reason = "稿本已变更，旧结果失效"
+		}
+		_ = s.repo.StopRun(finish, run.ID, status, reason)
+	}
 }
-
 func (s *service) get(w http.ResponseWriter, r *http.Request) {
-	s.mu.Lock()
-	id := r.PathValue("id")
-	if id == "latest" && len(s.order) > 0 {
-		id = s.order[len(s.order)-1]
-	}
-	run, ok := s.runs[id]
-	s.mu.Unlock()
-	if !ok {
-		fail(w, 404, "run_not_found", "运行记录不存在或已随服务重启清空")
+	run, err := s.repo.GetRun(r.Context(), r.PathValue("id"))
+	if err != nil {
+		storageError(w, err)
 		return
 	}
 	send(w, 200, run)
 }
+func (s *service) list(w http.ResponseWriter, r *http.Request) {
+	runs, err := s.repo.ListRuns(r.Context())
+	if err != nil {
+		storageError(w, err)
+		return
+	}
+	send(w, 200, runs)
+}
+func (s *service) calls(w http.ResponseWriter, r *http.Request) {
+	calls, err := s.repo.Calls(r.Context(), r.PathValue("id"))
+	if err != nil {
+		storageError(w, err)
+		return
+	}
+	send(w, 200, calls)
+}
+func storageError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, app.ErrVersionMismatch):
+		fail(w, 409, "version_mismatch", "稿本已更新；保留本地修改，请读取新版本后人工对照")
+	case errors.Is(err, app.ErrRunBusy):
+		fail(w, 409, "run_busy", "已有运行，请等待或查询其状态")
+	case errors.Is(err, app.ErrNotFound):
+		fail(w, 404, "not_found", "记录不存在")
+	case errors.Is(err, app.ErrInvalidWrite):
+		fail(w, 400, "invalid_write", "修改内容、定位或版本无效")
+	default:
+		fail(w, 503, "storage_unavailable", "数据库暂不可用，不能确认写入；请重新读取结果后再操作")
+	}
+}
+
 func fail(w http.ResponseWriter, status int, code, message string) {
 	send(w, status, map[string]string{"code": code, "message": message})
 }

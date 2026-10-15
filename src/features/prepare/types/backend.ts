@@ -2,8 +2,10 @@ import type { Finding, RunState } from '@/types/domain';
 
 /** I3 结果是隔离的单段候选，不是工作台正式稿本。 */
 export interface BackendRun extends Omit<RunState, 'status' | 'currentNode'> {
-  status: RunState['status'] | 'needs_human';
+  status: RunState['status'] | 'needs_human' | 'stale' | 'interrupted';
   currentNode: string;
+  baseDraftVersion: number;
+  createdAt: string;
   allowLocalRewrite: boolean;
   scenario: string;
   autoRevise: boolean;
@@ -98,3 +100,29 @@ export type BackendFinding = Pick<
   possibleDialogueLie?: boolean;
   requiresHuman?: boolean;
 };
+
+export interface StoredDraft {
+  chapterId: string;
+  branchId: string;
+  draftVersion: number;
+  segments: { id: string; text: string; version: number }[];
+  findings: BackendFinding[];
+  reviewed: boolean;
+  origin: string;
+  createdAt: string;
+}
+export interface StoredVersion {
+  draftVersion: number;
+  origin: string;
+  createdAt: string;
+}
+export interface ModelCall {
+  number: number;
+  role: string;
+  purpose: string;
+  promptVersion: string;
+  phase: 'started' | 'finished' | 'unknown';
+  success: boolean;
+  elapsedMs: number;
+  usage: { inputTokens: number; outputTokens: number; known: boolean };
+}

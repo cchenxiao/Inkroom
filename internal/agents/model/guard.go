@@ -12,6 +12,7 @@ import (
 var ErrBudgetExhausted = errors.New("run model budget exhausted before call")
 
 type Limits struct {
+	OnCall                      func(context.Context, CallRecord) error
 	Calls, Tokens, OutputTokens int
 	Timeout                     time.Duration
 	ModelName                   string
@@ -49,6 +50,12 @@ func (g *Guard) Generate(ctx context.Context, in Input) (Output, Usage, error) {
 		g.reserved += estimate
 		call := g.calls
 		g.mu.Unlock()
+		record := CallRecord{Number: call, Attempt: attempt + 1, Role: in.Role, Purpose: in.Purpose, PromptVersion: in.PromptVersion, SchemaVersion: in.SchemaVersion, Model: g.limits.ModelName, Phase: "started"}
+		if g.limits.OnCall != nil {
+			if err := g.limits.OnCall(ctx, record); err != nil {
+				return Output{}, total, fmt.Errorf("record model call intent: %w", err)
+			}
+		}
 		callCtx, cancel := context.WithTimeout(ctx, g.limits.Timeout)
 		started := time.Now()
 		out, usage, err := g.inner.Generate(callCtx, in)
@@ -68,6 +75,16 @@ func (g *Guard) Generate(ctx context.Context, in Input) (Output, Usage, error) {
 		g.usage.Known = g.usage.Known && usage.Known
 		g.mu.Unlock()
 		slog.InfoContext(ctx, "llm_call", "role", in.Role, "purpose", in.Purpose, "prompt_version", in.PromptVersion, "schema_version", in.SchemaVersion, "model", g.limits.ModelName, "call", call, "attempt", attempt+1, "elapsed_ms", time.Since(started).Milliseconds(), "input_tokens", usage.InputTokens, "output_tokens", usage.OutputTokens, "usage_known", usage.Known, "finish", out.FinishReason, "success", err == nil)
+		record.Phase = "finished"
+		record.ElapsedMs = time.Since(started).Milliseconds()
+		record.Usage = usage
+		record.FinishReason = out.FinishReason
+		record.Success = err == nil
+		if g.limits.OnCall != nil {
+			if saveErr := g.limits.OnCall(ctx, record); saveErr != nil {
+				return Output{}, total, fmt.Errorf("record model call outcome: %w", saveErr)
+			}
+		}
 		if err == nil {
 			return out, total, nil
 		}

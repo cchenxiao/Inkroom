@@ -5,11 +5,13 @@ import type { BackendFinding, BackendRun } from '../types/backend';
 /** 只读展示候选与逐轮 patch，不把试运行内容写回工作台。 */
 export default function BackendTrialResult({
   result,
+  stale = false,
 }: {
+  stale?: boolean;
   result: NonNullable<BackendRun['result']>;
 }) {
   const reviews = result.reviews ?? [];
-  const reviewed = reviews.some((r) => r.draftVersion === result.draftVersion);
+  const reviewed = !stale && reviews.some((r) => r.draftVersion === result.draftVersion);
   const findings = result.report.findings ?? [];
   const sources = result.context
     ? [
@@ -37,6 +39,7 @@ export default function BackendTrialResult({
   );
   return (
     <>
+      {stale && <p role="alert">{t.staleResult}</p>}
       <h3>{t.critics}</h3>
       {(result.criticReviews ?? []).map((c) => (
         <p key={c.critic}>
@@ -66,7 +69,7 @@ export default function BackendTrialResult({
         ))}
       </div>
       <h3>{t.findings}</h3>
-      {!reviewed && <p>{t.reviewPending}</p>}
+      {!reviewed && !stale && <p>{t.reviewPending}</p>}
       {reviewed && findings.length === 0 && <p>{t.noFindings}</p>}
       {reviewed && findings.map(finding)}
       <details open>

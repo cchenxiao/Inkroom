@@ -21,6 +21,10 @@ func ExecuteChapter(ctx context.Context, cfg config.Config, scenario string, opt
 	if err != nil {
 		return orchestration.ChapterState{}, err
 	}
+	steps, err = demo.WithBaseVersion(steps, opts.BaseDraftVersion)
+	if err != nil {
+		return orchestration.ChapterState{}, err
+	}
 	var chat model.ChatModel = model.NewFake(steps)
 	name := "fake"
 	if cfg.Model == "deepseek" {
@@ -30,7 +34,7 @@ func ExecuteChapter(ctx context.Context, cfg config.Config, scenario string, opt
 		}
 		name = cfg.ModelName
 	}
-	guard := model.NewGuard(chat, model.Limits{Calls: cfg.MaxCalls, Tokens: cfg.MaxTokens, OutputTokens: cfg.MaxOutputTokens, Timeout: cfg.CallTimeout, ModelName: name})
+	guard := model.NewGuard(chat, model.Limits{OnCall: opts.OnModelCall, Calls: cfg.MaxCalls, Tokens: cfg.MaxTokens, OutputTokens: cfg.MaxOutputTokens, Timeout: cfg.CallTimeout, ModelName: name})
 	var latest orchestration.ChapterState
 	observer := opts.OnProgress
 	opts.OnProgress = func(state orchestration.ChapterState) {

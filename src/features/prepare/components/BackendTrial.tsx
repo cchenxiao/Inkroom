@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import BackendTrialResult from './BackendTrialResult';
+import BackendDraft from './BackendDraft';
+import BackendRunHistory from './BackendRunHistory';
 import { Badge, Button, Card, Select } from '@/shared/ui';
 import { ApiError } from '@/shared/api/client';
 import { backendMessages as t } from '@/shared/lib/messages-backend';
@@ -27,6 +29,12 @@ export default function BackendTrial() {
       client.setQueryData(['backend-trial', run.id], run);
       setRunId(run.id);
     },
+    onError: (error) => {
+      if (error instanceof ApiError && error.body.code === 'version_mismatch') {
+        void client.invalidateQueries({ queryKey: ['backend-draft'] });
+        void client.invalidateQueries({ queryKey: ['backend-trial'] });
+      }
+    },
   });
   const query = useQuery({
     queryKey: ['backend-trial', runId],
@@ -52,6 +60,16 @@ export default function BackendTrial() {
     },
   });
   const run = query.data;
+  const draft = useQuery({
+    queryKey: ['backend-draft'],
+    queryFn: () => trialApi.draft(),
+    enabled: expanded,
+    retry: false,
+    refetchInterval: run?.status === 'running' ? 1000 : false,
+  });
+  useEffect(() => {
+    if (expanded) void client.invalidateQueries({ queryKey: ['backend-draft'] });
+  }, [client, expanded, run?.draftVersion, run?.status]);
   const busy = start.isPending || run?.status === 'running';
   // POST 网络失败可能发生在服务端已受理之后，禁止自动重试。
   const uncertain = start.isError && !(start.error instanceof ApiError && start.error.status < 500);
@@ -119,10 +137,11 @@ export default function BackendTrial() {
           <Button
             variant="default"
             loading={busy}
-            disabled={uncertain}
-            disabledReason={uncertain ? t.unknown : t.pending}
+            disabled={uncertain || !draft.data || draft.isError}
+            disabledReason={uncertain ? t.unknown : t.draftError}
             onClick={() =>
               start.mutate({
+                draftVersion: draft.data!.draftVersion,
                 autoRevise,
                 allowLocalRewrite,
                 scenario: health.data?.provider === 'fake' ? scenario : 'normal',
@@ -130,7 +149,7 @@ export default function BackendTrial() {
               })
             }
           >
-            {t.start}
+            {draft.data?.draftVersion ? t.regenerate : t.start}
           </Button>
           <Button
             onClick={() => recover.mutate()}
@@ -140,6 +159,20 @@ export default function BackendTrial() {
           >
             {t.recover}
           </Button>
+          {draft.isPending && <p>{t.loadDraft}</p>}
+          {draft.isError && (
+            <p role="alert">
+              {t.draftError} <Button onClick={() => void draft.refetch()}>{t.reloadDraft}</Button>
+            </p>
+          )}
+          {draft.data && <BackendDraft draft={draft.data} />}
+          <BackendRunHistory
+            runId={runId}
+            onSelect={(id) => {
+              setRunId(id);
+              start.reset();
+            }}
+          />
           {recover.isError && (
             <p role="alert">
               {recover.error instanceof ApiError && recover.error.status === 404
@@ -150,7 +183,11 @@ export default function BackendTrial() {
           {!run && !error && <p className="text-dim">{t.empty}</p>}
           {error && (
             <div role="alert">
-              <p>{t.connection}</p>
+              <p>
+                {error instanceof ApiError && error.body.code === 'version_mismatch'
+                  ? t.startVersionMismatch
+                  : t.connection}
+              </p>
               <p>{error instanceof ApiError ? error.message : t.queryError}</p>
               {runId && <Button onClick={() => void query.refetch()}>{t.retry}</Button>}
               {uncertain && <p>{t.unknown}</p>}
@@ -160,15 +197,19 @@ export default function BackendTrial() {
             <>
               <div className="page-actions" aria-live="polite">
                 <Badge tone={run.status === 'failed' ? 'danger' : 'ai'}>
-                  {run.status === 'running'
-                    ? t.running
-                    : run.status === 'completed'
-                      ? t.completed
-                      : run.status === 'waiting_human' || run.status === 'needs_human'
-                        ? t.waitingHuman
-                        : run.status === 'escalated'
-                          ? t.escalated
-                          : t.failed}
+                  {run.status === 'stale'
+                    ? t.staleRun
+                    : run.status === 'interrupted'
+                      ? t.interruptedRun
+                      : run.status === 'running'
+                        ? t.running
+                        : run.status === 'completed'
+                          ? t.completed
+                          : run.status === 'waiting_human' || run.status === 'needs_human'
+                            ? t.waitingHuman
+                            : run.status === 'escalated'
+                              ? t.escalated
+                              : t.failed}
                 </Badge>
                 <span>
                   {run.provider} · {run.model}
@@ -189,7 +230,15 @@ export default function BackendTrial() {
                 {run.maxRounds} · {t.version} v{run.draftVersion}
               </p>
               {run.result?.stopReason && <p role="status">{run.result.stopReason}</p>}
-              {run.result && <BackendTrialResult result={run.result} />}
+              {run.result && (
+                <BackendTrialResult
+                  result={run.result}
+                  stale={
+                    run.status === 'stale' ||
+                    (!!draft.data && run.result.draftVersion !== draft.data.draftVersion)
+                  }
+                />
+              )}
             </>
           )}
         </div>

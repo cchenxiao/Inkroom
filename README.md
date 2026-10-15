@@ -2,7 +2,7 @@
 
 面向作者的多智能体中短篇小说协作工作台。稿件是主界面，AI 提交候选，作者决定方向与定稿。当前仓库已包含可运行的前端工程；Go 后端仍按原设计分模块开发。
 
-## Go 后端：当前进度 I0–I5
+## Go 后端：当前进度 I0–I6
 
 Go 1.24.1+，Eino 固定为 v0.9.21。在项目根目录运行：
 
@@ -17,7 +17,7 @@ go build ./...
 
 默认执行 `writer → 双 Critic 并行 → aggregate → 按需分级修订 → 双 Critic 复检`，stdout 输出候选正文、逐轮 patch 和评审历史，stderr 输出节点日志。`bad-json-repaired` 演示一次格式修复；`invalid-quote` 在 Critic 的内容校验阶段失败并以非零状态退出，不输出成功报告。
 
-无配置时使用离线 Fake。I3 支持 DeepSeek 与最小 HTTP / 前端轮询；I5 已支持双评审与授权范围内的分级返工；尚未接数据库或可靠 SSE。每次运行新建隔离的单段候选 v1，不更新工作台第 7 章 v3。Fake 用量为 0，不代表真实生成成本。
+无配置时使用离线 Fake。I3 支持 DeepSeek 与最小 HTTP / 前端轮询；I5 支持双评审与授权范围内的分级返工；I6 已接 PostgreSQL。HTTP 候选稿按章/分支持续递增版本，CLI 仍每次从 v1 离线演示。准备页的 Go 候选与工作台的 MSW 第 7 章 v3 分开；可靠 SSE 留到 I8。Fake 用量为 0，不代表真实生成成本。
 
 建议按以下顺序读代码：
 
@@ -66,7 +66,7 @@ go run ./cmd/inkloom -serve   # 本机 HTTP 服务，127.0.0.1:8080
 pnpm dev
 ```
 
-打开 `/prepare`，展开「单段试运行 · Go 后端」，点击生成后轮询结果。`/go-api` 由 Vite 代理到 Go 的 `/api`，其余功能保持现有 MSW 数据。部署前需要同等反向代理或配置 `VITE_GO_API_BASE_URL`。试运行结果只保留在服务内存，重启清空；同一时刻只执行一条，避免误触并发付费。请求中断后可点击「恢复最近一次运行」，通过 `GET /runs/latest` 找回服务内存中的结果，避免直接重发付费请求。
+打开 `/prepare`，展开「单段试运行 · Go 后端」，点击生成后轮询结果。`/go-api` 由 Vite 代理到 Go 的 `/api`，其余功能保持现有 MSW 数据。部署前需要同等反向代理或配置 `VITE_GO_API_BASE_URL`。I6 起需先按下节配置 PostgreSQL，结果重启后仍可查询；同一时刻只执行一条，避免误触并发付费。请求中断后可点击「恢复最近一次运行」，通过 `GET /runs/latest` 找回已保存的结果，不会重新调用模型。
 
 学习顺序：
 
@@ -143,7 +143,40 @@ go test -race ./internal/domain/... ./internal/orchestration/...
 
 `POST /api/runs` 新增 `allowLocalRewrite`（默认 false）与 `scenario`（默认 normal，其他场景仅 Fake）。`GET /api/health` 返回可用场景。准备页展开「单段试运行」可选择 Fake 场景、分别授权微改与局部重写，查看双 Critic、路由、证据版本与 diff。返回的 `result.criticReviews` 为本轮独立结果，`reviews` 仅保存收齐并校验后的聚合历史。
 
-当前仍使用内置单段与内存运行记录；双 Critic 是 Eino 的一个并行评审节点，内部 fan-out/barrier，不伪装为四角色全部落地。`needs_human` 是停止态，恢复留到 I7。冻结输入不等于数据库乐观锁，跨窗口版本竞争留到 I6。局部重写只是候选，模型语义检查仍可能漏报，章末必须人工审核。默认模型调用上限升至 14，覆盖三轮双评审及少量格式修复；token 预算仍为 24000。
+I5 使用内置单段，I6 已将候选稿与运行记录落库；双 Critic 是 Eino 的一个并行评审节点，内部 fan-out/barrier，不伪装为四角色全部落地。`needs_human` 是停止态，恢复留到 I7。冻结输入固定本次模型材料，I6 数据库乐观锁另行保护落库版本。局部重写只是候选，模型语义检查仍可能漏报，章末必须人工审核。默认模型调用上限升至 14，覆盖三轮双评审及少量格式修复；token 预算仍为 24000。
+
+### I6：持久化候选稿与乐观并发
+
+先启动本机 PostgreSQL（已验证 17.5），创建专用数据库：
+
+```bash
+createdb inkloom_learning
+# 在 .env.backend.local 中设置：
+# INKLOOM_DATABASE_URL=postgres:///inkloom_learning?host=/tmp
+go run ./cmd/inkloom -serve
+```
+
+`createdb` 仅首次运行；已有数据库无需重建。使用 TCP/密码连接时按本机实际配置填写 URL。启动自动执行内嵌迁移，已应用文件有校验和；后续变更新增迁移，不能修改已应用版本。CLI 不依赖数据库。
+
+准备页新增「已保存候选稿」、人工编辑、稿本历史和运行历史。重新生成以页面读到的版本为基准，生成新的候选版本；不是接着当前正文续写。人工保存后旧评审失效，事实影响分析与复检流程后续接入。当前只支持内置 `ch7/main`，正文仍是单段学习样例。
+
+按顺序读这四处：
+
+1. [Repository 契约](internal/app/repository.go)：应用层声明需要保存/读取什么，HTTP 与 Agent 不拼 SQL。
+2. [最小迁移](internal/storage/postgres/migrations/001_core.sql)：章节版本头、正文快照、段落历史、运行、评审、模型调用。定位字段用列，完整快照用 JSONB；尚未扩展完整 Bible、检索与正式 commit。
+3. [版本事务](internal/storage/postgres/drafts.go)：正文快照、段历史、版本号一起成功或一起回滚。写入比较作者打开稿本时的 `draftVersion`，不符返回 `409 version_mismatch`；行锁保证检查到提交之间不被其他事务插入。
+4. [执行与存储连接](internal/server/server.go)：节点完成保存进度，模型调用前记 `started`、返回后记 `finished`。迟到的 Agent 写入失败即停止，不覆盖作者稿本。
+
+页面收到 409 保留本地文字，展示远端新稿；作者对照后才能明确保存为下一版。历史正文不可变，评审绑定对应稿本版本。服务重启将未结束运行标为 `interrupted`、未收到结果的调用标为 `unknown`，保留未知用量，**不会自动重发模型请求**。单服务数据库会话锁避免第二个进程误恢复活跃任务。可恢复的人审 checkpoint 属于 I7。
+
+只新增一组真实数据库集成测试，复用本机 PostgreSQL，不引入 testcontainers；显式使用独立测试库，仅清理本测试创建的记录：
+
+```bash
+createdb inkloom_i6_test
+INKLOOM_TEST_DATABASE_URL='postgres:///inkloom_i6_test?host=/tmp' go test -race ./internal/storage/postgres ./internal/orchestration
+```
+
+覆盖同版并发一胜一负、晚到 Agent 拒写、事务回滚、历史保留及重连后的中断标记。另已通过 HTTP 保存/409/历史查询和强制终止服务后重启检查；模型请求发给本地可控服务，不产生真实费用。
 
 ## 启动
 

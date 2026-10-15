@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"syscall"
 	"time"
 
 	"inkloom/internal/agents/parse"
@@ -22,7 +23,7 @@ import (
 func main() {
 	scenario := flag.String("scenario", "normal", "offline scenario (see -list-scenarios)")
 	list := flag.Bool("list-scenarios", false, "list offline scenarios")
-	serve := flag.Bool("serve", false, "serve the local I3 HTTP API")
+	serve := flag.Bool("serve", false, "serve the local PostgreSQL-backed HTTP API")
 	maxRounds := flag.Int("max-rounds", 2, "maximum revision rounds: 2 or 3")
 	localRewrite := flag.Bool("allow-local-rewrite", false, "authorize current scene/beat candidate rewriting, preserving locked facts and event outcome")
 	autoRevise := flag.Bool("auto-revise", true, "authorize P2 edits to the isolated candidate")
@@ -33,7 +34,7 @@ func main() {
 		}
 		return
 	}
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	var err error
 	if *serve {

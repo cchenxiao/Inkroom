@@ -371,3 +371,14 @@ input[type='checkbox'] {
   background: color-mix(in srgb, var(--ai) 25%, transparent);
   text-decoration: none;
 }
+
+.backend-draft-input {
+  width: 100%;
+  padding: 16px;
+  border: 1px solid var(--human);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--text);
+  line-height: 1.9;
+  resize: vertical;
+}

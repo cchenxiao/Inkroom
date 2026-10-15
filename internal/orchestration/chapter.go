@@ -17,6 +17,8 @@ import (
 )
 
 type Options struct {
+	BaseDraftVersion  int // 已持久化的章节版本；初稿从它递增。
+	OnModelCall       func(context.Context, model.CallRecord) error
 	AllowLocalRewrite bool // 仅授权冻结的本场/Beat 候选正文，不能改设定/大纲/事件结果。
 	MaxRounds         int
 	AutoRevise        bool // 仅授权当前隔离候选稿的 P2 字句修改，不包括正式稿和 Bible。
@@ -73,13 +75,14 @@ func NewChapter(ctx context.Context, chat model.ChatModel, opts Options) (compos
 		if err != nil {
 			return ChapterState{}, err
 		}
-		state := start(ChapterState{Context: frozen, Report: review.Report{Findings: []review.Finding{}}, Status: "running", MaxRounds: opts.MaxRounds, Segments: []manuscript.Segment{}, Reviews: []review.Report{}, Revisions: []revision.Revision{}, Metrics: []style.Stats{}}, "draft")
+		state := start(ChapterState{Context: frozen, Report: review.Report{Findings: []review.Finding{}}, Status: "running", DraftVersion: opts.BaseDraftVersion, MaxRounds: opts.MaxRounds, Segments: []manuscript.Segment{}, Reviews: []review.Report{}, Revisions: []revision.Revision{}, Metrics: []style.Stats{}}, "draft")
 		segment, usage, err := agents.Write(ctx, chat, frozen)
 		if err != nil {
 			return state, err
 		}
+		segment.Version = opts.BaseDraftVersion + 1
 		state.Segments = []manuscript.Segment{segment}
-		state.DraftVersion = 1
+		state.DraftVersion = opts.BaseDraftVersion + 1
 		state.Usage = usage
 		return done(state), nil
 	})); err != nil {

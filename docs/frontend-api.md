@@ -40,3 +40,21 @@
 服务端校验补丁自己的 draftVersion、变更预览自己的 draftVersion、审批所依赖的 run.draftVersion，不能通过提交最新版本号绕过旧候选保护。角色对白谎言与世界事实分开保存；忽略 P0 不会解除定稿门禁。
 
 分支合并的 GET 预览包含目标与来源各章节版本映射 `targetVersions` / `sourceVersions`；POST 必须回传捕获的映射。预览之后任一相关版本变化都要求重新预览、重新裁决。合并时每个实际修改的目标章节分别递增版本并作废旧审稿；新增、删除与重排分段按整章结构冲突处理。
+
+## Go 候选接口（I6 已实现）
+
+准备页 `trialApi` 使用独立 `backendApi`；浏览器 `/go-api` 代理至 Go `/api`，不走 MSW。下面是已落地的学习切片，不能将上文完整 Mock 契约视为已全部接入后端。
+
+| 接口 | 契约 |
+| --- | --- |
+| GET /health | provider、model、scenarios、storage=postgres |
+| POST /runs | chapterId、branchId、**draftVersion 必填**（无稿为 0）、autoRevise、allowLocalRewrite、maxRounds、scenario；返回 202 + Run |
+| GET /runs；GET /runs/:id | 最近 50 条运行快照；单条含 result/usage，id 可为 latest |
+| GET /runs/:id/calls | CallRecord[]：角色、prompt/schema 版本、attempt、耗时、usage、started/finished/unknown，不包含密钥或原始请求 |
+| GET /chapters/:id?branchId=&version= | Draft：chapterId、branchId、draftVersion、segments、findings、reviewed、origin、createdAt；version 省略/0 取当前版 |
+| GET /chapters/:id/versions?branchId= | 最近 100 个正文版本（版本号、来源、时间） |
+| PATCH /segments/:id | chapterId、branchId、draftVersion、text → 新 Draft；整次事务保存候选并作废旧 run |
+
+当前仅 `ch7/main` 可启动。修改候选不修改 MSW 正式稿或 Bible。版本不匹配返回 `409 {code:"version_mismatch",message}`；已有执行返回 `409 run_busy`。人工修改后新版本的 `reviewed=false`，旧报告仅供历史查看；`stale` 不能当成本稿评审。重启后未完成运行是 `interrupted`，仅支持读取，不支持恢复执行。
+
+接口类型见 `src/features/prepare/types/backend.ts` 与 `internal/app/repository.go`。I7 再实现审批/恢复，I8 再接可靠事件流。

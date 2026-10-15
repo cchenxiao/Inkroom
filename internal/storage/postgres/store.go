@@ -1,0 +1,123 @@
+// Package postgres 实现 I6 持久化，不承担 Agent checkpoint/resume。
+package postgres
+
+import (
+	"context"
+	"crypto/sha256"
+	_ "embed"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"time"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"inkloom/internal/app"
+)
+
+//go:embed migrations/001_core.sql
+var migration string
+
+type Store struct {
+	pool  *pgxpool.Pool
+	lease *pgx.Conn
+}
+
+var _ app.Repository = (*Store)(nil)
+
+// Open 校验迁移并持有独立会话锁，避免第二个服务误把仍在运行的任务标记中断。
+func Open(ctx context.Context, url string) (*Store, error) {
+	cfg, err := pgxpool.ParseConfig(url)
+	if err != nil {
+		return nil, fmt.Errorf("invalid database configuration")
+	}
+	cfg.MaxConns = 6
+	cfg.ConnConfig.ConnectTimeout = 5 * time.Second
+	cfg.ConnConfig.RuntimeParams["statement_timeout"] = "10000"
+	pool, err := pgxpool.NewWithConfig(ctx, cfg)
+	if err != nil {
+		return nil, fmt.Errorf("cannot initialize database pool")
+	}
+	s := &Store{pool: pool}
+	if err = pool.Ping(ctx); err != nil {
+		pool.Close()
+		return nil, fmt.Errorf("cannot connect to PostgreSQL; check INKLOOM_DATABASE_URL")
+	}
+	s.lease, err = pgx.ConnectConfig(ctx, cfg.ConnConfig.Copy())
+	if err != nil {
+		pool.Close()
+		return nil, fmt.Errorf("cannot acquire database service session")
+	}
+	var held bool
+	err = s.lease.QueryRow(ctx, "SELECT pg_try_advisory_lock(730061,1)").Scan(&held)
+	if err != nil || !held {
+		s.Close()
+		return nil, fmt.Errorf("another Inkloom service owns this database")
+	}
+	if err = s.migrate(ctx); err != nil {
+		s.Close()
+		return nil, err
+	}
+	if err = s.recoverInterrupted(ctx); err != nil {
+		s.Close()
+		return nil, err
+	}
+	return s, nil
+}
+func (s *Store) Close() {
+	if s.lease != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+		_ = s.lease.Close(ctx)
+	}
+	s.pool.Close()
+}
+func (s *Store) Ping(ctx context.Context) error { return s.lease.Ping(ctx) }
+func (s *Store) migrate(ctx context.Context) error {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(context.Background())
+	if _, err = tx.Exec(ctx, "CREATE TABLE IF NOT EXISTS schema_migrations(version integer PRIMARY KEY, checksum text NOT NULL)"); err != nil {
+		return err
+	}
+	checksum := fmt.Sprintf("%x", sha256.Sum256([]byte(migration)))
+	var existing string
+	err = tx.QueryRow(ctx, "SELECT checksum FROM schema_migrations WHERE version=1").Scan(&existing)
+	if errors.Is(err, pgx.ErrNoRows) {
+		if _, err = tx.Exec(ctx, migration); err != nil {
+			return fmt.Errorf("apply migration 001: %w", err)
+		}
+		if _, err = tx.Exec(ctx, "INSERT INTO schema_migrations VALUES(1,$1)", checksum); err != nil {
+			return err
+		}
+	} else if err != nil {
+		return err
+	} else if existing != checksum {
+		return fmt.Errorf("migration 001 changed after application; add a new migration")
+	}
+	return tx.Commit(ctx)
+}
+func (s *Store) recoverInterrupted(ctx context.Context) error {
+	rows, err := s.pool.Query(ctx, "SELECT id FROM runs WHERE status='running'")
+	if err != nil {
+		return err
+	}
+	ids, err := pgx.CollectRows(rows, pgx.RowTo[string])
+	if err != nil {
+		return err
+	}
+	for _, id := range ids {
+		if err = s.StopRun(ctx, id, "interrupted", "服务曾中断，保留已落库候选；本阶段不自动续跑或重发模型调用"); err != nil {
+			return err
+		}
+	}
+	_, err = s.pool.Exec(ctx, `UPDATE llm_calls SET phase='unknown',record=jsonb_set(record,'{phase}','"unknown"') WHERE phase='started'`)
+	return err
+}
+func decodeRun(raw []byte) (app.Run, error) {
+	var r app.Run
+	err := json.Unmarshal(raw, &r)
+	return r, err
+}

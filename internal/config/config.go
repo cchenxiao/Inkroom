@@ -11,6 +11,7 @@ import (
 )
 
 type Config struct {
+	DatabaseURL     string
 	Model           string
 	APIKey          string
 	ModelName       string
@@ -32,7 +33,7 @@ func Load() (Config, error) {
 	if name != "fake" && name != "deepseek" {
 		return Config{}, fmt.Errorf("INKLOOM_MODEL must be fake or deepseek")
 	}
-	cfg := Config{Model: name, APIKey: os.Getenv("DEEPSEEK_API_KEY"), ModelName: env("DEEPSEEK_MODEL", "deepseek-flash"), BaseURL: env("DEEPSEEK_BASE_URL", "https://api.deepseek.com"), CallTimeout: 60 * time.Second}
+	cfg := Config{DatabaseURL: os.Getenv("INKLOOM_DATABASE_URL"), Model: name, APIKey: os.Getenv("DEEPSEEK_API_KEY"), ModelName: env("DEEPSEEK_MODEL", "deepseek-flash"), BaseURL: env("DEEPSEEK_BASE_URL", "https://api.deepseek.com"), CallTimeout: 60 * time.Second}
 	if name == "deepseek" && cfg.APIKey == "" {
 		return Config{}, fmt.Errorf("DEEPSEEK_API_KEY is required")
 	}
