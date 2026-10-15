@@ -23,3 +23,9 @@ type WriterOutput struct {
 type CriticOutput struct {
 	Findings []review.Finding `json:"findings"`
 }
+
+//go:embed hard_consistency.v1.json
+var ConsistencySchema []byte
+
+//go:embed reviser.v1.json
+var ReviserSchema []byte

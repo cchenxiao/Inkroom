@@ -9,6 +9,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -16,27 +17,30 @@ import (
 	"inkloom/internal/agents/model"
 	"inkloom/internal/app"
 	"inkloom/internal/config"
+	"inkloom/internal/demo"
 	"inkloom/internal/orchestration"
 )
 
 type Run struct {
-	AutoRevise   bool                        `json:"autoRevise"`
-	Usage        model.Usage                 `json:"usage"`
-	ID           string                      `json:"id"`
-	ChapterID    string                      `json:"chapterId"`
-	BranchID     string                      `json:"branchId"`
-	DraftVersion int                         `json:"draftVersion"`
-	Status       string                      `json:"status"`
-	CurrentNode  string                      `json:"currentNode"`
-	ReviseRound  int                         `json:"reviseRound"`
-	MaxRounds    int                         `json:"maxRounds"`
-	Tokens       int                         `json:"tokens"`
-	ElapsedMs    int64                       `json:"elapsedMs"`
-	Nodes        []any                       `json:"nodes"`
-	Provider     string                      `json:"provider"`
-	Model        string                      `json:"model"`
-	Result       *orchestration.ChapterState `json:"result,omitempty"`
-	Error        string                      `json:"error,omitempty"`
+	AllowLocalRewrite bool                        `json:"allowLocalRewrite"`
+	Scenario          string                      `json:"scenario"`
+	AutoRevise        bool                        `json:"autoRevise"`
+	Usage             model.Usage                 `json:"usage"`
+	ID                string                      `json:"id"`
+	ChapterID         string                      `json:"chapterId"`
+	BranchID          string                      `json:"branchId"`
+	DraftVersion      int                         `json:"draftVersion"`
+	Status            string                      `json:"status"`
+	CurrentNode       string                      `json:"currentNode"`
+	ReviseRound       int                         `json:"reviseRound"`
+	MaxRounds         int                         `json:"maxRounds"`
+	Tokens            int                         `json:"tokens"`
+	ElapsedMs         int64                       `json:"elapsedMs"`
+	Nodes             []any                       `json:"nodes"`
+	Provider          string                      `json:"provider"`
+	Model             string                      `json:"model"`
+	Result            *orchestration.ChapterState `json:"result,omitempty"`
+	Error             string                      `json:"error,omitempty"`
 }
 
 type service struct {
@@ -60,7 +64,11 @@ func Serve(ctx context.Context) error {
 	mux.HandleFunc("POST /api/runs", s.start)
 	mux.HandleFunc("GET /api/runs/{id}", s.get)
 	mux.HandleFunc("GET /api/health", func(w http.ResponseWriter, r *http.Request) {
-		send(w, 200, map[string]string{"status": "ok", "provider": cfg.Model, "model": cfg.ModelName})
+		scenarios := []string{"normal"}
+		if cfg.Model == "fake" {
+			scenarios = demo.Scenarios
+		}
+		send(w, 200, map[string]any{"status": "ok", "provider": cfg.Model, "model": cfg.ModelName, "scenarios": scenarios})
 	})
 	srv := &http.Server{Addr: "127.0.0.1:8080", Handler: mux, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second, WriteTimeout: 10 * time.Second, IdleTimeout: 60 * time.Second}
 	go func() {
@@ -87,10 +95,12 @@ func (s *service) start(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var in struct {
-		ChapterID  string `json:"chapterId"`
-		BranchID   string `json:"branchId"`
-		MaxRounds  int    `json:"maxRounds"`
-		AutoRevise bool   `json:"autoRevise"`
+		AllowLocalRewrite bool   `json:"allowLocalRewrite"`
+		Scenario          string `json:"scenario"`
+		ChapterID         string `json:"chapterId"`
+		BranchID          string `json:"branchId"`
+		MaxRounds         int    `json:"maxRounds"`
+		AutoRevise        bool   `json:"autoRevise"`
 	}
 	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096))
 	decoder.DisallowUnknownFields()
@@ -113,6 +123,13 @@ func (s *service) start(w http.ResponseWriter, r *http.Request) {
 		fail(w, 400, "invalid_rounds", "maxRounds must be 2 or 3")
 		return
 	}
+	if in.Scenario == "" {
+		in.Scenario = "normal"
+	}
+	if !slices.Contains(demo.Scenarios, in.Scenario) || (s.cfg.Model != "fake" && in.Scenario != "normal") {
+		fail(w, 400, "invalid_scenario", "演示故障场景仅支持 Fake 模型")
+		return
+	}
 	s.mu.Lock()
 	if s.active {
 		s.mu.Unlock()
@@ -123,7 +140,7 @@ func (s *service) start(w http.ResponseWriter, r *http.Request) {
 		delete(s.runs, s.order[0])
 		s.order = s.order[1:]
 	}
-	run := Run{ID: rand.Text(), ChapterID: in.ChapterID, BranchID: in.BranchID, DraftVersion: 1, Status: "running", CurrentNode: "draft", MaxRounds: in.MaxRounds, AutoRevise: in.AutoRevise, Nodes: []any{}, Provider: s.cfg.Model, Model: s.cfg.ModelName}
+	run := Run{AllowLocalRewrite: in.AllowLocalRewrite, Scenario: in.Scenario, ID: rand.Text(), ChapterID: in.ChapterID, BranchID: in.BranchID, DraftVersion: 1, Status: "running", CurrentNode: "draft", MaxRounds: in.MaxRounds, AutoRevise: in.AutoRevise, Nodes: []any{}, Provider: s.cfg.Model, Model: s.cfg.ModelName}
 	s.runs[run.ID] = run
 	s.order = append(s.order, run.ID)
 	s.active = true
@@ -136,7 +153,7 @@ func (s *service) execute(run Run) {
 	ctx, cancel := context.WithTimeout(s.root, 2*time.Minute)
 	defer cancel()
 	started := time.Now()
-	result, err := app.ExecuteChapter(ctx, s.cfg, "normal", orchestration.Options{MaxRounds: run.MaxRounds, AutoRevise: run.AutoRevise, OnProgress: func(state orchestration.ChapterState) {
+	result, err := app.ExecuteChapter(ctx, s.cfg, run.Scenario, orchestration.Options{AllowLocalRewrite: run.AllowLocalRewrite, MaxRounds: run.MaxRounds, AutoRevise: run.AutoRevise, OnProgress: func(state orchestration.ChapterState) {
 		s.mu.Lock()
 		current := s.runs[run.ID]
 		current.CurrentNode = state.CurrentNode

@@ -9,6 +9,15 @@ import { trialApi } from '../api/backend';
 export default function BackendTrial() {
   const [runId, setRunId] = useState<string | null>(null);
   const client = useQueryClient();
+  const [expanded, setExpanded] = useState(false);
+  const health = useQuery({
+    queryKey: ['backend-health'],
+    enabled: expanded,
+    queryFn: trialApi.health,
+    retry: false,
+  });
+  const [allowLocalRewrite, setAllowLocalRewrite] = useState(false);
+  const [scenario, setScenario] = useState('normal');
   const [autoRevise, setAutoRevise] = useState(true);
   const [maxRounds, setMaxRounds] = useState<2 | 3>(2);
   const start = useMutation({
@@ -49,11 +58,42 @@ export default function BackendTrial() {
   const error = start.error ?? query.error;
   return (
     <Card className="backend-trial">
-      <details>
+      <details onToggle={(event) => setExpanded(event.currentTarget.open)}>
         <summary>{t.title}</summary>
         <div className="page-stack">
           <p className="text-dim">{t.description}</p>
+          {health.data && (
+            <p>
+              {t.provider}：{health.data.provider} / {health.data.model}
+            </p>
+          )}
           <div className="backend-controls">
+            {health.data?.provider === 'fake' && (
+              <label>
+                {t.scenario}
+                <Select
+                  aria-label={t.scenario}
+                  value={scenario}
+                  disabled={busy || uncertain}
+                  onChange={(e) => setScenario(e.target.value)}
+                >
+                  {health.data.scenarios.map((s) => (
+                    <option key={s} value={s}>
+                      {t.scenarios[s] ?? s}
+                    </option>
+                  ))}
+                </Select>
+              </label>
+            )}
+            <label>
+              <input
+                type="checkbox"
+                checked={allowLocalRewrite}
+                disabled={busy || uncertain}
+                onChange={(e) => setAllowLocalRewrite(e.target.checked)}
+              />{' '}
+              {t.localRewrite}
+            </label>
             <label>
               <input
                 type="checkbox"
@@ -81,7 +121,14 @@ export default function BackendTrial() {
             loading={busy}
             disabled={uncertain}
             disabledReason={uncertain ? t.unknown : t.pending}
-            onClick={() => start.mutate({ autoRevise, maxRounds })}
+            onClick={() =>
+              start.mutate({
+                autoRevise,
+                allowLocalRewrite,
+                scenario: health.data?.provider === 'fake' ? scenario : 'normal',
+                maxRounds,
+              })
+            }
           >
             {t.start}
           </Button>
@@ -117,7 +164,7 @@ export default function BackendTrial() {
                     ? t.running
                     : run.status === 'completed'
                       ? t.completed
-                      : run.status === 'waiting_human'
+                      : run.status === 'waiting_human' || run.status === 'needs_human'
                         ? t.waitingHuman
                         : run.status === 'escalated'
                           ? t.escalated

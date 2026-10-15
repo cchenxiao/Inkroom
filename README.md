@@ -2,7 +2,7 @@
 
 面向作者的多智能体中短篇小说协作工作台。稿件是主界面，AI 提交候选，作者决定方向与定稿。当前仓库已包含可运行的前端工程；Go 后端仍按原设计分模块开发。
 
-## Go 后端：当前进度 I0–I4
+## Go 后端：当前进度 I0–I5
 
 Go 1.24.1+，Eino 固定为 v0.9.21。在项目根目录运行：
 
@@ -15,9 +15,9 @@ go vet ./...
 go build ./...
 ```
 
-默认执行 `writer → critic → aggregate → 按需 polisher → critic`，stdout 输出候选正文、逐轮 patch 和评审历史，stderr 输出节点日志。`bad-json-repaired` 演示一次格式修复；`invalid-quote` 在 Critic 的内容校验阶段失败并以非零状态退出，不输出成功报告。
+默认执行 `writer → 双 Critic 并行 → aggregate → 按需分级修订 → 双 Critic 复检`，stdout 输出候选正文、逐轮 patch 和评审历史，stderr 输出节点日志。`bad-json-repaired` 演示一次格式修复；`invalid-quote` 在 Critic 的内容校验阶段失败并以非零状态退出，不输出成功报告。
 
-无配置时使用离线 Fake。I3 支持 DeepSeek 与最小 HTTP / 前端轮询；I4 已支持授权范围内的句级返工；尚未接数据库或可靠 SSE。每次运行新建隔离的单段候选 v1，不更新工作台第 7 章 v3。Fake 用量为 0，不代表真实生成成本。
+无配置时使用离线 Fake。I3 支持 DeepSeek 与最小 HTTP / 前端轮询；I5 已支持双评审与授权范围内的分级返工；尚未接数据库或可靠 SSE。每次运行新建隔离的单段候选 v1，不更新工作台第 7 章 v3。Fake 用量为 0，不代表真实生成成本。
 
 建议按以下顺序读代码：
 
@@ -28,7 +28,7 @@ go build ./...
 5. [评审规则](internal/domain/review/review.go)：校验引用与版本、去重、按严重度排序。
 6. [运行入口](cmd/inkloom/main.go)：把模型、演示材料和图装配起来。
 
-修改 [演示数据](internal/demo/chapter.json) 可以观察正文、引用和评审结果的关系。I0–I3 以编译、静态检查和 CLI 场景验收；I4 仅增加循环边界、patch 原子校验、指标三组关键测试。Eino API 参考其 [官方 Graph 文档](https://www.cloudwego.io/zh/docs/eino/core_modules/chain_and_graph_orchestration/chain_graph_introduction/)。
+修改 [演示数据](internal/demo/chapter.json) 可以观察正文、引用和评审结果的关系。I0–I3 以编译、静态检查和 CLI 场景验收；I4 增加循环边界、patch 原子校验、指标三组关键测试；I5 增加一组路由、并发与失败保护测试。Eino API 参考其 [官方 Graph 文档](https://www.cloudwego.io/zh/docs/eino/core_modules/chain_and_graph_orchestration/chain_graph_introduction/)。
 
 ### I2：模型输出如何变成可信数据
 
@@ -51,7 +51,7 @@ Schema 与响应类型放在 [contracts](internal/agents/contracts/contracts.go)
 | `invalid-quote` / `invalid-version` / `repair-invalid-quote` | 报 `invalid_content`，修复后的内容也不能绕过业务校验 |
 | `refused` / `truncated` / `empty` | 分别报 `model_refused` / `model_truncated` / `empty_response`，不修复 |
 
-日志 `model.call` 区分 `generate` 与 `repair`。仅初审（`-auto-revise=false`）调用两次模型，有格式修复时共三次；I4 每轮返工另需 Polisher 与 Critic 两次调用，用量均累加。`errors.As` 提取错误类别，调用方无需匹配错误文本。
+日志 `model.call` 区分 `generate` 与 `repair`。I5 仅初审（`-auto-revise=false`，默认不授权局部重写）调用三次模型：Writer + 两个 Critic；每轮返工另需一个 Reviser 和两个 Critic，共三次。格式修复另外计入调用预算，用量均累加。`errors.As` 提取错误类别，调用方无需匹配错误文本。
 
 本阶段校验 Finding 的引用、稿本版本和修复范围枚举，I4 在此基础上加入 patch 的 oldText、受保护词与执行授权校验。Schema 合法也不等于文学判断正确，真实模型效果与修复内容是否忠实需要 I3 开始的真实样本评估。
 
@@ -110,7 +110,40 @@ go test ./...
 
 `POST /api/runs` 新增 `autoRevise`（未传为 false）和生效的 `maxRounds`（2/3）。轮询返回当前节点、候选版本、轮次，以及 `result.revisions/reviews/metrics/stopReason`。本版未复检时不展示旧版评审为通过；预算耗尽、失败也保留最后候选。`waiting_human/escalated` 当前是停止态，续跑与持久化人审留待后续迭代。
 
-默认 Fake 一轮删除套话后到 v2；`revise-limit` 刻意来回换套话，证明第 2 轮失败停在 v3，不启动第 3 轮。当前词级保护不等于语义一致性证明；未登记实体、新事实或含蓄因果变化仍需 I5 一致性 Critic 检查。
+默认 Fake 一轮删除套话后到 v2；`revise-limit` 刻意来回换套话，证明第 2 轮失败停在 v3，不启动第 3 轮。当前词级保护不等于语义一致性证明；I5 已补一致性 Critic 复检，但未提供的事实和含蓄因果变化仍可能漏报。
+
+### I5：双 Critic 并行与分级修复
+
+```text
+冻结 Context → Writer → [一致性 Critic ∥ AI 味 Critic] → barrier → Aggregate
+                              ↑                              ├─ P0 → 当前 Beat 修订
+                              │                              ├─ P1 → 当前场景修订
+                              └──── 新候选版本 ← 范围校验 ←───┤─ P2 → 句级微改
+                                                             └─ 越权/事实裁决 → needs_human
+```
+
+按这个顺序读代码：
+1. `internal/domain/manuscript/context.go`：深拷贝人物硬特质/knows 与事实来源，固定版本；knows 不被当成全知名单。
+2. `internal/agents/consistency.go`：一致性角色只拿正文与事实；`critic.go` 继续只拿正文与语言统计。相同模型通过不同材料与契约扮演独立角色。
+3. `internal/orchestration/critics.go`：两个 goroutine 各写一个结果槽，`WaitGroup.Wait()` 是 barrier；任一失败取消同伴并阻断本轮，不能拿另一份通过代替。主协程再统一写 state。
+4. `internal/domain/review/route.go`：纯程序按 P0/P1/P2 决定范围，再判断授权；P3 仅提示，明确事实裁决除外。
+5. `internal/agents/reviser.go` 与 `internal/domain/revision/scoped.go`：模型提局部重写 patch，程序校验基准版本、目标和全文锚点；应用后返回双 Critic。模型不拥有改设定/存储权限。
+
+```bash
+INKLOOM_MODEL=fake go run ./cmd/inkloom -scenario hard-conflict
+INKLOOM_MODEL=fake go run ./cmd/inkloom -scenario hard-conflict -allow-local-rewrite
+INKLOOM_MODEL=fake go run ./cmd/inkloom -scenario scene-gap -allow-local-rewrite
+INKLOOM_MODEL=fake go run ./cmd/inkloom -scenario cross-chapter -allow-local-rewrite
+INKLOOM_MODEL=fake go run ./cmd/inkloom -scenario dialogue-lie
+INKLOOM_MODEL=fake go run ./cmd/inkloom -scenario handedness
+go test -race ./internal/domain/... ./internal/orchestration/...
+```
+
+第一条 P0 停在 v1 等作者，第二条在授权内修复到 v2 并双重复检；跨章和台词真伪始终交人。“左撇子”样例仅 P3，不误判为右手功能障碍。`critic-failed/invalid-rule/rewrite-stale/rewrite-unsafe` 分别演示必要评审失败、伪造事实引文、过期和越界 patch。
+
+`POST /api/runs` 新增 `allowLocalRewrite`（默认 false）与 `scenario`（默认 normal，其他场景仅 Fake）。`GET /api/health` 返回可用场景。准备页展开「单段试运行」可选择 Fake 场景、分别授权微改与局部重写，查看双 Critic、路由、证据版本与 diff。返回的 `result.criticReviews` 为本轮独立结果，`reviews` 仅保存收齐并校验后的聚合历史。
+
+当前仍使用内置单段与内存运行记录；双 Critic 是 Eino 的一个并行评审节点，内部 fan-out/barrier，不伪装为四角色全部落地。`needs_human` 是停止态，恢复留到 I7。冻结输入不等于数据库乐观锁，跨窗口版本竞争留到 I6。局部重写只是候选，模型语义检查仍可能漏报，章末必须人工审核。默认模型调用上限升至 14，覆盖三轮双评审及少量格式修复；token 预算仍为 24000。
 
 ## 启动
 

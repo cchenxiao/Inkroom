@@ -17,30 +17,33 @@ import (
 )
 
 type Options struct {
-	MaxRounds  int
-	AutoRevise bool // 仅授权当前隔离候选稿的 P2 字句修改，不包括正式稿和 Bible。
-	OnProgress func(ChapterState)
+	AllowLocalRewrite bool // 仅授权冻结的本场/Beat 候选正文，不能改设定/大纲/事件结果。
+	MaxRounds         int
+	AutoRevise        bool // 仅授权当前隔离候选稿的 P2 字句修改，不包括正式稿和 Bible。
+	OnProgress        func(ChapterState)
 }
 
 type ChapterState struct {
-	Context      manuscript.ContextBundle `json:"context"`
-	DraftVersion int                      `json:"draftVersion"`
-	Segments     []manuscript.Segment     `json:"segments"`
-	Findings     []review.Finding         `json:"-"`
-	Report       review.Report            `json:"report"`
-	Reviews      []review.Report          `json:"reviews"`
-	Metrics      []style.Stats            `json:"metrics"`
-	Revisions    []revision.Revision      `json:"revisions"`
-	ReviseRound  int                      `json:"reviseRound"`
-	MaxRounds    int                      `json:"maxRounds"`
-	Status       string                   `json:"status"`
-	CurrentNode  string                   `json:"currentNode"`
-	StopReason   string                   `json:"stopReason,omitempty"`
-	Usage        model.Usage              `json:"usage"`
+	CriticReviews []CriticReview           `json:"criticReviews"`
+	Route         review.Decision          `json:"route"`
+	Context       manuscript.ContextBundle `json:"context"`
+	DraftVersion  int                      `json:"draftVersion"`
+	Segments      []manuscript.Segment     `json:"segments"`
+	Findings      []review.Finding         `json:"-"`
+	Report        review.Report            `json:"report"`
+	Reviews       []review.Report          `json:"reviews"`
+	Metrics       []style.Stats            `json:"metrics"`
+	Revisions     []revision.Revision      `json:"revisions"`
+	ReviseRound   int                      `json:"reviseRound"`
+	MaxRounds     int                      `json:"maxRounds"`
+	Status        string                   `json:"status"`
+	CurrentNode   string                   `json:"currentNode"`
+	StopReason    string                   `json:"stopReason,omitempty"`
+	Usage         model.Usage              `json:"usage"`
 }
 
-// NewChapter 的条件回边：aggregate → polisher → critic → aggregate。
-// 初审不计返工；每次尝试 Polish 才增加轮数，格式修复只占模型调用预算。
+// NewChapter 的条件回边：aggregate → polisher/scene_reviser/structural_reviser → critics → aggregate。
+// 初审不计返工；每次执行选中的修订节点增加轮数，格式修复只占模型调用预算。
 func NewChapter(ctx context.Context, chat model.ChatModel, opts Options) (compose.Runnable[manuscript.ContextBundle, ChapterState], error) {
 	if opts.MaxRounds == 0 {
 		opts.MaxRounds = 2
@@ -66,8 +69,12 @@ func NewChapter(ctx context.Context, chat model.ChatModel, opts Options) (compos
 	}
 	g := compose.NewGraph[manuscript.ContextBundle, ChapterState]()
 	if err := g.AddLambdaNode("writer", compose.InvokableLambda(func(ctx context.Context, in manuscript.ContextBundle) (ChapterState, error) {
-		state := start(ChapterState{Context: in, Report: review.Report{Findings: []review.Finding{}}, Status: "running", MaxRounds: opts.MaxRounds, Segments: []manuscript.Segment{}, Reviews: []review.Report{}, Revisions: []revision.Revision{}, Metrics: []style.Stats{}}, "draft")
-		segment, usage, err := agents.Write(ctx, chat, in)
+		frozen, err := in.Freeze()
+		if err != nil {
+			return ChapterState{}, err
+		}
+		state := start(ChapterState{Context: frozen, Report: review.Report{Findings: []review.Finding{}}, Status: "running", MaxRounds: opts.MaxRounds, Segments: []manuscript.Segment{}, Reviews: []review.Report{}, Revisions: []revision.Revision{}, Metrics: []style.Stats{}}, "draft")
+		segment, usage, err := agents.Write(ctx, chat, frozen)
 		if err != nil {
 			return state, err
 		}
@@ -79,67 +86,100 @@ func NewChapter(ctx context.Context, chat model.ChatModel, opts Options) (compos
 		return nil, err
 	}
 	if err := g.AddLambdaNode("critic", compose.InvokableLambda(func(ctx context.Context, state ChapterState) (ChapterState, error) {
-		state = start(state, "ai_taste")
+		state.CriticReviews = []CriticReview{}
+		state = start(state, "critics")
 		state.Metrics = style.Analyze(state.Segments, state.Context.BannedPhrases)
-		findings, usage, err := agents.Critique(ctx, chat, state.Segments, state.DraftVersion, state.Metrics)
-		if err != nil {
-			return state, err
-		}
-		state.Findings = style.AddFindings(findings, state.Metrics, state.DraftVersion)
+		results, usage, err := reviewTogether(ctx, chat, state)
+		state.CriticReviews = results
 		state.Usage.InputTokens += usage.InputTokens
 		state.Usage.OutputTokens += usage.OutputTokens
+		if err != nil {
+			emit(state)
+			return state, err
+		}
+		state.Findings = []review.Finding{}
+		for _, r := range results {
+			state.Findings = append(state.Findings, r.Findings...)
+		}
 		return done(state), nil
 	})); err != nil {
 		return nil, err
 	}
 	if err := g.AddLambdaNode("aggregate", compose.InvokableLambda(func(ctx context.Context, state ChapterState) (ChapterState, error) {
 		state = start(state, "aggregate")
-		report, err := review.Aggregate(state.Findings, state.Segments, state.DraftVersion)
+		report, err := review.Aggregate(state.Findings, state.Segments, state.DraftVersion, state.Context.FactSources()...)
 		if err != nil {
 			return state, err
 		}
 		state.Report = report
 		state.Reviews = append(append([]review.Report{}, state.Reviews...), report)
+		state.Route = review.Route(report, state.Segments, state.Context, opts.AutoRevise, opts.AllowLocalRewrite)
 		switch {
-		case !hasP2(report):
+		case state.Route.NeedsHuman:
+			state.Status = "needs_human"
+			// 保持 I4 仅缺少微改授权时的状态兼容。
+			if state.Route.Kind == "micro" {
+				state.Status = "waiting_human"
+			}
+			state.StopReason = state.Route.Reason
+		case state.Route.Kind == "none":
 			state.Status = "completed"
-			state.StopReason = "语言复检完成；不代表通过全章定稿门禁"
-		case !opts.AutoRevise:
-			state.Status = "waiting_human"
-			state.StopReason = "尚未授权自动句级修订"
+			state.StopReason = "一致性与语言评审已完成；候选仍须作者审核，不代表全章定稿"
 		case state.ReviseRound >= opts.MaxRounds:
 			state.Status = "escalated"
-			state.StopReason = "已达返工上限，仍有 P2 问题，交作者处理"
+			state.StopReason = "已达返工上限，仍有阻断问题，交作者处理"
 		}
 		return done(state), nil
 	})); err != nil {
 		return nil, err
 	}
-	if err := g.AddLambdaNode("polisher", compose.InvokableLambda(func(ctx context.Context, state ChapterState) (ChapterState, error) {
-		state.ReviseRound++
-		state = start(state, "micro_edit")
-		proposal, usage, err := agents.Polish(ctx, chat, state.Segments, state.Report.Findings, state.DraftVersion, state.Context.ProtectedTerms)
-		if err != nil {
-			return state, err
-		}
-		state.Usage.InputTokens += usage.InputTokens
-		state.Usage.OutputTokens += usage.OutputTokens
-		updated, err := revision.Apply(state.Segments, state.Report.Findings, state.DraftVersion, proposal, state.Context.ProtectedTerms)
-		if err != nil {
-			state.Status = "waiting_human"
-			state.StopReason = err.Error()
+	for _, node := range []string{"polisher", "scene_reviser", "structural_reviser"} {
+		if err := g.AddLambdaNode(node, compose.InvokableLambda(func(ctx context.Context, state ChapterState) (ChapterState, error) {
+			state.ReviseRound++
+			current := node
+			if node == "polisher" {
+				current = "micro_edit"
+			}
+			state = start(state, current)
+			var proposal revision.Proposal
+			var usage model.Usage
+			var err error
+			if node == "polisher" {
+				proposal, usage, err = agents.Polish(ctx, chat, state.Segments, state.Report.Findings, state.DraftVersion, state.Context.ProtectedTerms)
+			} else {
+				proposal, usage, err = agents.Rewrite(ctx, chat, state.Segments, state.Report, state.Context, state.Route)
+			}
+			if err != nil {
+				return state, err
+			}
+			state.Usage.InputTokens += usage.InputTokens
+			state.Usage.OutputTokens += usage.OutputTokens
+			var updated []manuscript.Segment
+			if node == "polisher" {
+				updated, err = revision.Apply(state.Segments, state.Report.Findings, state.DraftVersion, proposal, state.Context.ProtectedTerms)
+			} else {
+				updated, err = revision.ApplyScoped(state.Segments, state.Report, state.Route, proposal)
+			}
+			if err != nil {
+				state.Status = "needs_human"
+				if node == "polisher" {
+					state.Status = "waiting_human"
+				}
+				state.StopReason = err.Error()
+				return done(state), nil
+			}
+			state.Revisions = append(append([]revision.Revision{}, state.Revisions...), revision.Revision{Kind: state.Route.Kind, Round: state.ReviseRound, FromVersion: state.DraftVersion, ToVersion: state.DraftVersion + 1, Patches: proposal.Patches})
+			state.Segments = updated
+			state.DraftVersion++
+			state.Report = review.Report{DraftVersion: state.DraftVersion, Findings: []review.Finding{}}
+			state.Findings = nil
+			state.CriticReviews = []CriticReview{}
+			state.Route = review.Decision{Kind: "pending", TargetIDs: []string{}, FindingIDs: []string{}, Reason: "本版等待两个 Critic 复检"}
+			state.Metrics = style.Analyze(updated, state.Context.BannedPhrases)
 			return done(state), nil
+		})); err != nil {
+			return nil, err
 		}
-		// 新建切片保留旧快照：已发给 HTTP 轮询的 state 不得再就地修改。
-		state.Revisions = append(append([]revision.Revision{}, state.Revisions...), revision.Revision{Round: state.ReviseRound, FromVersion: state.DraftVersion, ToVersion: state.DraftVersion + 1, Patches: proposal.Patches})
-		state.Segments = updated
-		state.DraftVersion++
-		state.Report = review.Report{DraftVersion: state.DraftVersion, Findings: []review.Finding{}} // 旧评审失效，等待本版复检。
-		state.Findings = nil
-		state.Metrics = style.Analyze(updated, state.Context.BannedPhrases)
-		return done(state), nil
-	})); err != nil {
-		return nil, err
 	}
 	for _, edge := range [][2]string{{compose.START, "writer"}, {"writer", "critic"}, {"critic", "aggregate"}} {
 		if err := g.AddEdge(edge[0], edge[1]); err != nil {
@@ -154,22 +194,28 @@ func NewChapter(ctx context.Context, chat model.ChatModel, opts Options) (compos
 			return next, nil
 		}
 	}
-	if err := g.AddBranch("aggregate", compose.NewGraphBranch(route("polisher"), map[string]bool{"polisher": true, compose.END: true})); err != nil {
+	if err := g.AddBranch("aggregate", compose.NewGraphBranch(func(_ context.Context, s ChapterState) (string, error) {
+		if s.Status != "running" {
+			return compose.END, nil
+		}
+		switch s.Route.Kind {
+		case "structural":
+			return "structural_reviser", nil
+		case "scene":
+			return "scene_reviser", nil
+		case "micro":
+			return "polisher", nil
+		}
+		return "", fmt.Errorf("unexpected route %q", s.Route.Kind)
+	}, map[string]bool{"polisher": true, "scene_reviser": true, "structural_reviser": true, compose.END: true})); err != nil {
 		return nil, err
 	}
-	if err := g.AddBranch("polisher", compose.NewGraphBranch(route("critic"), map[string]bool{"critic": true, compose.END: true})); err != nil {
-		return nil, err
-	}
-	return g.Compile(ctx, compose.WithNodeTriggerMode(compose.AnyPredecessor), compose.WithMaxRunSteps(4+3*opts.MaxRounds))
-}
-
-func hasP2(r review.Report) bool {
-	for _, f := range r.Findings {
-		if f.Severity == review.P2 {
-			return true
+	for _, node := range []string{"polisher", "scene_reviser", "structural_reviser"} {
+		if err := g.AddBranch(node, compose.NewGraphBranch(route("critic"), map[string]bool{"critic": true, compose.END: true})); err != nil {
+			return nil, err
 		}
 	}
-	return false
+	return g.Compile(ctx, compose.WithNodeTriggerMode(compose.AnyPredecessor), compose.WithMaxRunSteps(4+3*opts.MaxRounds))
 }
 
 // TerminalError 保留最后候选；预算不足时升级人工，取消/请求失败保持失败。

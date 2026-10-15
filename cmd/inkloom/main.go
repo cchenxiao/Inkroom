@@ -24,6 +24,7 @@ func main() {
 	list := flag.Bool("list-scenarios", false, "list offline scenarios")
 	serve := flag.Bool("serve", false, "serve the local I3 HTTP API")
 	maxRounds := flag.Int("max-rounds", 2, "maximum revision rounds: 2 or 3")
+	localRewrite := flag.Bool("allow-local-rewrite", false, "authorize current scene/beat candidate rewriting, preserving locked facts and event outcome")
 	autoRevise := flag.Bool("auto-revise", true, "authorize P2 edits to the isolated candidate")
 	flag.Parse()
 	if *list {
@@ -38,7 +39,7 @@ func main() {
 	if *serve {
 		err = server.Serve(ctx)
 	} else {
-		err = run(ctx, *scenario, orchestration.Options{MaxRounds: *maxRounds, AutoRevise: *autoRevise})
+		err = run(ctx, *scenario, orchestration.Options{AllowLocalRewrite: *localRewrite, MaxRounds: *maxRounds, AutoRevise: *autoRevise})
 	}
 	if err != nil {
 		code := "run_error"

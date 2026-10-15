@@ -16,6 +16,7 @@ import (
 var chapter []byte
 
 var Scenarios = []string{
+	"hard-conflict", "scene-gap", "cross-chapter", "dialogue-lie", "handedness", "critic-failed", "invalid-rule", "rewrite-stale", "rewrite-unsafe",
 	"normal", "no-findings", "revise-limit", "revise-stale", "revise-unsafe", "revise-declined", "p3-only", "bad-json-repaired", "writer-repaired",
 	"repair-exhausted", "repair-invalid-quote", "missing-field", "invalid-enum",
 	"invalid-scope", "invalid-version", "invalid-quote", "refused", "truncated", "empty",
@@ -29,6 +30,9 @@ func Load(scenario string) (manuscript.ContextBundle, []model.Step, error) {
 	}
 	if err := json.Unmarshal(chapter, &fixture); err != nil {
 		return manuscript.ContextBundle{}, nil, fmt.Errorf("load demo: %w", err)
+	}
+	if b, s, ok := consistencyScenario(scenario, fixture.Context); ok {
+		return b, s, nil
 	}
 	writer := model.Step{Role: "writer", Content: string(fixture.Writer)}
 	critic := model.Step{Role: "ai_taste", Content: string(fixture.Critic)}
@@ -145,6 +149,36 @@ func Load(scenario string) (manuscript.ContextBundle, []model.Step, error) {
 			}
 			steps = append(steps, model.Step{Role: "ai_taste", Content: after})
 			old = next
+		}
+	}
+	// 每个评审版本补齐独立的一致性响应，按角色/版本匹配，不与 AI 味争抢队列。
+	initial := len(steps)
+	for i := 0; i < initial; i++ {
+		if steps[i].Role == "ai_taste" && steps[i].Purpose != model.Repair {
+			version := 1
+			var payload struct {
+				Findings []struct {
+					DraftVersion int `json:"draftVersion"`
+				} `json:"findings"`
+			}
+			_ = json.Unmarshal([]byte(steps[i].Content), &payload)
+			if len(payload.Findings) > 0 {
+				version = payload.Findings[0].DraftVersion
+			}
+			// 空列表复检的版本由前面的 polisher 基准决定。
+			for j := 0; j < i; j++ {
+				if steps[j].Role == "polisher" {
+					var p revision.Proposal
+					_ = json.Unmarshal([]byte(steps[j].Content), &p)
+					version = p.BasedOnDraftVersion + 1
+				}
+			}
+			// 故障脚本可故意在输出里给错误版本；输入匹配仍是实际轮次。
+			if scenario == "invalid-version" {
+				version = 1
+			}
+			steps[i].DraftVersion = version
+			steps = append(steps, model.Step{Role: "hard_consistency", DraftVersion: version, Content: `{"findings":[]}`})
 		}
 	}
 	return fixture.Context, steps, nil

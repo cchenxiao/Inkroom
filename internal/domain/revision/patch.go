@@ -25,6 +25,7 @@ type Proposal struct {
 	Patches             []Patch `json:"patches"`
 }
 type Revision struct {
+	Kind        string  `json:"kind"`
 	Round       int     `json:"round"`
 	FromVersion int     `json:"fromVersion"`
 	ToVersion   int     `json:"toVersion"`

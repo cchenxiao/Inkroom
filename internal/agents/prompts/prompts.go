@@ -37,6 +37,10 @@ func Render(in model.Input) (model.Input, error) {
 	case "writer":
 		in.Temperature = 0.8
 	case "ai_taste":
+	case "hard_consistency":
+		in.Temperature = 0.1
+	case "structural_reviser", "scene_reviser":
+		in.Temperature = 0.5
 	case "polisher":
 		in.Temperature = 0.3
 	default:
@@ -52,6 +56,9 @@ func Render(in model.Input) (model.Input, error) {
 	promptVersion := name + ".v1"
 	if name == "ai_taste" {
 		promptVersion = "ai_taste.v2"
+	}
+	if name == "structural_reviser" || name == "scene_reviser" {
+		promptVersion = "reviser.v1"
 	}
 	t, err := template.ParseFS(templates, promptVersion+".tmpl")
 	if err != nil {
@@ -72,6 +79,9 @@ func Render(in model.Input) (model.Input, error) {
 	in.SchemaVersion = in.Role + ".v1"
 	if in.Role == "ai_taste" {
 		in.SchemaVersion = "critic.v1"
+	}
+	if in.Role == "structural_reviser" || in.Role == "scene_reviser" {
+		in.SchemaVersion = "reviser.v1"
 	}
 	return in, nil
 }

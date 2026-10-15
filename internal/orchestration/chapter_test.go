@@ -5,16 +5,20 @@ import (
 	"inkloom/internal/agents/model"
 	"inkloom/internal/demo"
 	"inkloom/internal/orchestration"
+	"sync"
 	"testing"
 )
 
 type counted struct {
+	mu    sync.Mutex
 	inner model.ChatModel
 	roles map[string]int
 }
 
 func (c *counted) Generate(ctx context.Context, in model.Input) (model.Output, model.Usage, error) {
+	c.mu.Lock()
 	c.roles[in.Role]++
+	c.mu.Unlock()
 	return c.inner.Generate(ctx, in)
 }
 
@@ -42,7 +46,7 @@ func TestRevisionLoop(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			chat := &counted{model.NewFake(steps), map[string]int{}}
+			chat := &counted{inner: model.NewFake(steps), roles: map[string]int{}}
 			g, err := orchestration.NewChapter(ctx, chat, orchestration.Options{MaxRounds: tc.max, AutoRevise: tc.auto})
 			if err != nil {
 				t.Fatal(err)
@@ -54,7 +58,7 @@ func TestRevisionLoop(t *testing.T) {
 			if result.Status != tc.status || result.ReviseRound != tc.round || result.DraftVersion != tc.version {
 				t.Fatalf("unexpected state: %s round=%d version=%d", result.Status, result.ReviseRound, result.DraftVersion)
 			}
-			if chat.roles["polisher"] != tc.polish || chat.roles["ai_taste"] != tc.critics {
+			if chat.roles["polisher"] != tc.polish || chat.roles["ai_taste"] != tc.critics || chat.roles["hard_consistency"] != tc.critics {
 				t.Fatalf("unexpected calls: %v", chat.roles)
 			}
 			if result.Report.DraftVersion != result.DraftVersion {

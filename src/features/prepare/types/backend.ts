@@ -1,21 +1,52 @@
 import type { Finding, RunState } from '@/types/domain';
 
 /** I3 结果是隔离的单段候选，不是工作台正式稿本。 */
-export interface BackendRun extends RunState {
+export interface BackendRun extends Omit<RunState, 'status' | 'currentNode'> {
+  status: RunState['status'] | 'needs_human';
+  currentNode: string;
+  allowLocalRewrite: boolean;
+  scenario: string;
   autoRevise: boolean;
   provider: string;
   model: string;
   error?: string;
   usage?: { inputTokens: number; outputTokens: number; known: boolean };
   result?: {
+    route: {
+      kind: string;
+      targetIds: string[];
+      findingIds: string[];
+      needsHuman: boolean;
+      reason: string;
+    };
+    criticReviews: {
+      critic: string;
+      draftVersion: number;
+      status: string;
+      findings: BackendFinding[];
+      error?: string;
+    }[];
+    context: {
+      beat: { id: string; version: number; locked: boolean };
+      characters: {
+        id: string;
+        name: string;
+        version: number;
+        hardTraits: FactSource[];
+        knows: FactSource[];
+      }[];
+      facts: FactSource[];
+      sources: FactSource[];
+    };
     draftVersion: number;
     stopReason?: string;
     status: string;
     reviews: {
       draftVersion: number;
-      findings: Pick<Finding, 'id' | 'severity' | 'quote' | 'reason' | 'suggestion'>[];
+      findings: BackendFinding[];
     }[];
     revisions: {
+      kind: string;
       round: number;
       fromVersion: number;
       toVersion: number;
@@ -39,7 +70,31 @@ export interface BackendRun extends RunState {
     segments: { id: string; text: string; version: number }[];
     report: {
       draftVersion: number;
-      findings: Pick<Finding, 'id' | 'severity' | 'quote' | 'reason' | 'suggestion'>[];
+      findings: BackendFinding[];
     };
   };
 }
+
+export interface FactSource {
+  id: string;
+  version: number;
+  text: string;
+}
+export type BackendFinding = Pick<
+  Finding,
+  | 'id'
+  | 'critic'
+  | 'severity'
+  | 'segmentId'
+  | 'quote'
+  | 'reason'
+  | 'suggestion'
+  | 'repairScope'
+  | 'evidenceRefs'
+> & {
+  ruleRef?: string;
+  ruleQuote?: string;
+  evidenceStatus?: 'confirmed' | 'uncertain';
+  possibleDialogueLie?: boolean;
+  requiresHuman?: boolean;
+};

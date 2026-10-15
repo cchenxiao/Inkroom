@@ -6,7 +6,9 @@
       "id": "ch7-beat-1",
       "sceneId": "ch7-scene-1",
       "title": "交还铜扣",
-      "description": "陆青把沈砚父亲外套上的铜扣交给沈砚。铜扣属于沈砚的父亲，不是陆青的父亲。沈砚想追问来历，陆青避而不答。"
+      "description": "陆青把沈砚父亲外套上的铜扣交给沈砚。铜扣属于沈砚的父亲，不是陆青的父亲。沈砚想追问来历，陆青避而不答。",
+      "version": 1,
+      "locked": true
     },
     "pov": "沈砚",
     "sources": [
@@ -31,6 +33,34 @@
       "铜扣",
       "父亲",
       "河里"
+    ],
+    "characters": [
+      {
+        "id": "character-shenyan",
+        "name": "沈砚",
+        "version": 1,
+        "hardTraits": [
+          {
+            "id": "fact-left-handed",
+            "version": 1,
+            "text": "沈砚惯用左手；这不是对右手能力的限制。"
+          }
+        ],
+        "knows": [
+          {
+            "id": "fact-knowledge",
+            "version": 1,
+            "text": "本场开始时沈砚知道铜扣属于父亲，但不知道陆青在哪里找到它。"
+          }
+        ]
+      }
+    ],
+    "facts": [
+      {
+        "id": "fact-copper-owner",
+        "version": 1,
+        "text": "铜扣属于沈砚的父亲。陆青只交还铜扣，不在本场透露打捞地点。"
+      }
     ]
   },
   "writer": {
