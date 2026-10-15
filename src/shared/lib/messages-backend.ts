@@ -1,4 +1,23 @@
 export const backendMessages = {
+  humanInlineNote:
+    '保存作者的新版本后，沿同一运行执行双 Critic 复检，再返回作者审核；不会重写 Writer 初稿。',
+  humanGate: '作者审核 · 检查点已保存',
+  humanGateNote:
+    '此处等待不占模型请求。修改后从当前稿本复检，不重跑 Writer；批准仅确认本版候选，尚不提交正式章节。',
+  approved: '作者已批准本版候选',
+  approveCandidate: '批准当前候选',
+  instructCandidate: '提出局部修改要求',
+  inlineRecheck: '直改并复检',
+  instructionText: '本轮局部修改要求',
+  instructionHint: '只修复已有问题，保留设定与事件结果；仍受返工上限及整次运行预算限制。',
+  submitHuman: '提交本次修改并复检',
+  resumeAction: '继续已受理操作',
+  resumeActionNote:
+    '会复用已落库的修改与复检结果；若模型调用结果未知，继续可能再次产生用量，仍受原运行预算限制。',
+  actionUncertain: '操作受理情况尚未确认，请先读取运行状态；重试沿用同一操作 ID。',
+  retryAction: '用同一操作 ID 重试',
+  actionPending: '运行正在处理，或当前版本已失效。',
+
   startVersionMismatch: '稿本已更新，请先查看最新候选稿，再决定是否重新生成。',
   storedDraft: '数据库中的当前候选稿',
   storageNote:
@@ -10,7 +29,7 @@ export const backendMessages = {
   noStoredDraft: '尚未生成候选稿，首次生成从 v1 开始。',
   editDraft: '人工编辑当前候选',
   editNote:
-    '保存会生成新版本，使旧评审和迟到的 Agent 修订失效。事实影响分析与复检续跑将在后续接入。',
+    '保存会生成新版本，使旧评审和迟到的 Agent 修订失效。此入口使旧运行失效；如需沿当前运行复检，请使用下方人审卡的「直改并复检」。事实影响分析后续接入。',
   draftText: '候选正文编辑',
   saveDraft: '保存为新版本',
   cancelEdit: '取消编辑',
@@ -108,6 +127,8 @@ export const backendMessages = {
   burstiness: '句长波动',
   hits: '禁用短语命中',
   nodes: {
+    human_gate: '作者审核',
+    human_edit: '作者修改后待复检',
     draft: '生成初稿',
     ai_taste: '语言评审',
     critics: '并行评审 · 一致性 + AI 味',
@@ -135,7 +156,7 @@ export const backendMessages = {
   noFindings: '两个评审均完成，本次未发现有证据支持的问题；不代表全章通过定稿门禁。',
   usageUnknown: '用量不完整，未知部分不能按零计算',
   tokens: '已知 Token',
-  elapsed: '耗时',
+  elapsed: '自动创作耗时',
   seconds: '秒',
   queryError: '查询失败',
 } as const;

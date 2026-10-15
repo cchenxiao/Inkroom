@@ -54,11 +54,14 @@ func Render(in model.Input) (model.Input, error) {
 		return in, fmt.Errorf("prompt material and schema must be JSON")
 	}
 	promptVersion := name + ".v1"
+	if name == "polisher" {
+		promptVersion = "polisher.v2"
+	}
 	if name == "ai_taste" {
 		promptVersion = "ai_taste.v2"
 	}
 	if name == "structural_reviser" || name == "scene_reviser" {
-		promptVersion = "reviser.v1"
+		promptVersion = "reviser.v2"
 	}
 	t, err := template.ParseFS(templates, promptVersion+".tmpl")
 	if err != nil {

@@ -12,6 +12,7 @@ import (
 var ErrBudgetExhausted = errors.New("run model budget exhausted before call")
 
 type Limits struct {
+	History                     []CallRecord
 	OnCall                      func(context.Context, CallRecord) error
 	Calls, Tokens, OutputTokens int
 	Timeout                     time.Duration
@@ -26,7 +27,24 @@ type Guard struct {
 }
 
 func NewGuard(inner ChatModel, limits Limits) *Guard {
-	return &Guard{inner: inner, limits: limits, usage: Usage{Known: true}}
+	g := &Guard{inner: inner, limits: limits, usage: Usage{Known: true}}
+	for _, c := range limits.History {
+		if c.Number > g.calls {
+			g.calls = c.Number
+		}
+		g.usage.InputTokens += c.Usage.InputTokens
+		g.usage.OutputTokens += c.Usage.OutputTokens
+		known := c.Phase == "finished" && c.Usage.Known
+		g.usage.Known = g.usage.Known && known
+		if known {
+			g.reserved += c.Usage.InputTokens + c.Usage.OutputTokens
+		} else if c.ReservedTokens > 0 {
+			g.reserved += c.ReservedTokens
+		} else {
+			g.reserved += limits.Tokens
+		}
+	}
+	return g
 }
 func (g *Guard) Usage() Usage { g.mu.Lock(); defer g.mu.Unlock(); return g.usage }
 
@@ -50,7 +68,7 @@ func (g *Guard) Generate(ctx context.Context, in Input) (Output, Usage, error) {
 		g.reserved += estimate
 		call := g.calls
 		g.mu.Unlock()
-		record := CallRecord{Number: call, Attempt: attempt + 1, Role: in.Role, Purpose: in.Purpose, PromptVersion: in.PromptVersion, SchemaVersion: in.SchemaVersion, Model: g.limits.ModelName, Phase: "started"}
+		record := CallRecord{ReservedTokens: estimate, Number: call, Attempt: attempt + 1, Role: in.Role, Purpose: in.Purpose, PromptVersion: in.PromptVersion, SchemaVersion: in.SchemaVersion, Model: g.limits.ModelName, Phase: "started"}
 		if g.limits.OnCall != nil {
 			if err := g.limits.OnCall(ctx, record); err != nil {
 				return Output{}, total, fmt.Errorf("record model call intent: %w", err)

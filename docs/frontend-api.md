@@ -41,7 +41,7 @@
 
 分支合并的 GET 预览包含目标与来源各章节版本映射 `targetVersions` / `sourceVersions`；POST 必须回传捕获的映射。预览之后任一相关版本变化都要求重新预览、重新裁决。合并时每个实际修改的目标章节分别递增版本并作废旧审稿；新增、删除与重排分段按整章结构冲突处理。
 
-## Go 候选接口（I6 已实现）
+## Go 候选接口（I7 已实现）
 
 准备页 `trialApi` 使用独立 `backendApi`；浏览器 `/go-api` 代理至 Go `/api`，不走 MSW。下面是已落地的学习切片，不能将上文完整 Mock 契约视为已全部接入后端。
 
@@ -55,6 +55,14 @@
 | GET /chapters/:id/versions?branchId= | 最近 100 个正文版本（版本号、来源、时间） |
 | PATCH /segments/:id | chapterId、branchId、draftVersion、text → 新 Draft；整次事务保存候选并作废旧 run |
 
-当前仅 `ch7/main` 可启动。修改候选不修改 MSW 正式稿或 Bible。版本不匹配返回 `409 {code:"version_mismatch",message}`；已有执行返回 `409 run_busy`。人工修改后新版本的 `reviewed=false`，旧报告仅供历史查看；`stale` 不能当成本稿评审。重启后未完成运行是 `interrupted`，仅支持读取，不支持恢复执行。
+当前仅 `ch7/main` 可启动。修改候选不修改 MSW 正式稿或 Bible。版本不匹配返回 `409 {code:"version_mismatch",message}`；已有执行返回 `409 run_busy`。人工修改后新版本的 `reviewed=false`，旧报告仅供历史查看；`stale` 不能当成本稿评审。初稿阶段中断仅保留已落库结果；已进入 I7 人审检查点的运行支持显式恢复。
 
-接口类型见 `src/features/prepare/types/backend.ts` 与 `internal/app/repository.go`。I7 再实现审批/恢复，I8 再接可靠事件流。
+接口类型见 `src/features/prepare/types/backend.ts` 与 `internal/app/repository.go`。I8 再接可靠事件流。
+
+### 人工操作与恢复
+
+`POST /runs/:id/actions` 请求：`{id,type,draftVersion,instruction?,segmentId?,text?}`。`type` 为 `approve | instruct | inline_edit`；`id` 是客户端生成的一次决定的稳定 ID，重试不可换 ID 或内容。首次受理 202；相同已完成操作返回 200，只返回结果不重做。相同 ID 不同内容返回 409 `action_mismatch`；旧版本 409 `version_mismatch`；门禁不满足 409 `gate_blocked`。
+
+Run 新增 `canResume`、`approvalBlock`、`instructionBlock`、`pendingAction`、原运行 `maxCalls/maxTokens`，新增终态 `approved`。`waiting_human` + `canResume` 表示 checkpoint 已真正保存。`approved` 仅为候选批准，不是正式章节定稿。`pendingAction` 表示已受理但未完成的操作，failed/interrupted 时用原内容和 ID 明确继续；不自动重发。
+
+人审写操作再查章/分支最新版本，并和 run 中的版本比较；已完成操作的重取不产生新审批。指令修订保留原轮数上限与运行调用/token 预算；跨章、事实裁决不在该入口自动执行。未经当前版本两个必要 Critic 复检，或仍有阻断 Finding/事实待裁决时不能批准；未校准文本统计仍只提示。

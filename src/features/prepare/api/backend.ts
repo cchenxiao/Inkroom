@@ -1,7 +1,15 @@
 import { backendApi } from '@/shared/api/client';
-import type { BackendRun, StoredDraft, StoredVersion, ModelCall } from '../types/backend';
+import type {
+  BackendRun,
+  HumanAction,
+  StoredDraft,
+  StoredVersion,
+  ModelCall,
+} from '../types/backend';
 
 export const trialApi = {
+  action: (runId: string, action: HumanAction) =>
+    backendApi.post<BackendRun>(`/runs/${encodeURIComponent(runId)}/actions`, action),
   health: () => backendApi.get<{ provider: string; model: string; scenarios: string[] }>('/health'),
   draft: (version?: number) =>
     backendApi.get<StoredDraft>(

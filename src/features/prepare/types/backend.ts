@@ -2,7 +2,11 @@ import type { Finding, RunState } from '@/types/domain';
 
 /** I3 结果是隔离的单段候选，不是工作台正式稿本。 */
 export interface BackendRun extends Omit<RunState, 'status' | 'currentNode'> {
-  status: RunState['status'] | 'needs_human' | 'stale' | 'interrupted';
+  status: RunState['status'] | 'needs_human' | 'stale' | 'interrupted' | 'approved';
+  canResume: boolean;
+  approvalBlock?: string;
+  instructionBlock?: string;
+  pendingAction?: HumanAction;
   currentNode: string;
   baseDraftVersion: number;
   createdAt: string;
@@ -125,4 +129,13 @@ export interface ModelCall {
   success: boolean;
   elapsedMs: number;
   usage: { inputTokens: number; outputTokens: number; known: boolean };
+}
+
+export interface HumanAction {
+  id: string;
+  type: 'approve' | 'instruct' | 'inline_edit';
+  draftVersion: number;
+  instruction?: string;
+  segmentId?: string;
+  text?: string;
 }

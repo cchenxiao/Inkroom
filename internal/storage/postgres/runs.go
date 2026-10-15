@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"inkloom/internal/agents/model"
 	"inkloom/internal/app"
+	"inkloom/internal/orchestration"
 )
 
 func (s *Store) CreateRun(ctx context.Context, r app.Run) error {
@@ -68,6 +69,14 @@ func (s *Store) GetRun(ctx context.Context, id string) (app.Run, error) {
 	if r.Result != nil {
 		r.Result.Usage = r.Usage
 	}
+	if err != nil {
+		return r, err
+	}
+	err = s.pool.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM run_checkpoints WHERE run_id=$1 AND workflow_version=$2)", r.ID, orchestration.HumanWorkflowVersion).Scan(&r.CanResume)
+	if r.Result != nil {
+		r.ApprovalBlock = orchestration.ApprovalReason(*r.Result)
+		r.InstructionBlock = orchestration.InstructionReason(*r.Result)
+	}
 	return r, err
 }
 func (s *Store) ListRuns(ctx context.Context) ([]app.Run, error) {
@@ -102,8 +111,15 @@ func (s *Store) SaveProgress(ctx context.Context, r app.Run, expected int) error
 		return err
 	}
 	defer tx.Rollback(context.Background())
+	if err = saveProgressTx(ctx, tx, r, expected); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+func saveProgressTx(ctx context.Context, tx pgx.Tx, r app.Run, expected int) error {
 	var current int
-	err = tx.QueryRow(ctx, "SELECT draft_version FROM chapters WHERE id=$1 AND branch_id=$2 FOR UPDATE", r.ChapterID, r.BranchID).Scan(&current)
+	err := tx.QueryRow(ctx, "SELECT draft_version FROM chapters WHERE id=$1 AND branch_id=$2 FOR UPDATE", r.ChapterID, r.BranchID).Scan(&current)
 	if err != nil {
 		return err
 	}
@@ -146,7 +162,7 @@ func (s *Store) SaveProgress(ctx context.Context, r app.Run, expected int) error
 	if _, err = tx.Exec(ctx, "UPDATE runs SET status=$2,payload=$3,updated_at=now() WHERE id=$1", r.ID, r.Status, raw); err != nil {
 		return err
 	}
-	return tx.Commit(ctx)
+	return nil
 }
 
 // StopRun 只改运行状态，绝不写正文。晚到的失败结果不能覆盖已保存的人稿。

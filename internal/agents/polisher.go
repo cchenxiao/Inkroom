@@ -13,6 +13,10 @@ import (
 )
 
 func Polish(ctx context.Context, chat model.ChatModel, segments []manuscript.Segment, findings []review.Finding, version int, protected []string) (revision.Proposal, model.Usage, error) {
+	return PolishWithInstruction(ctx, chat, segments, findings, version, protected, "")
+}
+
+func PolishWithInstruction(ctx context.Context, chat model.ChatModel, segments []manuscript.Segment, findings []review.Finding, version int, protected []string, instruction string) (revision.Proposal, model.Usage, error) {
 	targets := make([]review.Finding, 0)
 	ids := map[string]bool{}
 	for _, f := range findings {
@@ -28,11 +32,12 @@ func Polish(ctx context.Context, chat model.ChatModel, segments []manuscript.Seg
 		}
 	}
 	material, err := json.Marshal(struct {
-		DraftVersion   int                  `json:"draftVersion"`
-		Segments       []manuscript.Segment `json:"segments"`
-		Findings       []review.Finding     `json:"findings"`
-		ProtectedTerms []string             `json:"protectedTerms"`
-	}{version, subset, targets, protected})
+		AuthorInstruction string               `json:"authorInstruction,omitempty"`
+		DraftVersion      int                  `json:"draftVersion"`
+		Segments          []manuscript.Segment `json:"segments"`
+		Findings          []review.Finding     `json:"findings"`
+		ProtectedTerms    []string             `json:"protectedTerms"`
+	}{instruction, version, subset, targets, protected})
 	if err != nil {
 		return revision.Proposal{}, model.Usage{}, err
 	}

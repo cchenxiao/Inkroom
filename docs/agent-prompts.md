@@ -180,14 +180,14 @@ AI 味 / 读者 Critic 不给 Bible、不给大纲，才能真冷读；句级修
 - 当前没有引入 category、数值 confidence、跨章 witness 和检索工具，后续按需要扩契约。
 
 ### 5.2 句级修订 Polisher（I4 已实现）
-- AI 味评审提示词升级为 `ai_taste.v2`，输出仍沿用 `critic.v1`；新增修订角色的提示词为 `polisher.v1`。
+- AI 味评审提示词升级为 `ai_taste.v2`，输出仍沿用 `critic.v1`；I4 修订角色的提示词为 `polisher.v1`，I7 当前使用 `polisher.v2`（输出 Schema 仍为 v1）。
 - 已新增 `contracts/polisher.v1.json`：`patches[]{findingId, segmentId, changeType(replace|delete), oldText, newText, reason}` + `basedOnDraftVersion`。暂不支持无锚点 insert。
 - Prompt 纪律：只改指定 finding 命中句；`oldText` 含完整 quote 且在段中唯一出现；只可额外包含紧邻逗号/句末标点，避免删后出现“，。”；`newText` 不得碰人名/地名/时间/数字/因果/伏笔/事件结果（给受保护实体清单）；无法在不改事实前提下修复就**跳过该条**（少给一个 patch），不要硬改、也不要输出"拒绝"文字。
 - 程序动作：先校验 oldText 命中与受保护实体 diff；生成 patch 本身不递增稿本版本。作者接受，或已授权的自动句级修订实际应用后，校验基准版本并递增候选 draftVersion，再评审新版本。I5 每次修订后都并行复检一致性与 AI 味，必要评审缺席即失败。过期 patch 不得覆盖人工修改。
 - 注意命名：finding 的修复范围字段仍叫 `repairScope="phrase"`；"micro" 只在**运行模式**层面出现（如全书润色的 run mode），别混进 finding 枚举。
 
 ### 5.3 Scene / Structural Reviser（I5 已实现）
-- 共用 `reviser.v1.tmpl` 与 `reviser.v1.json`，调用记录保留独立 role。场景修订只处理 P1，结构修订只处理 P0 的当前 Beat；当前演示只生成一个段，两种路由仍有不同的授权范围。
+- I5 共用 `reviser.v1.tmpl` 与 `reviser.v1.json`；I7 当前模板升级为 `reviser.v2.tmpl`，Schema 保持 v1，调用记录保留独立 role。场景修订只处理 P1，结构修订只处理 P0 的当前 Beat；当前演示只生成一个段，两种路由仍有不同的授权范围。
 - 材料包含本次冻结上下文、正文、选中的 findings、程序生成的 `allowedSegmentIds`；不能自行扩大范围。
 - 输出沿用 patch 结构，限定 `changeType=replace`，`oldText` 必须等于原段全文。程序验证版本、目标 ID、引用的问题和范围后才替换候选，再复检两个 Critic。正文中的结构化 ID 仍由程序维护。
 - `allowLocalRewrite` 独立于 `autoRevise`，默认关闭；它仅授权保留事件结果与设定的本场/Beat 呈现修复。改设定、锁定大纲、重大结构、跨章或事实裁决不自动执行。Schema 不能证明改写的语义不变，因此当前结果始终为待作者审核候选。
@@ -211,7 +211,7 @@ internal/agents/
   ../domain/style/    # I4：禁用词、句长方差、burstiness（仅统计提示）
   ../domain/revision/ # patch 校验与原子应用
   contracts/          # *.v1.json（go:embed）+ Go 输出 struct，三处同版本
-  prompts/            # writer.v1.tmpl / ai_taste.v2.tmpl / polisher.v1.tmpl / repair.v1.tmpl + Render
+  prompts/            # writer.v1.tmpl / ai_taste.v2.tmpl / polisher.v2.tmpl / reviser.v2.tmpl / repair.v1.tmpl + Render
                       # go:embed；system=职责+Schema，user=任务+XML 转义后的 JSON 材料
   writer.go critic.go polisher.go # 角色实现，控制回边留在 orchestration
 ```
@@ -244,3 +244,9 @@ internal/agents/
 - 常规链路：真实 Writer 生成，两个 Critic 并行返回空列表；v1 完成，已知输入 4050 / 输出 169 tokens。
 - 硬伤定点验证：Writer 使用固定“沈砚右手握刀”样本，其余评审和结构修订均调用 DeepSeek。一致性 Critic 引用 `fact-hand-injury` 报 P0；修订为“沈砚左手握刀……右手垂在桌下没动”，v2 双 Critic 复检为空。已知输入 7483 / 输出 436 tokens。
 - 这些是单次端到端样本，证明调用、证据契约、路由与复检可运行，不是准确率或门禁校准结果。
+
+### I7：作者要求与恢复边界
+
+`PolishWithInstruction` / `RewriteWithInstruction` 在材料中新增可选 `authorInstruction`。模板 v2 明确它只约束本轮已有问题的局部修订，不能越过设定、事件结果、目标范围与输出契约。自动修订传空要求；旧 v1 模板保留，调用记录区分 prompt 版本与 Schema 版本。复检依旧把正文与冻结事实分别交给两个 Critic，不把作者的修订要求当作通过理由。
+
+HumanGate、版本比较、批准和幂等恢复全部由 Go 程序与数据库控制，不让模型决定能否 resume、是否已获批准或是否应重复提交。真实页面验证：v11 等待作者 → 人工直改为 v12 → 仅两个 Critic 复检 → 批准候选；共 5 次模型调用、已知 7268 tokens，批准本身未调用模型。未提供的事实仍可能漏报，此记录不代表全章质量评测通过。

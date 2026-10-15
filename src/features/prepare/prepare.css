@@ -382,3 +382,10 @@ input[type='checkbox'] {
   line-height: 1.9;
   resize: vertical;
 }
+
+.backend-human-gate {
+  border-left: 3px solid var(--human);
+  padding: 16px;
+  background: var(--overlay);
+  border-radius: 8px;
+}

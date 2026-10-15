@@ -14,9 +14,18 @@ import (
 var ErrVersionMismatch = errors.New("draft version mismatch")
 var ErrRunBusy = errors.New("run already active")
 var ErrNotFound = errors.New("record not found")
+var ErrGateBlocked = errors.New("human action blocked")
+var ErrActionMismatch = errors.New("action id reused with different content")
+
 var ErrInvalidWrite = errors.New("invalid draft write")
 
 type Run struct {
+	CanResume         bool                        `json:"canResume"`
+	ApprovalBlock     string                      `json:"approvalBlock,omitempty"`
+	InstructionBlock  string                      `json:"instructionBlock,omitempty"`
+	PendingAction     *orchestration.HumanAction  `json:"pendingAction,omitempty"`
+	MaxCalls          int                         `json:"maxCalls"`
+	MaxTokens         int                         `json:"maxTokens"`
 	BaseDraftVersion  int                         `json:"baseDraftVersion"`
 	CreatedAt         time.Time                   `json:"createdAt"`
 	AllowLocalRewrite bool                        `json:"allowLocalRewrite"`
@@ -70,4 +79,15 @@ type Repository interface {
 	EditSegment(context.Context, string, string, string, int, string) (Draft, error)
 	RecordCall(context.Context, string, model.CallRecord) error
 	Calls(context.Context, string) ([]model.CallRecord, error)
+}
+
+// HumanRepository 在 I6 Repository 之外增加人审事务；不把 Eino checkpoint 字节交给浏览器。
+type HumanRepository interface {
+	Repository
+	Checkpoint(context.Context, string) ([]byte, bool, error)
+	SaveCheckpoint(context.Context, string, []byte, orchestration.ChapterState, string) error
+	ClaimAction(context.Context, string, orchestration.HumanAction) (Run, bool, error)
+	LoadArtifact(context.Context, string, string) (orchestration.ChapterState, bool, error)
+	CommitArtifact(context.Context, string, string, string, int, orchestration.ChapterState, string) error
+	Approve(context.Context, string, string, int) error
 }

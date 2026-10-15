@@ -29,7 +29,7 @@ type service struct {
 	workers sync.WaitGroup
 	root    context.Context
 	cfg     config.Config
-	repo    app.Repository
+	repo    app.HumanRepository
 }
 
 func Serve(ctx context.Context) error {
@@ -52,6 +52,7 @@ func Serve(ctx context.Context) error {
 	s := &service{root: root, cfg: cfg, repo: repo}
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /api/runs", s.start)
+	mux.HandleFunc("POST /api/runs/{id}/actions", s.action)
 	mux.HandleFunc("GET /api/runs/{id}", s.get)
 	mux.HandleFunc("GET /api/runs", s.list)
 	mux.HandleFunc("GET /api/runs/{id}/calls", s.calls)
@@ -164,7 +165,7 @@ func (s *service) start(w http.ResponseWriter, r *http.Request) {
 		fail(w, 400, "missing_version", "请先读取当前稿本，再携带 draftVersion 启动")
 		return
 	}
-	run := app.Run{ID: rand.Text(), CreatedAt: time.Now().UTC(), BaseDraftVersion: *in.DraftVersion, DraftVersion: *in.DraftVersion, ChapterID: in.ChapterID, BranchID: in.BranchID, Scenario: in.Scenario, AllowLocalRewrite: in.AllowLocalRewrite, AutoRevise: in.AutoRevise, MaxRounds: in.MaxRounds, Status: "running", CurrentNode: "draft", Nodes: []any{}, Provider: s.cfg.Model, Model: s.cfg.ModelName}
+	run := app.Run{MaxCalls: s.cfg.MaxCalls, MaxTokens: s.cfg.MaxTokens, ID: rand.Text(), CreatedAt: time.Now().UTC(), BaseDraftVersion: *in.DraftVersion, DraftVersion: *in.DraftVersion, ChapterID: in.ChapterID, BranchID: in.BranchID, Scenario: in.Scenario, AllowLocalRewrite: in.AllowLocalRewrite, AutoRevise: in.AutoRevise, MaxRounds: in.MaxRounds, Status: "running", CurrentNode: "draft", Nodes: []any{}, Provider: s.cfg.Model, Model: s.cfg.ModelName}
 	if err := s.repo.CreateRun(r.Context(), run); err != nil {
 		s.mu.Unlock()
 		storageError(w, err)
@@ -231,7 +232,7 @@ func (s *service) execute(run app.Run) {
 		return
 	}
 	update(result)
-	run.Status = result.Status
+	run.Status = "running" // 先持久化最终自动评审，再让 Eino HumanGate 保存等待检查点。
 	if saveErr := s.repo.SaveProgress(finish, run, expected); saveErr != nil {
 		status, reason := "failed", "最终状态写入失败，保留已落库稿本"
 		if errors.Is(saveErr, app.ErrVersionMismatch) {
@@ -239,7 +240,9 @@ func (s *service) execute(run app.Run) {
 			reason = "稿本已变更，旧结果失效"
 		}
 		_ = s.repo.StopRun(finish, run.ID, status, reason)
+		return
 	}
+	s.executeHuman(ctx, run)
 }
 func (s *service) get(w http.ResponseWriter, r *http.Request) {
 	run, err := s.repo.GetRun(r.Context(), r.PathValue("id"))
@@ -267,6 +270,10 @@ func (s *service) calls(w http.ResponseWriter, r *http.Request) {
 }
 func storageError(w http.ResponseWriter, err error) {
 	switch {
+	case errors.Is(err, app.ErrGateBlocked):
+		fail(w, 409, "gate_blocked", "当前候选不满足此操作条件；请查看待处理问题或先直改复检")
+	case errors.Is(err, app.ErrActionMismatch):
+		fail(w, 409, "action_mismatch", "操作 ID 已用于不同内容；不能改写已受理的操作")
 	case errors.Is(err, app.ErrVersionMismatch):
 		fail(w, 409, "version_mismatch", "稿本已更新；保留本地修改，请读取新版本后人工对照")
 	case errors.Is(err, app.ErrRunBusy):

@@ -18,6 +18,9 @@ import (
 //go:embed migrations/001_core.sql
 var migration string
 
+//go:embed migrations/002_human.sql
+var humanMigration string
+
 type Store struct {
 	pool  *pgxpool.Pool
 	lease *pgx.Conn
@@ -82,21 +85,25 @@ func (s *Store) migrate(ctx context.Context) error {
 	if _, err = tx.Exec(ctx, "CREATE TABLE IF NOT EXISTS schema_migrations(version integer PRIMARY KEY, checksum text NOT NULL)"); err != nil {
 		return err
 	}
-	checksum := fmt.Sprintf("%x", sha256.Sum256([]byte(migration)))
-	var existing string
-	err = tx.QueryRow(ctx, "SELECT checksum FROM schema_migrations WHERE version=1").Scan(&existing)
-	if errors.Is(err, pgx.ErrNoRows) {
-		if _, err = tx.Exec(ctx, migration); err != nil {
-			return fmt.Errorf("apply migration 001: %w", err)
-		}
-		if _, err = tx.Exec(ctx, "INSERT INTO schema_migrations VALUES(1,$1)", checksum); err != nil {
+	for i, sql := range []string{migration, humanMigration} {
+		version := i + 1
+		checksum := fmt.Sprintf("%x", sha256.Sum256([]byte(sql)))
+		var existing string
+		err = tx.QueryRow(ctx, "SELECT checksum FROM schema_migrations WHERE version=$1", version).Scan(&existing)
+		if errors.Is(err, pgx.ErrNoRows) {
+			if _, err = tx.Exec(ctx, sql); err != nil {
+				return fmt.Errorf("apply migration %d: %w", version, err)
+			}
+			if _, err = tx.Exec(ctx, "INSERT INTO schema_migrations VALUES($1,$2)", version, checksum); err != nil {
+				return err
+			}
+		} else if err != nil {
 			return err
+		} else if existing != checksum {
+			return fmt.Errorf("migration %d changed after application; add a new migration", version)
 		}
-	} else if err != nil {
-		return err
-	} else if existing != checksum {
-		return fmt.Errorf("migration 001 changed after application; add a new migration")
 	}
+
 	return tx.Commit(ctx)
 }
 func (s *Store) recoverInterrupted(ctx context.Context) error {
