@@ -15,6 +15,7 @@ import BackendHumanGate from './BackendHumanGate';
 import BackendContextManifest from './BackendContextManifest';
 import BackendFinalize from './BackendFinalize';
 import BackendTrialResult from './BackendTrialResult';
+import { assemblyMessages } from '@/shared/lib/messages-assembly';
 
 export default function PlannedBeatWriting({
   chapterId,
@@ -28,10 +29,13 @@ export default function PlannedBeatWriting({
   const planning = usePlanning();
   const [runId, setRunId] = useState<string | null>(null),
     [autoRevise, setAutoRevise] = useState(false);
+  const [chosenBeat, setChosenBeat] = useState('');
+  const plan = planning.data?.chapterPlans?.find((c) => c.chapterId === chapterId);
+  const beatId = chosenBeat || plan?.content?.brief.selectedBeatId || '';
   const requestKey = useRef<{ key: string; id: string } | null>(null);
   const gate = useQuery({
-    queryKey: ['planned-run-gate', chapterId],
-    queryFn: ({ signal }) => plannedRunApi.get(chapterId, signal),
+    queryKey: ['planned-run-gate', chapterId, beatId],
+    queryFn: ({ signal }) => plannedRunApi.get(chapterId, signal, beatId),
     retry: false,
     refetchInterval: 2500,
   });
@@ -78,7 +82,7 @@ export default function PlannedBeatWriting({
   });
   const ready = gate.data;
   const p = planning.data;
-  const plan = p?.chapterPlans?.find((c) => c.chapterId === chapterId);
+
   const current = Boolean(
     ready &&
     p &&
@@ -114,6 +118,26 @@ export default function PlannedBeatWriting({
         </Button>
       </div>
       <p className="muted">{t.note}</p>
+      <label>
+        {assemblyMessages.targetBeat}
+        <select
+          value={beatId}
+          disabled={start.isPending}
+          onChange={(e) => {
+            setChosenBeat(e.target.value);
+            setRunId(null);
+          }}
+        >
+          {plan?.content?.scenes.flatMap((scene) =>
+            scene.beats.map((beat) => (
+              <option key={beat.id} value={beat.id}>
+                {scene.title} · {beat.title}
+              </option>
+            )),
+          )}
+        </select>
+      </label>
+      <p className="muted">{assemblyMessages.targetNote}</p>
       <Button
         size="sm"
         onClick={() => {
@@ -149,6 +173,7 @@ export default function PlannedBeatWriting({
               if (ready.draftVersion > 0 && !window.confirm(t.regenerate)) return;
               start.mutate({
                 chapterId,
+                beatId: ready.beatId,
                 expected: ready.expected,
                 planVersion: ready.planVersion,
                 draftVersion: ready.draftVersion,

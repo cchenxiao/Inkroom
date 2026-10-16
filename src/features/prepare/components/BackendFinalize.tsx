@@ -42,6 +42,7 @@ export default function BackendFinalize({
         ['backend-trial', run.id],
         ['backend-commits'],
         ['backend-runs'],
+        ['chapter-assembly'],
       ]);
     },
   });

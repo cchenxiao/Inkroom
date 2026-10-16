@@ -10,7 +10,7 @@ import (
 
 type plannedRunRepository interface {
 	StartPlannedRun(context.Context, string, app.PlannedRunRequest, config.Config) (app.Run, bool, error)
-	PlannedRunReadiness(context.Context, string, string, config.Config) (app.PlannedRunReadiness, error)
+	PlannedRunReadiness(context.Context, string, string, config.Config, ...string) (app.PlannedRunReadiness, error)
 }
 
 func (s *service) startPlannedRun(w http.ResponseWriter, r *http.Request) {
@@ -56,7 +56,7 @@ func (s *service) plannedRuns(w http.ResponseWriter, r *http.Request) {
 		fail(w, 503, "planning_unavailable", "规划写作存储不可用")
 		return
 	}
-	result, err := repo.PlannedRunReadiness(r.Context(), planningScope, id, s.cfg)
+	result, err := repo.PlannedRunReadiness(r.Context(), planningScope, id, s.cfg, r.URL.Query().Get("beatId"))
 	if err != nil {
 		storageError(w, err)
 		return

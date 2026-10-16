@@ -83,3 +83,11 @@ M0.3 已接入核心人物/世界设定候选与作者确认，详见下方 M0.3
 ## M0.4c2 初始知识发布
 
 新增 `GET /planning/knowledge-preview` 和 `POST /planning/knowledge-publications`；作者确认后的初始事实及获知声明发布到已有知识快照与检索目录。新规划 run 绑定当前知识版本，原 Mock 契约不变。完整字段与保护范围见 [初始知识发布](planning-knowledge.md)。
+
+## M0.4c3 整章组稿
+
+规划写作支持可选 `beatId`，无需修改细纲版本来切换目标。新增章稿预览与保存接口，详见 [整章组稿](chapter-assembly.md)。章稿为独立的待全章审核快照，不自动定稿或进入下一章前情。
+
+## M0.4c4 整章复审
+
+新增 `chapter-reviews` 异步任务、查询及版本化作者决定。详见 [整章复审 API 与技术说明](chapter-review.md)。

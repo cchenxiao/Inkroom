@@ -1,4 +1,5 @@
 import PlannedBeatWriting from './PlannedBeatWriting';
+import ChapterAssembly from './ChapterAssembly';
 import { useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -310,7 +311,14 @@ function ChapterPlanWorkbench() {
         </Card>
       )}
       {chapter && (
-        <PlannedBeatWriting key={chapter.id} chapterId={chapter.id} editing={Boolean(edit)} />
+        <>
+          <PlannedBeatWriting key={chapter.id} chapterId={chapter.id} editing={Boolean(edit)} />
+          <ChapterAssembly
+            key={`assembly-${chapter.id}`}
+            chapterId={chapter.id}
+            editing={Boolean(edit)}
+          />
+        </>
       )}
       {edit && chapter && s.coreSelection && (
         <>

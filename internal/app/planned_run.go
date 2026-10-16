@@ -16,6 +16,7 @@ import (
 
 // PlannedRunRequest 只传预期版本和操作权限；上游材料由仓储读取。
 type PlannedRunRequest struct {
+	BeatID       string                       `json:"beatId,omitempty"`
 	RequestID    string                       `json:"requestId"`
 	ChapterID    string                       `json:"chapterId"`
 	Expected     planning.ChapterPlanVersions `json:"expected"`
@@ -34,7 +35,7 @@ func PlannedDraftID(scope, chapter, beat string) string {
 	hash := sha256.Sum256([]byte(scope + "\x00" + chapter + "\x00" + beat))
 	return fmt.Sprintf("planned-%x", hash[:16])
 }
-func PreparePlannedContext(cfg config.Config, scope, runID string, base int, p planning.ChapterPlanSelection) (manuscript.FrozenInput, error) {
+func PreparePlannedContext(cfg config.Config, scope, runID string, base int, p planning.ChapterPlanSelection, target ...string) (manuscript.FrozenInput, error) {
 	var empty manuscript.FrozenInput
 	project, branch, validScope := strings.Cut(scope, "/")
 	if !validScope || project == "" || branch != "main" || !p.Confirmed || p.Version < 1 || p.ChapterID != p.Input.ChapterID || p.Versions != p.Input.Versions() || p.Content.Validate(p.Input) != nil {
@@ -43,11 +44,15 @@ func PreparePlannedContext(cfg config.Config, scope, runID string, base int, p p
 	if p.Input.Outline.Content.Chapters[0].ID != p.ChapterID {
 		return empty, fmt.Errorf("后续章尚未接入前章定稿来源；当前只支持第一章选定 Beat")
 	}
+	selectedBeat := p.Content.Brief.SelectedBeatID
+	if len(target) > 0 && target[0] != "" {
+		selectedBeat = target[0]
+	}
 	var scene planning.PlannedScene
 	var beat planning.PlannedBeat
 	for _, s := range p.Content.Scenes {
 		for _, b := range s.Beats {
-			if b.ID == p.Content.Brief.SelectedBeatID {
+			if b.ID == selectedBeat {
 				scene = s
 				beat = b
 			}
@@ -111,6 +116,7 @@ func PreparePlannedContext(cfg config.Config, scope, runID string, base int, p p
 	rules := p.Input.Base.Style.Rules
 	style := manuscript.WritingStyle{POV: rules.POV, Tense: rules.Tense, Tone: rules.Tone, SentenceLength: manuscript.WritingRange(rules.SentenceLength), DialogueRatio: manuscript.WritingRange(rules.DialogueRatio), BannedPhrases: rules.BannedPhrases, StyleArc: rules.StyleArc}
 	b.WritingTask = &manuscript.WritingTask{Scope: scope, ChapterID: p.ChapterID, Versions: map[string]int{"input": p.Versions.Planning.Input, "direction": p.Versions.Planning.Direction, "style": p.Versions.Planning.Style, "core": p.Versions.Planning.Core, "outline": p.Versions.Outline, "bindings": p.Versions.Bindings}, PlanVersion: p.Version, SourceDigest: sourceDigest, Opening: true, StoryTime: *scene.StoryTime, Brief: manuscript.WritingBrief(p.Content.Brief), Style: style, SceneGoal: scene.Goal, SceneConflict: scene.Conflict, SceneOutcome: scene.Outcome, Voices: voices}
+	b.WritingTask.Brief.SelectedBeatID = beat.ID
 	// Intake 的类型作为创作任务传入；不包含参考原文或未来章纲。
 	b.WritingTask.Genre = p.Input.Base.Source.Intake.Genres
 	budget, output := cfg.ContextTokens, cfg.MaxOutputTokens
@@ -136,7 +142,7 @@ func plannedFakeSteps(b manuscript.ContextBundle) []model.Step {
 }
 func mustJSON(v any) string { raw, _ := json.Marshal(v); return string(raw) }
 func ValidPlannedRequest(r PlannedRunRequest) bool {
-	return len(r.RequestID) > 0 && len(r.RequestID) <= 80 && strings.TrimSpace(r.ChapterID) != "" && len(r.ChapterID) <= 80 && r.PlanVersion > 0 && r.DraftVersion >= 0
+	return len(r.BeatID) <= 80 && len(r.RequestID) > 0 && len(r.RequestID) <= 80 && strings.TrimSpace(r.ChapterID) != "" && len(r.ChapterID) <= 80 && r.PlanVersion > 0 && r.DraftVersion >= 0
 }
 
 type PlannedRunSource struct {
@@ -148,6 +154,7 @@ type PlannedRunSource struct {
 	PlanVersion int                          `json:"planVersion"`
 }
 type PlannedRunReadiness struct {
+	BeatID       string                       `json:"beatId"`
 	Ready        bool                         `json:"ready"`
 	Reason       string                       `json:"reason"`
 	DraftID      string                       `json:"draftId"`

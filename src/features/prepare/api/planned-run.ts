@@ -2,6 +2,7 @@ import { backendApi } from '@/shared/api/client';
 import type { BackendRun, StoredDraft } from '../types/backend';
 import type { ChapterPlanVersions } from '../types/chapter-plan';
 export interface PlannedRunReadiness {
+  beatId: string;
   ready: boolean;
   reason: string;
   draftId: string;
@@ -11,6 +12,7 @@ export interface PlannedRunReadiness {
   runs: BackendRun[];
 }
 export interface PlannedRunRequest {
+  beatId?: string;
   requestId: string;
   chapterId: string;
   expected: ChapterPlanVersions;
@@ -21,9 +23,9 @@ export interface PlannedRunRequest {
 export const plannedRunApi = {
   draft: (id: string, signal?: AbortSignal) =>
     backendApi.get<StoredDraft>(`/chapters/${encodeURIComponent(id)}?branchId=main`, signal),
-  get: (chapterId: string, signal?: AbortSignal) =>
+  get: (chapterId: string, signal?: AbortSignal, beatId?: string) =>
     backendApi.get<PlannedRunReadiness>(
-      `/planning/chapter-runs?chapterId=${encodeURIComponent(chapterId)}`,
+      `/planning/chapter-runs?chapterId=${encodeURIComponent(chapterId)}&beatId=${encodeURIComponent(beatId ?? '')}`,
       signal,
     ),
   start: (request: PlannedRunRequest) =>

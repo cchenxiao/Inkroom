@@ -64,7 +64,7 @@ func (s *Store) StartPlannedRun(ctx context.Context, scope string, req app.Plann
 	if _, err = currentChapterPlanInput(ctx, tx, scope, versions, req.ChapterID, "冻结当前 Beat 写作材料"); err != nil {
 		return r, false, err
 	}
-	frozen, err := app.PreparePlannedContext(cfg, scope, req.RequestID, req.DraftVersion, p)
+	frozen, err := app.PreparePlannedContext(cfg, scope, req.RequestID, req.DraftVersion, p, req.BeatID)
 	if err != nil {
 		return r, false, fmt.Errorf("%w: %v", app.ErrPlanningNotReady, err)
 	}
@@ -167,7 +167,7 @@ func lockPlanningRun(ctx context.Context, tx pgx.Tx, id string) error {
 	}
 	return nil
 }
-func (s *Store) PlannedRunReadiness(ctx context.Context, scope, chapter string, cfg config.Config) (app.PlannedRunReadiness, error) {
+func (s *Store) PlannedRunReadiness(ctx context.Context, scope, chapter string, cfg config.Config, target ...string) (app.PlannedRunReadiness, error) {
 	out := app.PlannedRunReadiness{Reason: "请先确认当前章节的细纲与 Brief", Runs: []app.Run{}}
 	state, err := s.GetPlanning(ctx, scope)
 	if err != nil {
@@ -182,7 +182,11 @@ func (s *Store) PlannedRunReadiness(ctx context.Context, scope, chapter string, 
 	if p != nil {
 		out.PlanVersion = p.Version
 		out.Expected = p.Versions
-		out.DraftID = app.PlannedDraftID(scope, chapter, p.Content.Brief.SelectedBeatID)
+		out.BeatID = p.Content.Brief.SelectedBeatID
+		if len(target) > 0 && target[0] != "" {
+			out.BeatID = target[0]
+		}
+		out.DraftID = app.PlannedDraftID(scope, chapter, out.BeatID)
 		draft, e := s.Draft(ctx, out.DraftID, "main", 0)
 		if e != nil {
 			return out, e
@@ -192,7 +196,7 @@ func (s *Store) PlannedRunReadiness(ctx context.Context, scope, chapter string, 
 		if !current {
 			out.Reason = "规划输入已变化，请先复核细纲"
 		} else {
-			_, e = app.PreparePlannedContext(cfg, scope, "preview", out.DraftVersion, *p)
+			_, e = app.PreparePlannedContext(cfg, scope, "preview", out.DraftVersion, *p, out.BeatID)
 			if e != nil {
 				out.Reason = e.Error()
 			} else {
@@ -204,7 +208,7 @@ func (s *Store) PlannedRunReadiness(ctx context.Context, scope, chapter string, 
 				if !publishedForPlan(current, *p) {
 					out.Reason = "请先在知识快照页发布当前已确认设定"
 				} else {
-					prepared, prepErr := app.PreparePlannedContext(cfg, scope, "preview", out.DraftVersion, *p)
+					prepared, prepErr := app.PreparePlannedContext(cfg, scope, "preview", out.DraftVersion, *p, out.BeatID)
 					if prepErr == nil {
 						_, prepErr = app.FreezePublishedKnowledge(prepared, current.Snapshot)
 					}
@@ -218,7 +222,7 @@ func (s *Store) PlannedRunReadiness(ctx context.Context, scope, chapter string, 
 			}
 		}
 	}
-	rows, err := s.pool.Query(ctx, "SELECT r.id FROM runs r JOIN planning_run_inputs p ON p.run_id=r.id WHERE p.scope=$1 AND p.chapter_id=$2 ORDER BY r.created_at DESC,r.id DESC LIMIT 10", scope, chapter)
+	rows, err := s.pool.Query(ctx, "SELECT r.id FROM runs r JOIN planning_run_inputs p ON p.run_id=r.id WHERE p.scope=$1 AND p.chapter_id=$2 AND r.payload->'planning'->>'beatId'=$3 ORDER BY r.created_at DESC,r.id DESC LIMIT 10", scope, chapter, out.BeatID)
 	if err != nil {
 		return out, err
 	}

@@ -47,3 +47,6 @@ var StoryArchitectSchema []byte
 
 //go:embed showrunner.v1.json
 var ShowrunnerSchema []byte
+
+//go:embed chapter_review.v1.json
+var ChapterReviewSchema []byte

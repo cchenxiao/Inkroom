@@ -12,7 +12,7 @@ import (
 )
 
 // Reuses the persisted planning chain from the chapter-plan integration test.
-func exercisePlannedRun(t *testing.T, s *Store, scope string, p planning.ChapterPlanSelection, cfg config.Config, started *app.Run) app.Run {
+func exercisePlannedRun(t *testing.T, s *Store, scope string, p planning.ChapterPlanSelection, cfg config.Config, started *app.Run, target ...string) app.Run {
 	t.Helper()
 	ctx := context.Background()
 	preview, err := s.PlanningKnowledgePreview(ctx, scope)
@@ -38,11 +38,11 @@ func exercisePlannedRun(t *testing.T, s *Store, scope string, p planning.Chapter
 			t.Fatal("forged preview accepted", e)
 		}
 	}
-	ready, err := s.PlannedRunReadiness(ctx, scope, p.ChapterID, cfg)
+	ready, err := s.PlannedRunReadiness(ctx, scope, p.ChapterID, cfg, target...)
 	if err != nil || !ready.Ready {
 		t.Fatal("readiness", err, ready.Reason)
 	}
-	req := app.PlannedRunRequest{RequestID: rand.Text(), ChapterID: p.ChapterID, Expected: p.Versions, PlanVersion: p.Version, DraftVersion: ready.DraftVersion}
+	req := app.PlannedRunRequest{BeatID: ready.BeatID, RequestID: rand.Text(), ChapterID: p.ChapterID, Expected: p.Versions, PlanVersion: p.Version, DraftVersion: ready.DraftVersion}
 	r, created, err := s.StartPlannedRun(ctx, scope, req, cfg)
 	if err != nil || !created {
 		t.Fatal("start", err)

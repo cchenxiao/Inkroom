@@ -14,6 +14,9 @@ export default defineConfig({
   resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
   test: {
     environment: 'jsdom',
+    // Bound concurrent DOM environments so interactive tests keep their 5s budget.
+    maxWorkers: 2,
+    minWorkers: 1,
     setupFiles: ['./src/test/setup.ts'],
     exclude: ['node_modules/**', 'e2e/**'],
     restoreMocks: true,

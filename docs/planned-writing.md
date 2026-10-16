@@ -32,8 +32,8 @@ planned_writer → 一致性 / AI 味并行 → 分级 → 有限修订 → 人�
 
 | 方法 | 路径 | 用途 |
 | --- | --- | --- |
-| GET | `/planning/chapter-runs?chapterId=...` | 返回 ready/reason、draftId/draftVersion、planVersion、expected、最近 10 次 runs |
-| POST | `/planning/chapter-runs` | `{requestId,chapterId,expected,planVersion,draftVersion,autoRevise}` → 202 Run |
+| GET | `/planning/chapter-runs?chapterId=...&beatId=...` | 返回 ready/reason、draftId/draftVersion、planVersion、expected、最近 10 次 runs |
+| POST | `/planning/chapter-runs` | `{requestId,chapterId,beatId?,expected,planVersion,draftVersion,autoRevise}` → 202 Run |
 
 `expected={planning:{input,direction,style,core},outline,bindings}`。版本不匹配 409；材料未就绪 422。Run 增加 `planning={scope,chapterId,beatId,expected,planVersion}`，正文版本仍用物理稿本 ID。查询稿本、运行事件、人工操作、上下文清单与定稿复用已有 API；提交引用增加 `planning_inputs` 和 `writing_task`。迁移 015 自动创建运行与规划绑定表。
 
@@ -41,4 +41,4 @@ planned_writer → 一致性 / AI 味并行 → 分级 → 有限修订 → 人�
 
 Fake + 独立测试库验证输入隔离、POV 时间投影、JSONB 摘要、请求去重、版本覆盖保护、审核及规划失效；前端验证携带版本、失败重试沿用 ID、旧规划按钮禁用。未额外调用付费模型验证文学质量。
 
-M0.4c2 已接 [正式初始知识发布](planning-knowledge.md)。下一切片仍需前章定稿来源、整章多 Beat 组装与正文工作台真实接线；不能把单段 commit 当作上一章定稿，M0 尚未全部结束。
+M0.4c2 已接 [正式初始知识发布](planning-knowledge.md)。M0.4c3 已接 [整章组稿](chapter-assembly.md)，可不改细纲版本独立选择 Beat。M0.4c4 已接 [整章复审与作者决定](chapter-review.md)；之后接全章最终定稿、前章来源与正文工作台。不能把单段 commit 或待审章稿当作上一章定稿，M0 尚未全部结束。

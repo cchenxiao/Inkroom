@@ -29,15 +29,35 @@ func TestChapterPlanFrozenInputAndAuthorVersion(t *testing.T) {
 	scope := "chapter-plan-test-" + rand.Text() + "/main"
 	var plannedRun app.Run
 	defer func() {
-		if plannedRun.ID != "" {
-			for _, table := range []string{"manuscript_commits", "planning_run_inputs", "run_artifacts", "run_actions", "run_checkpoints", "llm_calls", "reviews", "chapter_versions", "critic_lookups"} {
-				if _, e := s.pool.Exec(ctx, "DELETE FROM "+table+" WHERE run_id IN (SELECT id FROM runs WHERE chapter_id=$1)", plannedRun.ChapterID); e != nil {
+		if _, e := s.pool.Exec(ctx, "DELETE FROM chapter_review_jobs WHERE scope=$1", scope); e != nil {
+			t.Error(e)
+		}
+		if _, e := s.pool.Exec(ctx, "DELETE FROM chapter_assemblies WHERE scope=$1", scope); e != nil {
+			t.Error(e)
+		}
+		rows, e := s.pool.Query(ctx, "SELECT DISTINCT r.chapter_id FROM runs r JOIN planning_run_inputs b ON b.run_id=r.id WHERE b.scope=$1", scope)
+		if e != nil {
+			t.Error(e)
+		} else {
+			var drafts []string
+			for rows.Next() {
+				var id string
+				if e = rows.Scan(&id); e != nil {
 					t.Error(e)
 				}
+				drafts = append(drafts, id)
 			}
-			for _, q := range []string{"DELETE FROM segment_versions WHERE chapter_id=$1", "DELETE FROM runs WHERE chapter_id=$1", "DELETE FROM chapters WHERE id=$1"} {
-				if _, e := s.pool.Exec(ctx, q, plannedRun.ChapterID); e != nil {
-					t.Error(e)
+			rows.Close()
+			for _, draft := range drafts {
+				for _, table := range []string{"manuscript_commits", "planning_run_inputs", "run_artifacts", "run_actions", "run_checkpoints", "llm_calls", "reviews", "chapter_versions", "critic_lookups"} {
+					if _, e = s.pool.Exec(ctx, "DELETE FROM "+table+" WHERE run_id IN(SELECT id FROM runs WHERE chapter_id=$1)", draft); e != nil {
+						t.Error(e)
+					}
+				}
+				for _, q := range []string{"DELETE FROM chapter_versions WHERE chapter_id=$1", "DELETE FROM segment_versions WHERE chapter_id=$1", "DELETE FROM runs WHERE chapter_id=$1", "DELETE FROM chapters WHERE id=$1"} {
+					if _, e = s.pool.Exec(ctx, q, draft); e != nil {
+						t.Error(e)
+					}
 				}
 			}
 		}
@@ -312,5 +332,7 @@ func TestChapterPlanFrozenInputAndAuthorVersion(t *testing.T) {
 	if e != nil || reason == "" {
 		t.Fatal("committed manuscript did not block initialization replacement", e)
 	}
+
+	exerciseChapterAssembly(t, s, scope, selected, cfg, commit)
 
 }

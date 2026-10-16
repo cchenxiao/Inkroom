@@ -99,6 +99,15 @@ it('requires explicit chapter plan confirmation and retains edits on version con
   let saves = 0;
   let body: ChapterPlanSaveRequest | undefined;
   server.use(
+    http.post('*/go-api/planning/chapter-assemblies/preview', () =>
+      HttpResponse.json({
+        ready: false,
+        reason: '请先确认细纲',
+        slots: [],
+        draft: { parts: [] },
+        history: [],
+      }),
+    ),
     http.get('*/go-api/planning/chapter-runs', () =>
       HttpResponse.json({ ready: false, reason: '请先确认细纲', runs: [], planVersion: 0 }),
     ),
