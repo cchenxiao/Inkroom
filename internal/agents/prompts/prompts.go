@@ -52,6 +52,10 @@ func render(in model.Input, candidate string) (model.Input, error) {
 	name := in.Role
 	in.Temperature = 0.2
 	switch name {
+	case "style_analyst":
+		in.Temperature = 0.2
+	case "core_planner":
+		in.Temperature = 0.6
 	case "tone_director":
 		in.Temperature = 0.8
 	case "writer", "trial_writer":

@@ -35,3 +35,9 @@ var ToneDirectionSchema []byte
 
 //go:embed trial_writer.v1.json
 var TrialWriterSchema []byte
+
+//go:embed style_analyst.v1.json
+var StyleAnalystSchema []byte
+
+//go:embed core_planner.v1.json
+var CorePlannerSchema []byte

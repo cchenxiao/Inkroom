@@ -167,8 +167,23 @@ func (s *Store) SelectStyle(ctx context.Context, scope string, r planning.StyleS
 			return empty, err
 		}
 		// 作者显式复核旧风格，可改变方向依赖；原始样本来源不能随手改写。
-		if source.JobID != r.JobID || source.CandidateVersion != r.CandidateVersion || source.VariantID != r.VariantID {
+		if source.JobID != r.JobID || source.CandidateVersion != r.CandidateVersion || source.VariantID != r.VariantID || source.AnalysisID != r.AnalysisID || source.AnalysisVersion != r.AnalysisVersion {
 			return empty, app.ErrInvalidWrite
+		}
+	} else if r.AnalysisID != "" {
+		err = tx.QueryRow(ctx, "SELECT record FROM planning_style_analyses WHERE id=$1 AND scope=$2", r.AnalysisID, scope).Scan(&raw)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return empty, app.ErrNotFound
+		}
+		if err != nil {
+			return empty, err
+		}
+		var analysis planning.StyleAnalysisJob
+		if err = json.Unmarshal(raw, &analysis); err != nil {
+			return empty, err
+		}
+		if analysis.Status != "completed" || analysis.Output == nil || analysis.Version != r.AnalysisVersion {
+			return empty, app.ErrVersionMismatch
 		}
 	} else if r.JobID != "" {
 		err = tx.QueryRow(ctx, "SELECT record FROM planning_style_jobs WHERE id=$1 AND scope=$2", r.JobID, scope).Scan(&raw)
@@ -196,7 +211,7 @@ func (s *Store) SelectStyle(ctx context.Context, scope string, r planning.StyleS
 		}
 
 	}
-	out := planning.StyleSelection{SourceStyleVersion: r.SourceStyleVersion, Version: sv + 1, InputVersion: iv, DirectionVersion: dv, AnchorVersion: sv + 1, JobID: r.JobID, CandidateVersion: r.CandidateVersion, VariantID: r.VariantID, AnchorText: r.AnchorText, Rules: r.Rules, CreatedAt: time.Now()}
+	out := planning.StyleSelection{AnalysisID: r.AnalysisID, AnalysisVersion: r.AnalysisVersion, SourceStyleVersion: r.SourceStyleVersion, Version: sv + 1, InputVersion: iv, DirectionVersion: dv, AnchorVersion: sv + 1, JobID: r.JobID, CandidateVersion: r.CandidateVersion, VariantID: r.VariantID, AnchorText: r.AnchorText, Rules: r.Rules, CreatedAt: time.Now()}
 	raw, _ = json.Marshal(out)
 	if _, err = tx.Exec(ctx, "INSERT INTO planning_style_selections VALUES($1,$2,$3)", scope, sv+1, raw); err != nil {
 		return empty, err

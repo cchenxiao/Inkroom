@@ -1,0 +1,63 @@
+{
+  "source": {
+    "version": 1,
+    "digest": "3bfdbfbaad2c62144b8de37b712657c9a8980e34e4dd4bb8144c9762041404e0",
+    "intake": {
+      "premise": "两位修钟人为保住老店合作，逐渐学会接受彼此的帮助。",
+      "genres": "都市 / 人物关系",
+      "targetWords": "24000 字",
+      "narrative": "第三人称限知，过去时",
+      "preferences": "不堆梗，允许人物立场产生轻微幽默",
+      "references": [],
+      "packs": []
+    },
+    "effectivePacks": []
+  },
+  "selection": {
+    "version": 1,
+    "inputVersion": 1,
+    "inputDigest": "3bfdbfbaad2c62144b8de37b712657c9a8980e34e4dd4bb8144c9762041404e0",
+    "jobId": "",
+    "candidateVersion": 0,
+    "candidateIndex": -1,
+    "direction": {
+      "title": "教学方向 · 修钟人的星期天",
+      "logline": "两位修钟人为保住老店合作，逐渐学会接受彼此的帮助。",
+      "coreConflict": "两人需要合作修钟，却都坚持自己的办法。",
+      "characterDilemma": "林舟想独自承担，又需要许宁的帮助。",
+      "readerAppeal": "从具体动作与立场碰撞看见关系变化。",
+      "tone": "克制、温和，可以有处境反差。",
+      "narrative": "第三人称限知，过去时，固定林舟视角。",
+      "tradeoff": "集中一段人物关系，不靠扩大事件规模推动。"
+    },
+    "createdAt": "2026-10-16T00:00:00Z"
+  },
+  "style": {
+    "version": 1,
+    "inputVersion": 1,
+    "directionVersion": 1,
+    "anchorVersion": 1,
+    "sourceStyleVersion": 0,
+    "jobId": "",
+    "candidateVersion": 0,
+    "variantId": "",
+    "anchorText": "这是作者已确认的表达参考，不能从中提取人物事实。",
+    "rules": {
+      "pov": "第三人称限知",
+      "tense": "过去时",
+      "tone": "对白克制，人物立场不同带来轻微反差",
+      "sentenceLength": {
+        "min": 8,
+        "max": 35
+      },
+      "dialogueRatio": {
+        "min": 0.1,
+        "max": 0.5
+      },
+      "bannedPhrases": [],
+      "styleArc": "关系转折处放慢，临近抉择时收紧"
+    },
+    "createdAt": "2026-10-16T00:00:00Z"
+  },
+  "request": "先提一至两位主要人物，以及修钟店故事需要的少量硬事实；未来关系走向放计划区。"
+}

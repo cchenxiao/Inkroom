@@ -1,0 +1,156 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "observations",
+    "rules",
+    "anchorText",
+    "limitations"
+  ],
+  "properties": {
+    "observations": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 6,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "dimension",
+          "sampleIndex",
+          "quote",
+          "reason",
+          "suggestion",
+          "certainty"
+        ],
+        "properties": {
+          "dimension": {
+            "enum": [
+              "sentence",
+              "rhythm",
+              "dialogue",
+              "distance",
+              "imagery",
+              "humor"
+            ]
+          },
+          "sampleIndex": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2
+          },
+          "quote": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 600
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1200
+          },
+          "suggestion": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1200
+          },
+          "certainty": {
+            "enum": [
+              "observed",
+              "tentative"
+            ]
+          }
+        }
+      }
+    },
+    "rules": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "pov",
+        "tense",
+        "tone",
+        "sentenceLength",
+        "dialogueRatio",
+        "bannedPhrases",
+        "styleArc"
+      ],
+      "properties": {
+        "pov": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "tense": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "tone": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2400
+        },
+        "sentenceLength": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "min",
+            "max"
+          ],
+          "properties": {
+            "min": {
+              "type": "number",
+              "minimum": 0
+            },
+            "max": {
+              "type": "number",
+              "minimum": 0
+            }
+          }
+        },
+        "dialogueRatio": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "min",
+            "max"
+          ],
+          "properties": {
+            "min": {
+              "type": "number",
+              "minimum": 0
+            },
+            "max": {
+              "type": "number",
+              "minimum": 0
+            }
+          }
+        },
+        "bannedPhrases": {
+          "type": "array",
+          "maxItems": 30,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 150
+          }
+        },
+        "styleArc": {
+          "type": "string",
+          "maxLength": 2400
+        }
+      }
+    },
+    "anchorText": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1800
+    },
+    "limitations": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1800
+    }
+  }
+}

@@ -564,3 +564,8 @@ go run ./cmd/inkloom -knowledge-import /absolute/path/publication.json
 本阶段学习重点是 Agent 的结构化输出、异步任务、冻结输入和作者采用事务。修改立意会使旧候选不能采用，旧选择进入待复核；重启不会自动重发模型请求。接口与阅读顺序见 [作品规划接口](docs/backend-planning-api.md)。启动命令不变，已有数据库自动执行迁移 009。
 
 M0.2b 页面入口：**创作准备 → 风格**。先在立意区确认方向，再生成同场景双样本；也可直接提供范文。锚文本和风格规矩一起保存到 PG，旧方向需复核，尚不自动写入章节。详见 [试笔说明](docs/style-trial.md)。
+
+
+准备页新增 **从一段文字识别风格**：粘贴最多 3 万字，查看带原文依据的文风分析，导入风格编辑器后人工确认。长文明确展示取样范围，不冒充通读；见 [文本风格分析](docs/reference-style-analysis.md)。
+
+M0.3a 独立核心设定候选：`INKLOOM_MODEL=fake go run ./cmd/inkloom -core-settings internal/demo/core_settings.json`。目前是 Go/CLI 切片，不直接保存为角色事实；见 [核心设定说明](docs/core-settings.md)。

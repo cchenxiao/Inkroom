@@ -76,6 +76,8 @@ func (r StyleRules) Validate() error {
 }
 
 type StyleSelectionRequest struct {
+	AnalysisID               string     `json:"analysisId"`
+	AnalysisVersion          int        `json:"analysisVersion"`
 	SourceStyleVersion       int        `json:"sourceStyleVersion"` // 编辑/复核既有风格时保留来源链。
 	ExpectedInputVersion     int        `json:"expectedInputVersion"`
 	ExpectedDirectionVersion int        `json:"expectedDirectionVersion"`
@@ -87,6 +89,8 @@ type StyleSelectionRequest struct {
 	Rules                    StyleRules `json:"rules"`
 }
 type StyleSelection struct {
+	AnalysisID         string     `json:"analysisId"`
+	AnalysisVersion    int        `json:"analysisVersion"`
 	SourceStyleVersion int        `json:"sourceStyleVersion"`
 	Version            int        `json:"version"`
 	InputVersion       int        `json:"inputVersion"`
@@ -103,6 +107,9 @@ type StyleSelection struct {
 func (r StyleSelectionRequest) Validate() error {
 	if !bounded(r.AnchorText, 12000, true) || !bounded(r.JobID, 80, false) || !bounded(r.VariantID, 80, false) {
 		return fmt.Errorf("请选择试笔并填写锚文本，最多 12000 字节")
+	}
+	if !bounded(r.AnalysisID, 80, false) || (r.AnalysisID == "" && r.AnalysisVersion != 0) || (r.AnalysisID != "" && (r.AnalysisVersion < 1 || r.JobID != "")) {
+		return fmt.Errorf("风格分析来源无效或与试笔来源冲突")
 	}
 	if r.SourceStyleVersion < 0 {
 		return fmt.Errorf("来源风格版本无效")

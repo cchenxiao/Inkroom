@@ -55,3 +55,8 @@ Go 前缀 `/api`；Vite 前端通过 `/go-api` 代理。所有写操作要求 JS
 - 启动去重比较全部临时材料；单作品最多一个试笔任务，最多 4 次模型调用，整体 2 分钟。中断不自动重跑。调用记录按实际 call number 持久化。
 
 原 `docs/frontend-api.md` Mock/章节契约不变；上述接口属于独立 Go 规划区。
+
+
+## 参考文本风格分析
+
+新增 `GET/POST /planning/style-analyses`，与书名参考线索独立。POST `{requestId,title,text}` 创建只读分析任务，支持 80–30,000 字；长文明确取样首/中/尾共 3,000 字，全文做程序统计。采用接口新增 `analysisId/analysisVersion`，不得与试笔 job 来源混用；既有风格编辑继续保留来源。详见 [文本风格分析接口与边界](reference-style-analysis.md)。

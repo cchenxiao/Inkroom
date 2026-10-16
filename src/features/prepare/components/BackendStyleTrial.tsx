@@ -1,3 +1,5 @@
+import ReferenceStyleAnalysis from './ReferenceStyleAnalysis';
+import type { StyleAnalysisJob } from '../types/style-analysis';
 import { useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
@@ -124,6 +126,23 @@ function StyleTrialWorkbench() {
       },
     });
   }
+  function useAnalysis(analysis: StyleAnalysisJob) {
+    if (!analysis.output) return;
+    setRejected(false);
+    setEdit({
+      expectedInputVersion: iv,
+      expectedDirectionVersion: dv,
+      expectedStyleVersion: state!.styleVersion,
+      sourceStyleVersion: 0,
+      jobId: '',
+      candidateVersion: 0,
+      variantId: '',
+      analysisId: analysis.id,
+      analysisVersion: analysis.version,
+      anchorText: analysis.output.anchorText,
+      rules: structuredClone(analysis.output.rules),
+    });
+  }
   function manual() {
     setRejected(false);
     setEdit({
@@ -134,6 +153,8 @@ function StyleTrialWorkbench() {
       candidateVersion: selected?.candidateVersion ?? 0,
       variantId: selected?.variantId ?? '',
       sourceStyleVersion: selected?.version ?? 0,
+      analysisId: selected?.analysisId ?? '',
+      analysisVersion: selected?.analysisVersion ?? 0,
       anchorText: selected?.anchorText ?? '',
       rules: selected
         ? structuredClone(selected.rules)
@@ -226,6 +247,10 @@ function StyleTrialWorkbench() {
           </div>
         </div>
       )}
+      <ReferenceStyleAnalysis
+        canUse={directionReady && !busy && !query.isError}
+        onUse={useAnalysis}
+      />
       <details className="style-trial-setup" open={!job || undefined}>
         <summary>{t.setup}</summary>
         <StyleTrialSetup value={setup} onChange={setSetup} disabled={busy || running} />

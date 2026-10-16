@@ -1,3 +1,5 @@
+import { useEffect, useRef } from 'react';
+import { styleAnalysisMessages } from '@/shared/lib/messages-style-analysis';
 import { Badge, Button, Field, Input, Textarea } from '@/shared/ui';
 import { styleTrialMessages as t } from '@/shared/lib/messages-style-trial';
 import type { StyleSelectionRequest } from '../types/style-trial';
@@ -34,14 +36,22 @@ export default function StyleSelectionEditor({
   onSave: () => void;
   onCancel: () => void;
 }) {
+  const editorRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    editorRef.current?.scrollIntoView?.({ block: 'start', behavior: 'smooth' });
+  }, [value.jobId, value.analysisId, value.sourceStyleVersion]);
   const rules = value.rules;
   const change = (patch: Partial<typeof rules>) =>
     onChange({ ...value, rules: { ...rules, ...patch } });
   return (
-    <section className="style-selection-editor" aria-label={t.profile}>
+    <section ref={editorRef} className="style-selection-editor" aria-label={t.profile}>
       <div className="planning-heading">
         <h3>{t.profile}</h3>
-        {!value.jobId && <Badge>{t.authorProvided}</Badge>}
+        {value.analysisId ? (
+          <Badge>{styleAnalysisMessages.analysisSource}</Badge>
+        ) : (
+          !value.jobId && <Badge>{t.authorProvided}</Badge>
+        )}
         <Badge tone="human">方向 v{value.expectedDirectionVersion}</Badge>
       </div>
       {stale && (

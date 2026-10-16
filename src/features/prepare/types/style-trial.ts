@@ -60,6 +60,8 @@ export interface StyleRules {
   styleArc: string;
 }
 export interface StyleSelectionRequest {
+  analysisId?: string;
+  analysisVersion?: number;
   sourceStyleVersion?: number;
   expectedInputVersion: number;
   expectedDirectionVersion: number;
@@ -71,6 +73,8 @@ export interface StyleSelectionRequest {
   rules: StyleRules;
 }
 export interface StyleSelection {
+  analysisId?: string;
+  analysisVersion?: number;
   sourceStyleVersion?: number;
   version: number;
   inputVersion: number;

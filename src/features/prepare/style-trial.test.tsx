@@ -1,4 +1,5 @@
-import { afterAll, afterEach, beforeAll, expect, it } from 'vitest';
+import type { StyleAnalysisJob } from './types/style-analysis';
+import { afterAll, afterEach, beforeAll, beforeEach, expect, it } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -13,6 +14,9 @@ import { emptyTrialSetup } from './components/StyleTrialSetup';
 import BackendStyleTrial from './components/BackendStyleTrial';
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
+beforeEach(() =>
+  server.use(http.get('*/go-api/planning/style-analyses', () => HttpResponse.json([]))),
+);
 afterEach(() => {
   server.resetHandlers();
   useUIStore.setState({ projectId: 'project-zhuoliu', branchId: 'main' });
@@ -201,6 +205,86 @@ it('retains trial provenance when editing an adopted style', async () => {
       candidateVersion: 1,
       variantId: 'restrained',
       sourceStyleVersion: 1,
+    }),
+  );
+});
+
+it('analyses pasted reference text and carries its source into author adoption', async () => {
+  const data = fixture();
+  let analyses: StyleAnalysisJob[] = [];
+  let submitted: unknown;
+  const source = '风从门缝钻进来。他把手缩回袖口，等着她先说。'.repeat(5);
+  server.use(
+    http.get('*/go-api/planning', () => HttpResponse.json(data)),
+    http.get('*/go-api/planning/style-analyses', () => HttpResponse.json(analyses)),
+    http.post('*/go-api/planning/style-analyses', async ({ request }) => {
+      const req = (await request.json()) as { text: string; title: string; requestId: string };
+      analyses = [
+        {
+          id: req.requestId,
+          version: 1,
+          status: 'completed',
+          input: {
+            title: req.title,
+            text: req.text,
+            digest: 'source-digest',
+            totalCharacters: source.length,
+            analyzedCharacters: source.length,
+            samples: [{ start: 0, end: source.length, text: source }],
+            stats: { mean: 12, variance: 3, calibrated: false, sentenceLengths: [12] },
+          },
+          output: {
+            observations: [
+              {
+                dimension: 'distance',
+                sampleIndex: 0,
+                quote: '他把手缩回袖口',
+                reason: '通过动作表现迟疑',
+                suggestion: '少解释情绪',
+                certainty: 'observed',
+              },
+            ],
+            rules: {
+              pov: '第三人称',
+              tense: '过去时',
+              tone: '动作留白',
+              sentenceLength: { min: 8, max: 30 },
+              dialogueRatio: { min: 0.1, max: 0.5 },
+              bannedPhrases: [],
+              styleArc: '',
+            },
+            anchorText: '风从门缝钻进来。他把手缩回袖口，等着她先说。',
+            limitations: '只有局部材料，目标区间待作者确认。',
+          },
+          model: 'scripted-fake',
+          promptVersion: 'style_analyst.v1',
+          schemaVersion: 'style_analyst.v1',
+          calls: [],
+          message: '',
+          createdAt: '2026-10-16T00:00:00Z',
+        },
+      ];
+      return HttpResponse.json(analyses[0], { status: 202 });
+    }),
+    http.post('*/go-api/planning/style-selection', async ({ request }) => {
+      submitted = await request.json();
+      return HttpResponse.json({ version: 1 });
+    }),
+  );
+  const user = setup();
+  await user.type(await screen.findByLabelText('参考文本'), source);
+  await user.click(screen.getByRole('button', { name: '识别这段文字的风格' }));
+  expect(await screen.findByText('通过动作表现迟疑')).toBeInTheDocument();
+  expect(submitted).toBeUndefined();
+  await user.click(screen.getByRole('button', { name: '导入风格编辑器' }));
+  expect(screen.getByLabelText('作者确认的锚文本')).toHaveValue(analyses[0].output!.anchorText);
+  await user.click(screen.getByRole('button', { name: '确认并保存风格' }));
+  await waitFor(() =>
+    expect(submitted).toMatchObject({
+      analysisId: analyses[0].id,
+      analysisVersion: 1,
+      jobId: '',
+      expectedDirectionVersion: 1,
     }),
   );
 });

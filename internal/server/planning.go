@@ -50,6 +50,9 @@ func (s *service) getPlanning(w http.ResponseWriter, r *http.Request) {
 
 // 与本地编辑端点同样限制来源，并拒绝未知字段与拼接 JSON。
 func planningBody(w http.ResponseWriter, r *http.Request, out any) bool {
+	return planningBodyLimit(w, r, out, 32*1024)
+}
+func planningBodyLimit(w http.ResponseWriter, r *http.Request, out any, limit int64) bool {
 	origin := r.Header.Get("Origin")
 	if origin != "" && origin != "http://127.0.0.1:5173" && origin != "http://localhost:5173" {
 		fail(w, 403, "origin_forbidden", "不接受此来源的写入")
@@ -59,7 +62,7 @@ func planningBody(w http.ResponseWriter, r *http.Request, out any) bool {
 		fail(w, 415, "json_required", "请提交 JSON")
 		return false
 	}
-	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 32*1024))
+	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, limit))
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(out); err != nil {
 		fail(w, 400, "invalid_request", "请求内容无效或过长")

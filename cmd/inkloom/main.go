@@ -21,6 +21,7 @@ import (
 )
 
 func main() {
+	coreSettings := flag.String("core-settings", "", "generate unconfirmed core setting proposals from frozen planning JSON; no persistence")
 	styleTrial := flag.String("style-trial", "", "compare two style requests on a frozen temporary scene JSON; no persistence")
 	knowledgeSeed := flag.Bool("knowledge-seed", false, "explicitly publish teaching knowledge snapshot to database")
 	knowledgeImport := flag.String("knowledge-import", "", "publish author-confirmed knowledge JSON with expectedVersion and reason")
@@ -67,7 +68,7 @@ func main() {
 		os.Exit(1)
 	}
 	modes := 0
-	for _, enabled := range []bool{*styleTrial != "", *knowledgeSeed, *knowledgeShow, *knowledgeImport != "", *knowledge, *evalCritic, *preview, *serve, *list, *seedMemory, *evalMemory, *memoryQuery != "", *memoryImport != ""} {
+	for _, enabled := range []bool{*coreSettings != "", *styleTrial != "", *knowledgeSeed, *knowledgeShow, *knowledgeImport != "", *knowledge, *evalCritic, *preview, *serve, *list, *seedMemory, *evalMemory, *memoryQuery != "", *memoryImport != ""} {
 		if enabled {
 			modes++
 		}
@@ -103,7 +104,9 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	var err error
-	if *styleTrial != "" {
+	if *coreSettings != "" {
+		err = coreSettingsCommand(ctx, *coreSettings)
+	} else if *styleTrial != "" {
 		err = styleTrialCommand(ctx, *styleTrial)
 	} else if *knowledgeSeed || *knowledgeShow || *knowledgeImport != "" {
 		err = knowledgeCommand(ctx, *knowledgeSeed, *knowledgeImport, *knowledgeVersion)
