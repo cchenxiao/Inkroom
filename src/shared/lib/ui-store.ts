@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { RunEvent, RunNode } from '@/types/domain';
 interface UIState {
+  projectId: string;
+  setProject: (projectId: string, chapterId: string, branchId?: string) => void;
   theme: 'day' | 'night';
   setTheme: (value: 'day' | 'night') => void;
   attention: 'review' | 'conflicts' | null;
@@ -44,6 +46,23 @@ interface UIState {
 export const useUIStore = create<UIState>()(
   persist(
     (set) => ({
+      projectId: 'project-zhuoliu',
+      setProject: (projectId, chapterId, branchId = 'main') =>
+        set({
+          projectId,
+          chapterId,
+          branchId,
+          stale: false,
+          attention: null,
+          focus: false,
+          drawer: 'closed',
+          selectedSegment: null,
+          selectedFinding: null,
+          runId: null,
+          node: null,
+          events: [],
+          streamText: '',
+        }),
       theme: 'day',
       setTheme: (theme) => set({ theme }),
       attention: null,

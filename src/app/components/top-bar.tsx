@@ -1,5 +1,6 @@
+import { bookPath, workPath } from '@/shared/lib/book-context';
 import { useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   ChevronLeft,
   ChevronRight,
@@ -19,10 +20,19 @@ import { shellText as t } from '@/shared/lib/messages-shell';
 import { zh } from '@/shared/lib/messages';
 import type { Branch, RunState } from '@/types/domain';
 export function TopBar() {
+  const projectId = useUIStore((s) => s.projectId);
+  const navigate = useNavigate();
   const branchId = useUIStore((s) => s.branchId);
   const chapterId = useUIStore((s) => s.chapterId);
   const stale = useUIStore((s) => s.stale);
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
+  const changeBranch = (id: string) => {
+    useUIStore.getState().setBranch(id);
+    const query = new URLSearchParams(search);
+    query.set('branchId', id);
+    query.set('projectId', projectId);
+    navigate(`${pathname}?${query}`);
+  };
   const chapterRoute = pathname === '/workspace' || pathname === '/review';
   const { data: project } = useProject();
   const { data } = useChapter();
@@ -54,17 +64,32 @@ export function TopBar() {
       });
     }
   };
+  if (pathname.startsWith('/library'))
+    return (
+      <header className="top-bar">
+        <Link to="/library" className="book-name">
+          我的作品
+        </Link>
+        <span className="muted">本地创作空间</span>
+      </header>
+    );
+  const moveChapter = (id: string) => {
+    useUIStore.getState().setChapter(id);
+    navigate(workPath(pathname.slice(1), projectId, id));
+  };
   return (
     <>
       <header className="top-bar">
         <div className="book-identity">
-          <span className="book-name">{project?.name ?? zh.brand}</span>
+          <Link to={bookPath(projectId)} className="book-name">
+            {project?.name ?? zh.brand}
+          </Link>
           <span className="top-divider" />
           <GitBranch size={13} />
           <select
             aria-label={t.branch}
             value={branchId}
-            onChange={(e) => useUIStore.getState().setBranch(e.target.value)}
+            onChange={(e) => changeBranch(e.target.value)}
           >
             {branches
               ?.filter((b) => b.status === 'active')
@@ -78,6 +103,8 @@ export function TopBar() {
             variant="ghost"
             size="icon"
             aria-label={t.newBranch}
+            disabled={projectId !== 'project-zhuoliu' && !project?.locked}
+            disabledReason="确认章节大纲后可创建试写分支"
             onClick={() => setCreate(true)}
           >
             <Plus size={13} />
@@ -94,7 +121,7 @@ export function TopBar() {
               aria-label={t.previous}
               disabled={index <= 0}
               disabledReason={t.previous}
-              onClick={() => tree && useUIStore.getState().setChapter(tree[index - 1].id)}
+              onClick={() => tree && moveChapter(tree[index - 1].id)}
             >
               <ChevronLeft size={14} />
             </Button>
@@ -104,7 +131,7 @@ export function TopBar() {
               aria-label={t.next}
               disabled={!tree || index >= tree.length - 1}
               disabledReason={t.next}
-              onClick={() => tree && useUIStore.getState().setChapter(tree[index + 1].id)}
+              onClick={() => tree && moveChapter(tree[index + 1].id)}
             >
               <ChevronRight size={14} />
             </Button>
@@ -124,8 +151,12 @@ export function TopBar() {
             <Button
               variant={primary.variant}
               size="sm"
-              disabled={primary.disabled}
-              disabledReason={primary.reason}
+              disabled={primary.disabled || projectId !== 'project-zhuoliu'}
+              disabledReason={
+                projectId !== 'project-zhuoliu'
+                  ? '演示作品仅支持手动试写，尚未接入 Agent 执行与评审。'
+                  : primary.reason
+              }
               loading={start.isPending || action.isPending}
               onClick={execute}
             >
@@ -158,7 +189,7 @@ export function TopBar() {
                 { name, fromBranchId: branchId },
                 {
                   onSuccess: (b) => {
-                    useUIStore.getState().setBranch(b.id);
+                    changeBranch(b.id);
                     setCreate(false);
                   },
                 },

@@ -36,6 +36,7 @@ function readBackup(storageKey: string, currentVersion: number): DraftBackup {
 }
 export function useAutosave(document: ChapterDocument, branchId: string) {
   const client = useQueryClient();
+  const projectId = document.chapter.projectId;
   const key = useMemo(
     () => queryKeys.resource(endpoints.chapter(document.chapter.id, branchId)),
     [document.chapter.id, branchId],
@@ -60,10 +61,14 @@ export function useAutosave(document: ChapterDocument, branchId: string) {
   const markStale = useCallback(() => {
     conflict.current = true;
     setNeedsReconciliation(true);
-    useUIStore.getState().setStale(true);
+    if (
+      useUIStore.getState().projectId === projectId &&
+      useUIStore.getState().branchId === branchId
+    )
+      useUIStore.getState().setStale(true);
     setStatus('failed');
     clearTimeout(timer.current);
-  }, []);
+  }, [projectId, branchId]);
   useEffect(() => {
     const incoming = document.chapter.draftVersion;
     if (!Object.keys(pending.current).length && !saving.current) {
@@ -102,7 +107,14 @@ export function useAutosave(document: ChapterDocument, branchId: string) {
     try {
       while (Object.keys(pending.current).length && !useUIStore.getState().stale) {
         const [id, text] = Object.entries(pending.current)[0];
-        const result = await workspaceApi.saveSegment(id, text, version.current, branchId);
+        const result = await workspaceApi.saveSegment(
+          id,
+          text,
+          version.current,
+          branchId,
+          undefined,
+          projectId,
+        );
         version.current = result.draftVersion;
         ownAcknowledgements.current.add(result.draftVersion);
         client.setQueryData<ChapterDocument>(key, (old) =>
@@ -133,6 +145,8 @@ export function useAutosave(document: ChapterDocument, branchId: string) {
             : 'saved',
       );
       void client.invalidateQueries({ queryKey: key });
+      void client.invalidateQueries({ queryKey: ['library'] });
+      void client.invalidateQueries({ queryKey: ['book-context'] });
     } catch (error) {
       setStatus('failed');
       if (
@@ -145,7 +159,7 @@ export function useAutosave(document: ChapterDocument, branchId: string) {
     } finally {
       saving.current = false;
     }
-  }, [branchId, client, key, publish, markStale]);
+  }, [branchId, projectId, client, key, publish, markStale]);
   const change = useCallback(
     (id: string, text: string) => {
       pending.current[id] = text;

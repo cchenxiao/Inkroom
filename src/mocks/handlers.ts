@@ -1,3 +1,5 @@
+import { libraryHandlers } from './library/handlers';
+import { resetLibrary } from './library/store';
 import { sentenceDistribution } from './data/statistics';
 import { http, HttpResponse } from 'msw';
 import type {
@@ -57,6 +59,7 @@ export function resetDB() {
   mergeSnapshots.clear();
   clearRuns();
   resetData();
+  resetLibrary();
 }
 type Body = { draftVersion?: number; branchId?: string; [key: string]: unknown };
 const json = HttpResponse.json;
@@ -347,6 +350,7 @@ function getRun(id: string): RunState {
   return db.runs[id] ?? fail(404, 'run_not_found', '执行记录不存在');
 }
 export const handlers = [
+  ...libraryHandlers,
   http.get(
     '*/api/projects/:id',
     route(() => db.project),

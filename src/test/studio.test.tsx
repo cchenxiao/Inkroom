@@ -15,7 +15,8 @@ describe('编辑室外壳保护', () => {
         <NavRail />
       </MemoryRouter>,
     );
-    expect(screen.getAllByRole('link')).toHaveLength(6);
+    expect(screen.getAllByRole('link')).toHaveLength(9);
+    expect(screen.getByRole('link', { name: '作品库' })).toHaveAttribute('href', '/library');
     expect(screen.getByRole('link', { name: '创作准备' })).toHaveClass('rail-link', 'active');
     expect(screen.getByRole('link', { name: '章节写作' })).toHaveClass('rail-link');
     expect(screen.getByRole('button', { name: '收起导航' })).toBeVisible();

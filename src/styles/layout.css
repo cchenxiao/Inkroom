@@ -1130,3 +1130,6 @@
     padding-inline: 0;
   }
 }
+
+.book-demo-strip { padding: 8px 16px; background: var(--panel); border-bottom: 1px solid var(--border); color: var(--text-dim); font-size: 12px; }
+.rail-logo { text-decoration: none; color: var(--text); }

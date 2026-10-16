@@ -29,3 +29,6 @@ var ConsistencySchema []byte
 
 //go:embed reviser.v1.json
 var ReviserSchema []byte
+
+//go:embed tone_director.v1.json
+var ToneDirectionSchema []byte

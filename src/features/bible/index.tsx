@@ -1,3 +1,4 @@
+import { workPath, ORIGINAL_PROJECT } from '@/shared/lib/book-context';
 import CharacterCard from './components/CharacterCard';
 import StyleCard from './components/StyleCard';
 import BibleEditDialog, { type Editable } from './components/BibleEditDialog';
@@ -19,6 +20,11 @@ export default function BiblePanel({ compact = true }: { compact?: boolean }) {
   const relatedCharacters =
     chapter.data?.segments.find((s) => s.id === selectedSegment)?.charactersPresent ?? [];
   const branchId = useUIStore((s) => s.branchId);
+  const projectId = useUIStore((s) => s.projectId);
+  const goToPlan = () => {
+    useUIStore.getState().setPanel('right', false);
+    navigate(workPath('prepare', projectId, undefined, kind === 'style' ? 'style' : 'world'));
+  };
   const stale = useUIStore((s) => s.stale);
   const navigate = useNavigate();
   const [kind, setKind] = useState<BibleKind>('characters');
@@ -28,6 +34,10 @@ export default function BiblePanel({ compact = true }: { compact?: boolean }) {
   const previewAction = useAction<ChangeSet, unknown>('/changesets/preview');
   const version = chapter.data?.chapter.draftVersion ?? 0;
   const edit = (value: unknown) => {
+    if (projectId !== ORIGINAL_PROJECT) {
+      goToPlan();
+      return;
+    }
     setEditing(structuredClone(value) as Editable);
     setReason('');
   };
@@ -47,6 +57,10 @@ export default function BiblePanel({ compact = true }: { compact?: boolean }) {
     setEditing(null);
   };
   const toggleLock = async (value: unknown) => {
+    if (projectId !== ORIGINAL_PROJECT) {
+      goToPlan();
+      return;
+    }
     const row = value as Editable;
     const result = await previewAction.mutateAsync({
       origin: 'human_bible',
@@ -189,7 +203,7 @@ export default function BiblePanel({ compact = true }: { compact?: boolean }) {
                       onClick={() => {
                         useUIStore.getState().setChapter(item.plantedChapter);
                         useUIStore.getState().selectSegment(item.plantedSegment);
-                        navigate('/workspace');
+                        navigate(workPath('workspace', projectId, useUIStore.getState().chapterId));
                       }}
                     >
                       {t.common.locate}

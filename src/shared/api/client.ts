@@ -1,3 +1,4 @@
+import { useUIStore } from '@/shared/lib/ui-store';
 import type { ApiErrorBody } from '@/types/domain';
 export const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) || '/api';
 export class ApiError extends Error {
@@ -42,11 +43,20 @@ export const backendApi = {
   post: <T>(p: string, data: unknown) =>
     request<T>(p, { method: 'POST', body: JSON.stringify(data) }, GO_API_BASE),
 };
+// 仅 Mock/前端资源使用作品作用域；Go 接口独立，不能把新作品误送给固定的浊流后端。
+function scopedPath(path: string) {
+  const state = useUIStore.getState();
+  const [base, query = ''] = path.split('?');
+  const params = new URLSearchParams(query);
+  if (!params.has('projectId')) params.set('projectId', state.projectId);
+  if (!params.has('branchId')) params.set('branchId', state.branchId);
+  return `${base}?${params}`;
+}
 export const api = {
-  get: <T>(p: string) => request<T>(p),
+  get: <T>(p: string) => request<T>(scopedPath(p)),
   post: <T>(p: string, data: unknown = {}) =>
-    request<T>(p, { method: 'POST', body: JSON.stringify(data) }),
+    request<T>(scopedPath(p), { method: 'POST', body: JSON.stringify(data) }),
   patch: <T>(p: string, data: unknown) =>
-    request<T>(p, { method: 'PATCH', body: JSON.stringify(data) }),
-  delete: <T>(p: string) => request<T>(p, { method: 'DELETE' }),
+    request<T>(scopedPath(p), { method: 'PATCH', body: JSON.stringify(data) }),
+  delete: <T>(p: string) => request<T>(scopedPath(p), { method: 'DELETE' }),
 };

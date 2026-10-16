@@ -12,7 +12,7 @@ import type { ChangeSet } from '@/types/domain';
 const saved = (draftVersion: number) => ({ draftVersion, changeset: {} as ChangeSet });
 beforeEach(() => {
   sessionStorage.clear();
-  useUIStore.getState().setStale(false);
+  useUIStore.getState().setProject('project-zhuoliu', 'ch7', 'main');
 });
 afterEach(() => vi.restoreAllMocks());
 function fixture() {
@@ -25,6 +25,25 @@ function fixture() {
   return { document, client, wrapper };
 }
 describe('version-aware segment autosave', () => {
+  it('keeps departing manuscript saves scoped to their original book', async () => {
+    const { document, wrapper } = fixture();
+    const save = vi.spyOn(workspaceApi, 'saveSegment').mockResolvedValue(saved(4));
+    const { result, unmount } = renderHook(() => useAutosave(document, 'main'), { wrapper });
+    act(() => result.current.change('ch7-s1', '离开作品前最后一句'));
+    act(() => useUIStore.getState().setProject('project-clock', 'project-clock-ch3', 'main'));
+    unmount();
+    await waitFor(() =>
+      expect(save).toHaveBeenCalledWith(
+        'ch7-s1',
+        '离开作品前最后一句',
+        3,
+        'main',
+        undefined,
+        'project-zhuoliu',
+      ),
+    );
+  });
+
   it('requires explicit reconciliation even if another control clears the global stale banner', async () => {
     const { document, wrapper } = fixture();
     const versions: number[] = [];

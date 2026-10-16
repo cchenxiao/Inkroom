@@ -1,0 +1,70 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "directions"
+  ],
+  "properties": {
+    "directions": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "title",
+          "logline",
+          "coreConflict",
+          "characterDilemma",
+          "readerAppeal",
+          "tone",
+          "narrative",
+          "tradeoff"
+        ],
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 800
+          },
+          "logline": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 800
+          },
+          "coreConflict": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 800
+          },
+          "characterDilemma": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 800
+          },
+          "readerAppeal": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 800
+          },
+          "tone": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 800
+          },
+          "narrative": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 800
+          },
+          "tradeoff": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 800
+          }
+        }
+      }
+    }
+  }
+}

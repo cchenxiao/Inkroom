@@ -1,9 +1,14 @@
+import { BookFeature } from './components/book-feature';
+import { BookContext } from './components/book-context';
 import { lazy, Suspense } from 'react';
 import { createBrowserRouter, Navigate, Link } from 'react-router-dom';
 import { AsyncState, Button } from '@/shared/ui';
 import { shellText as t } from '@/shared/lib/messages-shell';
 import { ErrorPage } from './error-boundary';
 import { Layout } from './layout';
+const Library = lazy(() => import('@/features/library/LibraryPage'));
+const Book = lazy(() => import('@/features/library/BookPage'));
+const Wizard = lazy(() => import('@/features/library/WizardPage'));
 const Workspace = lazy(() => import('@/features/workspace'));
 const Prepare = lazy(() => import('@/features/prepare'));
 const Review = lazy(() => import('@/features/review'));
@@ -17,16 +22,23 @@ const wrap = (Page: typeof Workspace) => (
 );
 export const router = createBrowserRouter([
   {
-    element: <Layout />,
+    element: (
+      <BookContext>
+        <Layout />
+      </BookContext>
+    ),
     errorElement: <ErrorPage />,
     children: [
-      { index: true, element: <Navigate to="/workspace" replace /> },
-      { path: 'workspace', element: wrap(Workspace) },
-      { path: 'prepare', element: wrap(Prepare) },
-      { path: 'review', element: wrap(Review) },
-      { path: 'changes', element: wrap(Changes) },
-      { path: 'versions', element: wrap(Versions) },
-      { path: 'reports', element: wrap(Reports) },
+      { index: true, element: <Navigate to="/library" replace /> },
+      { path: 'library', element: wrap(Library) },
+      { path: 'library/new', element: wrap(Wizard) },
+      { path: 'book/:projectId', element: wrap(Book) },
+      { path: 'workspace', element: <BookFeature page="workspace">{wrap(Workspace)}</BookFeature> },
+      { path: 'prepare', element: <BookFeature page="prepare">{wrap(Prepare)}</BookFeature> },
+      { path: 'review', element: <BookFeature page="review">{wrap(Review)}</BookFeature> },
+      { path: 'changes', element: <BookFeature page="changes">{wrap(Changes)}</BookFeature> },
+      { path: 'versions', element: <BookFeature page="versions">{wrap(Versions)}</BookFeature> },
+      { path: 'reports', element: <BookFeature page="reports">{wrap(Reports)}</BookFeature> },
       {
         path: '*',
         element: (
@@ -34,7 +46,7 @@ export const router = createBrowserRouter([
             <div className="eyebrow">INKLOOM / 404</div>
             <h1>{t.notFound}</h1>
             <p>{t.notFoundSub}</p>
-            <Link to="/workspace">
+            <Link to="/library">
               <Button>{t.back}</Button>
             </Link>
           </div>

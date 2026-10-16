@@ -11,6 +11,11 @@ beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
 afterAll(() => server.close());
 afterEach(() => server.resetHandlers());
 beforeEach(() => {
+  server.use(
+    http.get('*/go-api/planning', () =>
+      HttpResponse.json({ message: 'not running' }, { status: 503 }),
+    ),
+  );
   resetDB();
   useUIStore.setState({ chapterId: 'ch7', branchId: 'main', stale: false });
 });
@@ -57,6 +62,7 @@ it('shows generated suggestions as an unapplied preview before author confirmati
   expect(screen.queryByDisplayValue('浊流')).not.toBeInTheDocument();
   await userEvent.click(screen.getByRole('button', { name: /立意/ }));
   expect(screen.getByDisplayValue('浊流')).toBeInTheDocument();
+  await userEvent.click(screen.getByText('演示项目设定（Mock，与上方规划独立）'));
   await userEvent.click(screen.getByRole('button', { name: '生成候选建议' }));
   const dialog = screen.getByRole('dialog');
   await userEvent.click(within(dialog).getByRole('button', { name: '生成候选建议' }));

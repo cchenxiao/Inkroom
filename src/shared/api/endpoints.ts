@@ -1,3 +1,4 @@
+import { useUIStore } from '@/shared/lib/ui-store';
 export const endpoints = {
   project: (id = 'project-zhuoliu') => `/projects/${id}`,
   tree: (id = 'project-zhuoliu') => `/projects/${id}/tree`,
@@ -19,5 +20,8 @@ export const endpoints = {
 };
 export const queryKeys = {
   all: ['inkloom'] as const,
-  resource: (path: string) => ['inkloom', path] as const,
+  resource: (path: string) =>
+    useUIStore.getState().projectId === 'project-zhuoliu'
+      ? (['inkloom', path] as const)
+      : (['inkloom', path, useUIStore.getState().projectId] as const),
 };

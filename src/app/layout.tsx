@@ -26,6 +26,8 @@ export function Layout() {
   const rightOpen = useUIStore((s) => s.rightOpen);
   const stale = useUIStore((s) => s.stale);
   const workspace = pathname === '/workspace';
+  const globalPage = pathname.startsWith('/library') || pathname.startsWith('/book/');
+  const projectId = useUIStore((s) => s.projectId);
   const focused = workspace && focus;
   const [compact, setCompact] = useState(window.innerWidth < 1280);
   const [leftDrawer, setLeftDrawer] = useState(false);
@@ -49,7 +51,7 @@ export function Layout() {
         <div className="shell-top">
           <TopBar />
         </div>
-        {stale && (
+        {stale && !globalPage && (
           <div className="stale-banner" role="alert">
             <AlertTriangle size={15} />
             {workspace || pathname === '/review' ? t.stale : studio.materialStale}
@@ -97,7 +99,9 @@ export function Layout() {
               </Suspense>
             </ErrorBoundary>
           </div>
-          {workspace && attention && !focused && <WorkspaceReview />}
+          {workspace && attention && !focused && projectId === 'project-zhuoliu' && (
+            <WorkspaceReview />
+          )}
           {workspace && !focused && !attention && (
             <aside className="bible-rail" aria-label={studio.bible}>
               <Tooltip content={studio.openBible}>
@@ -115,6 +119,8 @@ export function Layout() {
                   variant="ghost"
                   size="icon"
                   aria-label={studio.reviewHere}
+                  disabled={projectId !== 'project-zhuoliu'}
+                  disabledReason="此演示作品尚未接入审核"
                   onClick={() => useUIStore.getState().setAttention('review')}
                 >
                   <ShieldCheck size={17} />
@@ -135,14 +141,14 @@ export function Layout() {
             </aside>
           )}
         </div>
-        {workspace && !focused && (
+        {workspace && !focused && projectId === 'project-zhuoliu' && (
           <Suspense>
             <RunDrawer />
           </Suspense>
         )}
       </div>
       <CommandPalette />
-      <RunEvents />
+      {!globalPage && projectId === 'project-zhuoliu' && <RunEvents />}
       <Drawer
         side="left"
         open={workspace && compact && leftDrawer && !focused}

@@ -13,6 +13,7 @@ import { useTree, useChapter } from '@/shared/api/hooks';
 import { AsyncState, Badge, Button, Progress, Tabs } from '@/shared/ui';
 import { useUIStore } from '@/shared/lib/ui-store';
 import { shellText as t } from '@/shared/lib/messages-shell';
+import { workPath } from '@/shared/lib/book-context';
 import { useNavigate } from 'react-router-dom';
 export function ChapterSidebar({ onCollapse }: { onCollapse?: () => void }) {
   const tree = useTree();
@@ -39,6 +40,10 @@ export function ChapterSidebar({ onCollapse }: { onCollapse?: () => void }) {
     setPendingChapter(null);
   }, [pendingChapter, data, ui.chapterId]);
   const navigate = useNavigate();
+  const openChapter = (id: string) => {
+    ui.setChapter(id);
+    navigate(workPath('workspace', ui.projectId, id));
+  };
   return (
     <aside className="chapter-sidebar">
       <div className="sidebar-heading">
@@ -68,7 +73,7 @@ export function ChapterSidebar({ onCollapse }: { onCollapse?: () => void }) {
               className={`chapter-group ${ui.chapterId === ch.id ? 'selected' : ''}`}
             >
               <div className="chapter-entry">
-                <button className="chapter-row" onClick={() => ui.setChapter(ch.id)}>
+                <button className="chapter-row" onClick={() => openChapter(ch.id)}>
                   {ui.chapterId === ch.id ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
                   <FileText size={14} />
                   <span>
@@ -81,7 +86,7 @@ export function ChapterSidebar({ onCollapse }: { onCollapse?: () => void }) {
                     className="issue-count"
                     aria-label={`${ch.issueCount} 处问题，定位最严重问题`}
                     onClick={() => {
-                      ui.setChapter(ch.id);
+                      openChapter(ch.id);
                       setPendingChapter(ch.id);
                     }}
                   >
@@ -118,7 +123,10 @@ export function ChapterSidebar({ onCollapse }: { onCollapse?: () => void }) {
             </div>
           ))}
         </AsyncState>
-        <button className="add-chapter" onClick={() => navigate('/prepare')}>
+        <button
+          className="add-chapter"
+          onClick={() => navigate(workPath('prepare', ui.projectId, ui.chapterId, 'outline'))}
+        >
           <Plus size={14} />
           {t.overview}
         </button>

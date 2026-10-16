@@ -1,6 +1,8 @@
-import { NavLink, useNavigate, useLocation } from 'react-router-dom';
+import { workPath, bookPath } from '@/shared/lib/book-context';
+import { Link, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useEffect, useLayoutEffect } from 'react';
 import {
+  Library,
   Sun,
   Moon,
   Feather,
@@ -36,57 +38,80 @@ export function NavRail() {
   const setCollapsed = useUIStore((s) => s.setNavCollapsed);
   const navigate = useNavigate();
   const { pathname } = useLocation();
+  const projectId = useUIStore((s) => s.projectId);
+  const chapterId = useUIStore((s) => s.chapterId);
+  const globalPage = pathname.startsWith('/library');
   useEffect(() => {
     const key = (event: KeyboardEvent) => {
       if (!(event.metaKey || event.ctrlKey) || !event.altKey) return;
       const index = Number(event.key) - 1;
       if (navigation[index]) {
         event.preventDefault();
-        navigate(`/${navigation[index][0]}`);
+        navigate(workPath(navigation[index][0], projectId, chapterId));
       }
     };
     window.addEventListener('keydown', key);
     return () => window.removeEventListener('keydown', key);
-  }, [navigate]);
+  }, [navigate, projectId, chapterId]);
   return (
     <nav className={`nav-rail ${collapsed ? 'is-collapsed' : ''}`} aria-label={zh.brand}>
-      <div className="rail-logo">
+      <Link className="rail-logo" to="/library" aria-label="墨枢 · 返回作品库">
         <Feather size={22} />
         <span>
           <strong>{zh.brand}</strong>
           <small>{zh.brandEn}</small>
         </span>
-      </div>
+      </Link>
       {!collapsed && <div className="rail-caption">{studio.space}</div>}
       <div className="rail-links">
-        {navigation.map(([key, Icon], index) => {
-          const count =
-            key === 'changes'
-              ? (data?.conflicts.filter((c) => c.status === 'open').length ?? 0)
-              : key === 'review' && data && ['waiting_human', 'escalated'].includes(data.run.status)
-                ? 1
-                : 0;
-          return (
-            <Tooltip key={key} content={`${zh.nav[key]} · ⌘⌥${index + 1}`}>
-              <NavLink
-                to={`/${key}`}
-                className={`rail-link ${pathname === `/${key}` ? 'active' : ''}`}
-                aria-label={zh.nav[key]}
-              >
-                <Icon size={18} />
-                <span className="rail-label">{zh.nav[key]}</span>
-                {count > 0 ? (
-                  <span className="nav-count" aria-label={`${count} 项待办`}>
-                    <i />
-                    {!collapsed && count}
-                  </span>
-                ) : (
-                  <kbd>⌥{index + 1}</kbd>
-                )}
-              </NavLink>
-            </Tooltip>
-          );
-        })}
+        <Tooltip content="作品库">
+          <NavLink to="/library" className={`rail-link ${globalPage ? 'active' : ''}`}>
+            <Library size={18} />
+            <span className="rail-label">作品库</span>
+          </NavLink>
+        </Tooltip>
+        {!globalPage && (
+          <Tooltip content="作品总览">
+            <Link
+              to={bookPath(projectId)}
+              className={`rail-link ${pathname.startsWith('/book/') ? 'active' : ''}`}
+            >
+              <Feather size={18} />
+              <span className="rail-label">作品总览</span>
+            </Link>
+          </Tooltip>
+        )}
+        {!globalPage &&
+          navigation.map(([key, Icon], index) => {
+            const count =
+              key === 'changes'
+                ? (data?.conflicts.filter((c) => c.status === 'open').length ?? 0)
+                : key === 'review' &&
+                    data &&
+                    ['waiting_human', 'escalated'].includes(data.run.status)
+                  ? 1
+                  : 0;
+            return (
+              <Tooltip key={key} content={`${zh.nav[key]} · ⌘⌥${index + 1}`}>
+                <NavLink
+                  to={workPath(key, projectId, chapterId)}
+                  className={`rail-link ${pathname === `/${key}` ? 'active' : ''}`}
+                  aria-label={zh.nav[key]}
+                >
+                  <Icon size={18} />
+                  <span className="rail-label">{zh.nav[key]}</span>
+                  {count > 0 ? (
+                    <span className="nav-count" aria-label={`${count} 项待办`}>
+                      <i />
+                      {!collapsed && count}
+                    </span>
+                  ) : (
+                    <kbd>⌥{index + 1}</kbd>
+                  )}
+                </NavLink>
+              </Tooltip>
+            );
+          })}
       </div>
       <div className="rail-bottom">
         <Tooltip content={theme === 'day' ? studio.switchNight : studio.switchDay}>

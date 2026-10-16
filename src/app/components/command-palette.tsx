@@ -1,3 +1,4 @@
+import { workPath } from '@/shared/lib/book-context';
 import { useShallow } from 'zustand/react/shallow';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -32,7 +33,8 @@ export function CommandPalette() {
     return () => window.removeEventListener('keydown', key);
   }, []);
   const commands = [
-    ...(import.meta.env.VITE_ENABLE_MOCK !== 'false'
+    { id: 'library', label: '作品库', run: () => navigate('/library') },
+    ...(import.meta.env.VITE_ENABLE_MOCK !== 'false' && ui.projectId === 'project-zhuoliu'
       ? [
           {
             id: 'reset-demo',
@@ -47,7 +49,7 @@ export function CommandPalette() {
                     ui.setPanel('left', true);
                     ui.setPanel('right', false);
                     ui.setDrawer('closed');
-                    navigate('/workspace');
+                    navigate(workPath('workspace', ui.projectId, 'ch7'));
                   },
                 },
               ),
@@ -62,14 +64,14 @@ export function CommandPalette() {
     ...Object.entries(zh.nav).map(([key, label]) => ({
       id: key,
       label,
-      run: () => navigate('/' + key),
+      run: () => navigate(workPath(key, ui.projectId, ui.chapterId)),
     })),
     ...(tree ?? []).map((c) => ({
       id: c.id,
       label: `第 ${c.number} 章 · ${c.title}`,
       run: () => {
         ui.setChapter(c.id);
-        navigate('/workspace');
+        navigate(workPath('workspace', ui.projectId, c.id));
       },
     })),
   ].filter((x) => x.label.toLowerCase().includes(query.toLowerCase()));

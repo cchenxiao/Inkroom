@@ -1,9 +1,11 @@
+import BackendPlanning from './components/BackendPlanning';
+import { planningMessages } from '@/shared/lib/messages-planning';
 import { editorialPages as e } from '@/shared/lib/messages-editorial-pages';
 import BackendKnowledge from './components/BackendKnowledge';
 import BackendTrial from './components/BackendTrial';
 import SuggestionDialog from './components/SuggestionDialog';
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowRight, Feather, LockKeyhole, Upload, ChevronRight, Sparkles } from 'lucide-react';
 import { useAction, useBible, useChapter, useProject, useTree } from '@/shared/api/hooks';
 import { useUIStore } from '@/shared/lib/ui-store';
@@ -31,7 +33,9 @@ export default function PreparePage() {
   const navigate = useNavigate();
   const branchId = useUIStore((s) => s.branchId);
   const stale = useUIStore((s) => s.stale);
-  const [section, setSection] = useState('premise');
+  const [searchParams,setSearchParams]=useSearchParams();
+  const section=['premise','style','world','outline','knowledge'].includes(searchParams.get('section')??'')?searchParams.get('section')!:'premise';
+  const setSection=(value:string)=>{const next=new URLSearchParams(searchParams);next.set('section',value);setSearchParams(next);};
   const [trialOpen, setTrialOpen] = useState(false);
   const [form, setForm] = useState<Partial<Project>>({});
   const [importOpen, setImportOpen] = useState(false);
@@ -52,7 +56,7 @@ export default function PreparePage() {
   const value = { ...project.data, ...form } as Project;
   const version = chapter.data?.chapter.draftVersion ?? 0;
   const sectionReady: Record<string, boolean> = {
-    premise: Boolean(project.data?.name && project.data.logline && project.data.coreConflict),
+    premise: false,
     style: Boolean(bible.data?.style.anchorText),
     world: Boolean(bible.data?.characters.length && bible.data.rules.length),
     outline: Boolean(tree.data?.length && tree.data.every((item) => item.scenes.length)),
@@ -102,7 +106,7 @@ export default function PreparePage() {
             <span className="page-eyebrow">
               {section === 'knowledge' ? e.prepare.sources : e.prepare.preparation}
             </span>
-            {section !== 'knowledge' && (
+            {section !== 'knowledge' && section !== 'premise' && (
               <div className="page-actions">
                 <Button variant="ghost" size="sm" onClick={() => setImportOpen(true)}>
                   <Upload size={14} />
@@ -121,6 +125,7 @@ export default function PreparePage() {
             )}
           </div>
           {section === 'knowledge' && <BackendKnowledge />}
+          {section === 'premise' && <BackendPlanning />}
           <AsyncState
             loading={project.isLoading || bible.isLoading || tree.isLoading}
             error={project.error ?? bible.error ?? tree.error}
@@ -134,103 +139,116 @@ export default function PreparePage() {
             {project.data && (
               <>
                 {section === 'premise' && (
-                  <div className="prepare-grid">
-                    <Card className="project-brief">
-                      <div className="section-title">
-                        <Feather size={17} />
-                        <h2>{t.prepare.premise}</h2>
-                        {value.locked && (
-                          <Badge tone="human">
-                            <LockKeyhole size={11} />
-                            {t.common.locked}
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="page-form">
-                        <Field label={t.prepare.name}>
-                          <Input
-                            value={value.name}
-                            disabled={value.locked}
-                            onChange={(e) => setForm({ ...form, name: e.target.value })}
-                          />
-                        </Field>
-                        <Field label={t.prepare.logline}>
-                          <Textarea
-                            rows={3}
-                            value={value.logline}
-                            disabled={value.locked}
-                            onChange={(e) => setForm({ ...form, logline: e.target.value })}
-                          />
-                        </Field>
-                        <Field label={t.prepare.conflict}>
-                          <Textarea
-                            rows={3}
-                            value={value.coreConflict}
-                            disabled={value.locked}
-                            onChange={(e) => setForm({ ...form, coreConflict: e.target.value })}
-                          />
-                        </Field>
-                      </div>
-                      <div className="page-actions">
-                        <Button
-                          disabled={save.isPending || value.locked || !Object.keys(form).length}
-                          disabledReason={value.locked ? t.common.readOnly : t.common.noChanges}
-                          onClick={() => void saveProject().catch(() => undefined)}
-                        >
-                          {t.prepare.saveProject}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          disabled={save.isPending}
-                          onClick={() =>
-                            void save
-                              .mutateAsync({
-                                locked: !value.locked,
-                                draftVersion: version,
-                                branchId,
-                              })
-                              .catch(() => undefined)
-                          }
-                        >
-                          {value.locked ? t.common.unlock : t.common.lock}
-                        </Button>
-                      </div>
-                      {save.error && (
-                        <p role="alert" className="page-error">
-                          {save.error.message}
-                        </p>
-                      )}
-                    </Card>
-                    <Card className="project-settings">
-                      <div className="section-title">
-                        <h2>{t.prepare.project}</h2>
-                      </div>
-                      <div className="page-form">
-                        {(['genre', 'tone', 'pov', 'tense'] as const).map((key) => (
-                          <Field label={t.prepare[key]} key={key}>
+                  <details className="planning-mock">
+                    <summary>{planningMessages.mock}</summary>
+                    <div className="page-actions">
+                      <Button variant="ghost" size="sm" onClick={() => setImportOpen(true)}>
+                        <Upload size={14} />
+                        {t.common.import}
+                      </Button>
+                      <Button size="sm" disabled={!version} onClick={() => setSuggestOpen(true)}>
+                        <Sparkles size={14} />
+                        {t.common.suggestion}
+                      </Button>
+                    </div>
+                    <div className="prepare-grid">
+                      <Card className="project-brief">
+                        <div className="section-title">
+                          <Feather size={17} />
+                          <h2>{t.prepare.premise}</h2>
+                          {value.locked && (
+                            <Badge tone="human">
+                              <LockKeyhole size={11} />
+                              {t.common.locked}
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="page-form">
+                          <Field label={t.prepare.name}>
                             <Input
-                              value={value[key]}
+                              value={value.name}
                               disabled={value.locked}
-                              onChange={(e) => setForm({ ...form, [key]: e.target.value })}
+                              onChange={(e) => setForm({ ...form, name: e.target.value })}
                             />
                           </Field>
-                        ))}
-                        <Field label={e.prepare.words} hint="建议 40000–60000 字">
-                          <Input
-                            type="number"
-                            min={40000}
-                            max={60000}
-                            step={1000}
-                            value={value.targetWords}
-                            disabled={value.locked}
-                            onChange={(e) =>
-                              setForm({ ...form, targetWords: Number(e.target.value) })
+                          <Field label={t.prepare.logline}>
+                            <Textarea
+                              rows={3}
+                              value={value.logline}
+                              disabled={value.locked}
+                              onChange={(e) => setForm({ ...form, logline: e.target.value })}
+                            />
+                          </Field>
+                          <Field label={t.prepare.conflict}>
+                            <Textarea
+                              rows={3}
+                              value={value.coreConflict}
+                              disabled={value.locked}
+                              onChange={(e) => setForm({ ...form, coreConflict: e.target.value })}
+                            />
+                          </Field>
+                        </div>
+                        <div className="page-actions">
+                          <Button
+                            disabled={save.isPending || value.locked || !Object.keys(form).length}
+                            disabledReason={value.locked ? t.common.readOnly : t.common.noChanges}
+                            onClick={() => void saveProject().catch(() => undefined)}
+                          >
+                            {t.prepare.saveProject}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            disabled={save.isPending}
+                            onClick={() =>
+                              void save
+                                .mutateAsync({
+                                  locked: !value.locked,
+                                  draftVersion: version,
+                                  branchId,
+                                })
+                                .catch(() => undefined)
                             }
-                          />
-                        </Field>
-                      </div>
-                    </Card>
-                  </div>
+                          >
+                            {value.locked ? t.common.unlock : t.common.lock}
+                          </Button>
+                        </div>
+                        {save.error && (
+                          <p role="alert" className="page-error">
+                            {save.error.message}
+                          </p>
+                        )}
+                      </Card>
+                      <Card className="project-settings">
+                        <div className="section-title">
+                          <h2>{t.prepare.project}</h2>
+                        </div>
+                        <div className="page-form">
+                          {(['genre', 'tone', 'pov', 'tense'] as const).map((key) => (
+                            <Field label={t.prepare[key]} key={key}>
+                              <Input
+                                value={value[key]}
+                                disabled={value.locked}
+                                onChange={(e) => setForm({ ...form, [key]: e.target.value })}
+                              />
+                            </Field>
+                          ))}
+                          <Field label={e.prepare.words} hint="建议 40000–60000 字">
+                            <Input
+                              type="number"
+                              min={40000}
+                              max={60000}
+                              step={1000}
+                              value={value.targetWords}
+                              disabled={value.locked}
+                              onChange={(e) =>
+                                setForm({ ...form, targetWords: Number(e.target.value) })
+                              }
+                            />
+                          </Field>
+                        </div>
+                      </Card>
+                    </div>
+                  </details>
                 )}
                 {bible.data && ['style', 'world'].includes(section) && (
                   <section className="page-section">

@@ -17,13 +17,17 @@ export const workspaceApi = {
     draftVersion: number,
     branchId: string,
     isDialogueLie?: boolean,
+    projectId?: string,
   ) =>
-    api.patch<{ draftVersion: number; changeset: ChangeSet }>(`/segments/${id}`, {
-      text,
-      draftVersion,
-      branchId,
-      isDialogueLie,
-    }),
+    api.patch<{ draftVersion: number; changeset: ChangeSet }>(
+      `/segments/${id}${projectId ? `?projectId=${encodeURIComponent(projectId)}` : ''}`,
+      {
+        text,
+        draftVersion,
+        branchId,
+        isDialogueLie,
+      },
+    ),
   comment: (payload: {
     segmentId: string;
     quote: string;

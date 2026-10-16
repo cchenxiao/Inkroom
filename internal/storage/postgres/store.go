@@ -40,6 +40,9 @@ var criticLookupMigration string
 //go:embed migrations/008_knowledge.sql
 var knowledgeMigration string
 
+//go:embed migrations/009_planning.sql
+var planningMigration string
+
 type Store struct {
 	pool  *pgxpool.Pool
 	lease *pgx.Conn
@@ -104,7 +107,7 @@ func (s *Store) migrate(ctx context.Context) error {
 	if _, err = tx.Exec(ctx, "CREATE TABLE IF NOT EXISTS schema_migrations(version integer PRIMARY KEY, checksum text NOT NULL)"); err != nil {
 		return err
 	}
-	for i, sql := range []string{migration, humanMigration, eventMigration, commitMigration, memoryMigration, preparationMigration, criticLookupMigration, knowledgeMigration} {
+	for i, sql := range []string{migration, humanMigration, eventMigration, commitMigration, memoryMigration, preparationMigration, criticLookupMigration, knowledgeMigration, planningMigration} {
 		version := i + 1
 		checksum := fmt.Sprintf("%x", sha256.Sum256([]byte(sql)))
 		var existing string
@@ -126,6 +129,13 @@ func (s *Store) migrate(ctx context.Context) error {
 	return tx.Commit(ctx)
 }
 func (s *Store) recoverInterrupted(ctx context.Context) error {
+	if _, err := s.pool.Exec(ctx, `UPDATE planning_jobs SET status='interrupted', record=record || '{"status":"interrupted","message":"服务中断，未自动重发模型请求；请手动重新生成。"}'::jsonb WHERE status='running'`); err != nil {
+		return err
+	}
+	if _, err := s.pool.Exec(ctx, `UPDATE planning_calls SET record=record || '{"phase":"unknown"}'::jsonb WHERE record->>'phase'='started'`); err != nil {
+		return err
+	}
+
 	rows, err := s.pool.Query(ctx, "SELECT id FROM runs WHERE status='running'")
 	if err != nil {
 		return err
