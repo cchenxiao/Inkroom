@@ -105,6 +105,20 @@ func (s *Store) Finalize(ctx context.Context, id string, in app.FinalizeInput) (
 		return app.FinalCommit{}, err
 	}
 	if r.Planning != nil {
+		if k := r.Planning.Knowledge; k != nil {
+			stored, e := readKnowledge(ctx, tx, frozen.Bundle.ProjectID, r.BranchID, k.Version)
+			if e != nil {
+				return app.FinalCommit{}, e
+			}
+			if stored.Digest != k.Digest {
+				return app.FinalCommit{}, app.ErrContextMismatch
+			}
+			payload, e := json.Marshal(stored.Snapshot)
+			if e != nil {
+				return app.FinalCommit{}, e
+			}
+			refs = append(refs, manuscript.VersionRef{Kind: "knowledge_snapshot", ID: frozen.Bundle.ProjectID + "/" + r.BranchID, Version: k.Version, Digest: k.Digest, Payload: payload})
+		}
 		var raw []byte
 		if err = tx.QueryRow(ctx, "SELECT record FROM planning_run_inputs WHERE run_id=$1", id).Scan(&raw); err != nil {
 			return app.FinalCommit{}, err

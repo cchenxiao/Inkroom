@@ -38,6 +38,23 @@ func (s *Store) SeedKnowledge(ctx context.Context, snapshot knowledge.Snapshot) 
 	return s.publishKnowledge(ctx, KnowledgePublication{Snapshot: snapshot, ExpectedVersion: 0, ConfirmFacts: true, Reason: "显式导入 I12 教学知识快照"}, "teaching_seed")
 }
 func (s *Store) publishKnowledge(ctx context.Context, in KnowledgePublication, origin string) (StoredKnowledge, error) {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return StoredKnowledge{}, err
+	}
+	defer tx.Rollback(context.Background())
+	saved, err := publishKnowledgeTx(ctx, tx, in, origin)
+	if err != nil {
+		return StoredKnowledge{}, err
+	}
+	if err = tx.Commit(ctx); err != nil {
+		return StoredKnowledge{}, err
+	}
+	return saved, nil
+}
+
+// Called after the planning lock when publishing from confirmed planning.
+func publishKnowledgeTx(ctx context.Context, tx pgx.Tx, in KnowledgePublication, origin string) (StoredKnowledge, error) {
 	empty := StoredKnowledge{}
 	if !in.ConfirmFacts || in.ExpectedVersion < 0 || in.Snapshot.Version != in.ExpectedVersion+1 || strings.TrimSpace(in.Reason) == "" || len(in.Reason) > 2000 {
 		return empty, app.ErrInvalidWrite
@@ -61,11 +78,6 @@ func (s *Store) publishKnowledge(ctx context.Context, in KnowledgePublication, o
 		return empty, err
 	}
 	project, branch := in.Snapshot.ProjectID, in.Snapshot.BranchID
-	tx, err := s.pool.Begin(ctx)
-	if err != nil {
-		return empty, err
-	}
-	defer tx.Rollback(context.Background())
 	if _, err = tx.Exec(ctx, "SELECT pg_advisory_xact_lock(hashtextextended($1,0))", "knowledge/"+project+"/"+branch); err != nil {
 		return empty, err
 	}
@@ -115,9 +127,6 @@ func (s *Store) publishKnowledge(ctx context.Context, in KnowledgePublication, o
 		}
 	}
 	if _, err = tx.Exec(ctx, `INSERT INTO knowledge_heads VALUES($1,$2,$3,$4) ON CONFLICT(project_id,branch_id) DO UPDATE SET version=EXCLUDED.version,digest=EXCLUDED.digest`, project, branch, in.Snapshot.Version, digest); err != nil {
-		return empty, err
-	}
-	if err = tx.Commit(ctx); err != nil {
 		return empty, err
 	}
 	return saved, nil

@@ -1,5 +1,6 @@
 /** 与 Go knowledge.Snapshot / postgres.StoredKnowledge 对应；不复用 Mock Bible。 */
 export interface KnowledgeLocation {
+  initial?: { id: string; coreVersion: number; coreDigest: string };
   chapterId: string;
   segmentId: string;
   at: { chapter: number; storyTime: number };
@@ -41,6 +42,13 @@ export interface StoredKnowledge {
   reason: string;
   createdAt: string;
   snapshot: {
+    planning?: {
+      input: number;
+      direction: number;
+      style: number;
+      core: number;
+      coreDigest: string;
+    };
     projectId: string;
     branchId: string;
     version: number;

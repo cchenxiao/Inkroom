@@ -2,11 +2,15 @@ package knowledge
 
 import (
 	"fmt"
+	"inkloom/internal/domain/memory"
 	"slices"
 	"strings"
 )
 
 func validLocation(l Location) bool {
+	if l.Initial != nil {
+		return memory.ValidInitial(l.Initial) && l.ChapterID == "" && l.SegmentID == "" && l.At.Chapter == 0 && l.At.StoryTime >= 0
+	}
 	return strings.TrimSpace(l.ChapterID) != "" && strings.TrimSpace(l.SegmentID) != "" && l.At.Chapter > 0 && l.At.StoryTime >= 0
 }
 
@@ -14,6 +18,17 @@ func validLocation(l Location) bool {
 func (s Snapshot) Validate() error {
 	if strings.TrimSpace(s.ProjectID) == "" || strings.TrimSpace(s.BranchID) == "" || s.Version < 1 || !s.Confirmed {
 		return fmt.Errorf("knowledge requires confirmed project/branch/version")
+	}
+	if p := s.Planning; p != nil {
+		if p.Input < 1 || p.Direction < 1 || p.Style < 1 || !memory.ValidInitial(&memory.InitialSetting{ID: "source", CoreVersion: p.Core, CoreDigest: p.CoreDigest}) {
+			return fmt.Errorf("invalid planning source")
+		}
+	}
+	checkInitial := func(l Location) bool {
+		if l.Initial == nil {
+			return s.Planning == nil
+		}
+		return s.Planning != nil && l.Initial.CoreVersion == s.Planning.Core && l.Initial.CoreDigest == s.Planning.CoreDigest
 	}
 	chars := map[string]bool{}
 	for _, id := range s.Characters {
@@ -27,16 +42,22 @@ func (s Snapshot) Validate() error {
 	}
 	facts := map[string]Fact{}
 	for _, f := range s.Facts {
-		if _, ok := facts[f.ID]; ok || strings.TrimSpace(f.ID) == "" || strings.TrimSpace(f.Text) == "" || f.Version < 1 || !validLocation(f.Source) {
+		if _, ok := facts[f.ID]; ok || strings.TrimSpace(f.ID) == "" || strings.TrimSpace(f.Text) == "" || f.Version < 1 || !validLocation(f.Source) || !checkInitial(f.Source) {
 			return fmt.Errorf("invalid or duplicate fact %q", f.ID)
+		}
+		if f.Source.Initial != nil && f.Source.Initial.ID != f.ID {
+			return fmt.Errorf("initial fact source mismatch")
 		}
 		facts[f.ID] = f
 	}
 	subjects := map[string]map[string]bool{}
 	for _, i := range s.Information {
 		f, ok := facts[i.FactID]
-		if !ok || (!chars[i.SubjectID] && i.SubjectID != "reader") || !validLocation(i.Source) {
+		if !ok || (!chars[i.SubjectID] && i.SubjectID != "reader") || !validLocation(i.Source) || !checkInitial(i.Source) {
 			return fmt.Errorf("invalid information link %q/%q", i.FactID, i.SubjectID)
+		}
+		if i.Source.Initial != nil && i.Source.Initial.ID != i.FactID {
+			return fmt.Errorf("initial knowledge source mismatch")
 		}
 		if subjects[i.FactID] == nil {
 			subjects[i.FactID] = map[string]bool{}
@@ -60,7 +81,7 @@ func (s Snapshot) Validate() error {
 	}
 	events := map[string]TimelineEvent{}
 	for _, e := range s.Timeline {
-		if _, ok := events[e.ID]; ok || strings.TrimSpace(e.ID) == "" || strings.TrimSpace(e.Summary) == "" || !validLocation(e.Source) {
+		if _, ok := events[e.ID]; ok || strings.TrimSpace(e.ID) == "" || strings.TrimSpace(e.Summary) == "" || !validLocation(e.Source) || e.Source.Initial != nil {
 			return fmt.Errorf("invalid or duplicate event %q", e.ID)
 		}
 		seen := map[string]bool{}
@@ -111,7 +132,7 @@ func (s Snapshot) Validate() error {
 	}
 	clues := map[string]bool{}
 	for _, f := range s.Foreshadows {
-		if strings.TrimSpace(f.ID) == "" || clues[f.ID] || strings.TrimSpace(f.Title) == "" || strings.TrimSpace(f.Payload) == "" || !validLocation(f.Planted) || f.PlanResolveChapter < f.Planted.At.Chapter || !slices.Contains([]string{"P0", "P1", "P2"}, f.Importance) {
+		if strings.TrimSpace(f.ID) == "" || clues[f.ID] || strings.TrimSpace(f.Title) == "" || strings.TrimSpace(f.Payload) == "" || !validLocation(f.Planted) || f.Planted.Initial != nil || f.PlanResolveChapter < f.Planted.At.Chapter || !slices.Contains([]string{"P0", "P1", "P2"}, f.Importance) {
 			return fmt.Errorf("invalid or duplicate foreshadow %q", f.ID)
 		}
 		clues[f.ID] = true

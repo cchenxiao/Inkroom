@@ -79,3 +79,7 @@ M0.3 已接入核心人物/世界设定候选与作者确认，详见下方 M0.3
 ## M0.4c1 规划接单段写作
 
 新增 `GET/POST /planning/chapter-runs`，按确认规划启动第一章选定 Beat，冻结输入、隔离稿本并在批准/提交时复核上游版本。迁移 015 保存完整规划来源；已有事件、人审与提交 API 复用。字段及边界见 [规划写作说明](planned-writing.md)。
+
+## M0.4c2 初始知识发布
+
+新增 `GET /planning/knowledge-preview` 和 `POST /planning/knowledge-publications`；作者确认后的初始事实及获知声明发布到已有知识快照与检索目录。新规划 run 绑定当前知识版本，原 Mock 契约不变。完整字段与保护范围见 [初始知识发布](planning-knowledge.md)。

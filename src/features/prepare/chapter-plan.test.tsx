@@ -1,3 +1,4 @@
+import { MemoryRouter } from 'react-router-dom';
 import { afterAll, afterEach, beforeAll, expect, it } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -189,7 +190,9 @@ it('requires explicit chapter plan confirmation and retains edits on version con
   });
   render(
     <QueryClientProvider client={client}>
-      <BackendChapterPlan />
+      <MemoryRouter>
+        <BackendChapterPlan />
+      </MemoryRouter>
     </QueryClientProvider>,
   );
   const user = userEvent.setup();

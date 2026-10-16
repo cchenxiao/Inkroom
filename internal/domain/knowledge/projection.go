@@ -38,7 +38,7 @@ func Records(s Snapshot) ([]memory.Record, error) {
 	records := make([]memory.Record, 0, len(s.Facts))
 	for _, f := range s.Facts {
 		at := f.Source.At
-		r := memory.Record{ID: f.ID, ProjectID: s.ProjectID, BranchID: s.BranchID, Version: f.Version, Kind: memory.Fact, Status: memory.Confirmed, ChapterID: f.Source.ChapterID, SegmentID: f.Source.SegmentID, At: &at, Text: f.Text, KnownBy: []memory.Knowledge{}}
+		r := memory.Record{Initial: f.Source.Initial, ID: f.ID, ProjectID: s.ProjectID, BranchID: s.BranchID, Version: f.Version, Kind: memory.Fact, Status: memory.Confirmed, ChapterID: f.Source.ChapterID, SegmentID: f.Source.SegmentID, At: &at, Text: f.Text, KnownBy: []memory.Knowledge{}}
 		for _, i := range s.Information {
 			if i.FactID == f.ID && i.State == Known && i.SubjectID != "reader" {
 				since := i.Source.At

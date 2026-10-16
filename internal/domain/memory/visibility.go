@@ -2,6 +2,7 @@ package memory
 
 import (
 	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -61,13 +62,17 @@ func excludedBy(v View, r Record) Reason {
 	if pin.Digest != Digest(r) {
 		return DigestMismatch
 	}
-	if strings.TrimSpace(r.ID) == "" || r.Version < 1 || strings.TrimSpace(r.ChapterID) == "" || strings.TrimSpace(r.Text) == "" || !validMoment(r.At) {
+	if strings.TrimSpace(r.ID) == "" || r.Version < 1 || strings.TrimSpace(r.Text) == "" || !validRecordMoment(r.At, r.Initial) {
 		return InvalidRecord
 	}
 	if r.Kind != Fact && r.Kind != Passage && r.Kind != Plan {
 		return InvalidRecord
 	}
-	if r.Kind != Plan && strings.TrimSpace(r.SegmentID) == "" {
+	if r.Initial != nil {
+		if r.Kind != Fact || r.ChapterID != "" || r.SegmentID != "" {
+			return InvalidRecord
+		}
+	} else if strings.TrimSpace(r.ChapterID) == "" || (r.Kind != Plan && strings.TrimSpace(r.SegmentID) == "") {
 		return InvalidRecord
 	}
 	if r.Kind == Plan {
@@ -81,7 +86,7 @@ func excludedBy(v View, r Record) Reason {
 	}
 	later := false
 	for _, k := range r.KnownBy {
-		if k.CharacterID != v.POV || !validMoment(k.Since) {
+		if k.CharacterID != v.POV || !validRecordMoment(k.Since, r.Initial) {
 			continue
 		}
 		if k.Since.Chapter <= v.At.Chapter && k.Since.StoryTime <= v.At.StoryTime {
@@ -97,4 +102,19 @@ func excludedBy(v View, r Record) Reason {
 
 func validMoment(m *Moment) bool {
 	return m != nil && m.Chapter > 0 && m.StoryTime >= 0
+}
+
+// 章 0 仅表示初始设定尚无正文出处；角色获知仍受独立故事时间约束。
+func ValidInitial(s *InitialSetting) bool {
+	if s == nil || strings.TrimSpace(s.ID) == "" || s.CoreVersion < 1 {
+		return false
+	}
+	raw, err := hex.DecodeString(s.CoreDigest)
+	return err == nil && len(raw) == 32
+}
+func validRecordMoment(m *Moment, initial *InitialSetting) bool {
+	if initial == nil {
+		return validMoment(m)
+	}
+	return ValidInitial(initial) && m != nil && m.Chapter == 0 && m.StoryTime >= 0
 }

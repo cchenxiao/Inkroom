@@ -8,7 +8,7 @@ export const knowledgeMessages = {
   error: '无法读取 Go 后端的知识快照，请确认服务状态后重试。',
   empty: '尚未发布知识快照',
   emptyNote:
-    '当前数据库没有已发布版本。可先通过后端 knowledge-import 导入作者确认的数据；这里不会用演示数据补齐。',
+    '当前数据库没有已发布版本。可先在上方预览并发布已确认初始设定；这里不会用演示数据补齐。',
   historyMissing: '该历史版本不存在',
   historyNote: '请核对版本号，或返回当前版本。查看历史不会恢复或采用该版本。',
   versionInput: '历史版本号',

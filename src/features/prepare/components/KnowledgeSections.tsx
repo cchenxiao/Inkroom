@@ -1,9 +1,16 @@
+import { publicationMessages } from '@/shared/lib/messages-planning-knowledge';
 import { Badge } from '@/shared/ui';
 import { knowledgeMessages as t } from '@/shared/lib/messages-knowledge';
 import type { KnowledgeLocation, StoredKnowledge } from '../types/knowledge';
 
 type Snapshot = StoredKnowledge['snapshot'];
 function Location({ value }: { value: KnowledgeLocation }) {
+  if (value.initial)
+    return (
+      <span className="text-dim" title={value.initial.id}>
+        {publicationMessages.initial(value.initial.coreVersion, value.at.storyTime)}
+      </span>
+    );
   return (
     <span className="text-dim" title={value.chapterId}>
       {t.location(value.at.chapter, value.segmentId, value.at.storyTime)}

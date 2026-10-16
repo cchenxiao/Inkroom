@@ -83,6 +83,9 @@ func (b ContextBundle) Freeze() (ContextBundle, error) {
 		}
 	}
 	if t := b.WritingTask; t != nil {
+		if k := t.Knowledge; k != nil && (k.Version < 1 || len(k.Digest) != 64) {
+			return frozen, fmt.Errorf("invalid published knowledge reference")
+		}
 		v := t.Versions
 		if !t.Opening || t.Scope == "" || t.ChapterID == "" || t.PlanVersion < 1 || len(t.SourceDigest) != 64 || t.StoryTime < 0 || v["input"] < 1 || v["direction"] < 1 || v["style"] < 1 || v["core"] < 1 || v["outline"] < 1 || v["bindings"] < 1 || t.Brief.SelectedBeatID != b.Beat.ID || t.Style.POV == "" {
 			return frozen, fmt.Errorf("invalid planned writing task")

@@ -11,6 +11,7 @@ import BackendPlanning from './components/BackendPlanning';
 import { planningMessages } from '@/shared/lib/messages-planning';
 import { editorialPages as e } from '@/shared/lib/messages-editorial-pages';
 import BackendKnowledge from './components/BackendKnowledge';
+import PlanningKnowledgePublish from './components/PlanningKnowledgePublish';
 import BackendTrial from './components/BackendTrial';
 import SuggestionDialog from './components/SuggestionDialog';
 import { useState } from 'react';
@@ -121,7 +122,7 @@ export default function PreparePage() {
             </span>
 
           </div>
-          {section === 'knowledge' && <BackendKnowledge />}
+          {section === 'knowledge' && <><PlanningKnowledgePublish />{realPlanning && <BackendKnowledge />}</>}
           {section === 'premise' && <BackendPlanning />}
           {section === 'style' && <BackendStyleTrial />}
           {section === 'world' && <BackendCoreSettings />}

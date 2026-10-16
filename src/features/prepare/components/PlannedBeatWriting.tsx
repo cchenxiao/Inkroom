@@ -1,3 +1,4 @@
+import { useSearchParams } from 'react-router-dom';
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, Card, Badge } from '@/shared/ui';
@@ -23,6 +24,7 @@ export default function PlannedBeatWriting({
   editing: boolean;
 }) {
   const client = useQueryClient();
+  const [params, setParams] = useSearchParams();
   const planning = usePlanning();
   const [runId, setRunId] = useState<string | null>(null),
     [autoRevise, setAutoRevise] = useState(false);
@@ -112,6 +114,16 @@ export default function PlannedBeatWriting({
         </Button>
       </div>
       <p className="muted">{t.note}</p>
+      <Button
+        size="sm"
+        onClick={() => {
+          const next = new URLSearchParams(params);
+          next.set('section', 'knowledge');
+          setParams(next);
+        }}
+      >
+        {t.knowledge}
+      </Button>
       {!ready && (
         <p role={gate.isError ? 'alert' : 'status'}>{gate.isError ? t.error : t.loading}</p>
       )}
@@ -174,6 +186,11 @@ export default function PlannedBeatWriting({
               {t.source} v{run?.planning?.planVersion} · {t.model} {run?.provider}/{run?.model}
             </span>
           </div>
+          {run?.planning?.knowledge && (
+            <p>
+              {t.published} v{run.planning.knowledge.version}
+            </p>
+          )}
           {run?.provider === 'fake' && <p>{t.fake}</p>}
           {run?.status === 'running' && <p role="status">{t.running}</p>}
           {run?.error && <p role="alert">{run.error}</p>}

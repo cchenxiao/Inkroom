@@ -9,6 +9,7 @@ import (
 	"inkloom/internal/config"
 	"inkloom/internal/contextassembly"
 	"inkloom/internal/domain/manuscript"
+	"inkloom/internal/domain/memory"
 	"inkloom/internal/domain/planning"
 	"strings"
 )
@@ -139,6 +140,7 @@ func ValidPlannedRequest(r PlannedRunRequest) bool {
 }
 
 type PlannedRunSource struct {
+	Knowledge   *memory.KnowledgeRef         `json:"knowledge,omitempty"`
 	Scope       string                       `json:"scope"`
 	ChapterID   string                       `json:"chapterId"`
 	BeatID      string                       `json:"beatId"`
@@ -156,3 +158,8 @@ type PlannedRunReadiness struct {
 }
 
 var ErrPlanningNotReady = errors.New("规划材料尚未就绪")
+
+func ReassemblePlanned(in manuscript.FrozenInput) (manuscript.FrozenInput, error) {
+	m := in.Manifest
+	return contextassembly.Assemble(in.Bundle, contextassembly.PreviousChapter{}, contextassembly.Options{RunID: m.RunID, BaseDraftVersion: m.BaseDraftVersion, Budget: m.Budget, ReservedOutputTokens: m.ReservedOutputTokens, Excluded: m.Excluded})
+}

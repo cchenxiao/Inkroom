@@ -7,9 +7,10 @@ import "inkloom/internal/domain/memory"
 // Location 的章节是来源元数据，不拼进人物回忆或台词。
 // At.Chapter 是叙事披露位置；At.StoryTime 是项目内统一的故事时间刻度。
 type Location struct {
-	ChapterID string        `json:"chapterId"`
-	SegmentID string        `json:"segmentId"`
-	At        memory.Moment `json:"at"`
+	Initial   *memory.InitialSetting `json:"initial,omitempty"`
+	ChapterID string                 `json:"chapterId"`
+	SegmentID string                 `json:"segmentId"`
+	At        memory.Moment          `json:"at"`
 }
 
 type Fact struct {
@@ -66,7 +67,16 @@ type Foreshadow struct {
 	AbandonReason      string           `json:"abandonReason,omitempty"`
 }
 
+type PlanningSource struct {
+	Input      int    `json:"input"`
+	Direction  int    `json:"direction"`
+	Style      int    `json:"style"`
+	Core       int    `json:"core"`
+	CoreDigest string `json:"coreDigest"`
+}
+
 type Snapshot struct {
+	Planning    *PlanningSource `json:"planning,omitempty"`
 	ProjectID   string          `json:"projectId"`
 	BranchID    string          `json:"branchId"`
 	Version     int             `json:"version"`

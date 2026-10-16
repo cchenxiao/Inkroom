@@ -3,6 +3,7 @@ import type { Finding, RunState } from '@/types/domain';
 /** I3 结果是隔离的单段候选，不是工作台正式稿本。 */
 export interface BackendRun extends Omit<RunState, 'status' | 'currentNode'> {
   planning?: {
+    knowledge?: { version: number; digest: string };
     scope: string;
     chapterId: string;
     beatId: string;

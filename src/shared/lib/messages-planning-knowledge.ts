@@ -1,0 +1,23 @@
+export const publicationMessages = {
+  title: '发布初始设定',
+  note: '将已确认事实发布为 Writer 可引用的固定版本。人物动机、未来剧情与未确认项不会成为世界事实。',
+  scope: '当前仅《浊流》main 接入正式知识发布，其他作品仍为演示。',
+  loading: '正在核对设定与知识版本…',
+  error: '无法读取发布预览，请刷新重试。',
+  refresh: '刷新发布预览',
+  preview: '发布预览 · 尚未生效',
+  current: '当前设定已发布',
+  teaching: '当前知识来自教学导入。本次发布会替换教学知识目录，历史快照保留；不会删除正文。',
+  confirm: '我已核对以上事实和获知时间，确认发布为初始设定。',
+  reason: '发布理由',
+  publish: '确认发布知识快照',
+  needConfirm: '请先核对预览、勾选确认并填写发布理由',
+  excluded: '未发布的内容与知情声明',
+  success: '知识快照已发布，可以返回大纲生成选定 Beat 正文。',
+  outline: '返回大纲',
+  uncertain: '发布结果尚未确认，请保留原请求重试；不要再次修改发布内容。',
+  retry: '重试原发布请求',
+  initial: (version: number, time: number) =>
+    `作者确认的初始设定 · 核心设定 v${version} · 故事时点 ${time}`,
+  versions: (core: number, knowledge: number) => `核心设定 v${core} → 知识快照 v${knowledge}`,
+};

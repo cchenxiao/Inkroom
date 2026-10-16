@@ -91,6 +91,9 @@ func Assemble(b manuscript.ContextBundle, previous PreviousChapter, opts Options
 			for _, h := range frozen.Retrieval.Hits {
 				if ref.ID == h.Record.ID && ref.Kind == "retrieved_"+string(h.Record.Kind) {
 					title = h.Record.ChapterID + " / " + h.Record.SegmentID
+					if initial := h.Record.Initial; initial != nil {
+						title = fmt.Sprintf("初始设定 %s（核心设定 v%d）", initial.ID, initial.CoreVersion)
+					}
 					excerpt = h.Record.Text
 					if h.Record.Knowledge != nil {
 						title += fmt.Sprintf("（知识快照 v%d）", h.Record.Knowledge.Version)

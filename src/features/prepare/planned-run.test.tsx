@@ -1,3 +1,4 @@
+import { MemoryRouter } from 'react-router-dom';
 import { afterAll, afterEach, beforeAll, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -51,7 +52,9 @@ it('sends planning and draft versions, preserves retry identity, and blocks an o
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const view = render(
     <QueryClientProvider client={client}>
-      <PlannedBeatWriting chapterId="first" editing={false} />
+      <MemoryRouter>
+        <PlannedBeatWriting chapterId="first" editing={false} />
+      </MemoryRouter>
     </QueryClientProvider>,
   );
   const user = userEvent.setup(),

@@ -15,6 +15,29 @@ import (
 func exercisePlannedRun(t *testing.T, s *Store, scope string, p planning.ChapterPlanSelection, cfg config.Config, started *app.Run) app.Run {
 	t.Helper()
 	ctx := context.Background()
+	preview, err := s.PlanningKnowledgePreview(ctx, scope)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !preview.Current {
+		req := app.KnowledgePublishRequest{Expected: preview.Expected, ExpectedVersion: preview.ExpectedVersion, PreviewDigest: preview.PreviewDigest, Reason: "确认当前初始设定"}
+		if _, err = s.PublishPlanningKnowledge(ctx, scope, req); !errors.Is(err, app.ErrInvalidWrite) {
+			t.Fatal("published without author confirmation", err)
+		}
+		req.Confirm = true
+		saved, e := s.PublishPlanningKnowledge(ctx, scope, req)
+		if e != nil {
+			t.Fatal("publish", e)
+		}
+		again, e := s.PublishPlanningKnowledge(ctx, scope, req)
+		if e != nil || again.Digest != saved.Digest {
+			t.Fatal("publication retry not idempotent", e)
+		}
+		req.PreviewDigest = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+		if _, e = s.PublishPlanningKnowledge(ctx, scope, req); !errors.Is(e, app.ErrVersionMismatch) {
+			t.Fatal("forged preview accepted", e)
+		}
+	}
 	ready, err := s.PlannedRunReadiness(ctx, scope, p.ChapterID, cfg)
 	if err != nil || !ready.Ready {
 		t.Fatal("readiness", err, ready.Reason)
@@ -34,7 +57,7 @@ func exercisePlannedRun(t *testing.T, s *Store, scope string, p planning.Chapter
 		t.Fatal("idempotency mismatch accepted", err)
 	}
 	frozen, err := s.FrozenContext(ctx, r.ID)
-	if err != nil || frozen.Bundle.ChapterID == "ch7" || frozen.Bundle.WritingTask == nil {
+	if err != nil || frozen.Bundle.ChapterID == "ch7" || frozen.Bundle.WritingTask == nil || frozen.Bundle.WritingTask.Knowledge == nil {
 		t.Fatal("missing isolated input", err)
 	}
 	state, err := app.ExecuteChapter(ctx, cfg, "normal", orchestration.Options{FrozenInput: &frozen, BaseDraftVersion: req.DraftVersion, MaxRounds: 2})

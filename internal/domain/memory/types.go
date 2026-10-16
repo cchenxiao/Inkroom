@@ -37,19 +37,27 @@ type KnowledgeRef struct {
 	Digest  string `json:"digest"`
 }
 
+// InitialSetting 是作者确认的设定出处，不能冒充正文段落。
+type InitialSetting struct {
+	ID          string `json:"id"`
+	CoreVersion int    `json:"coreVersion"`
+	CoreDigest  string `json:"coreDigest"`
+}
+
 type Record struct {
-	Knowledge *KnowledgeRef `json:"knowledge,omitempty"`
-	ID        string        `json:"id"`
-	ProjectID string        `json:"projectId"`
-	BranchID  string        `json:"branchId"`
-	Version   int           `json:"version"`
-	Kind      Kind          `json:"kind"`
-	Status    Status        `json:"status"`
-	ChapterID string        `json:"chapterId"`
-	SegmentID string        `json:"segmentId,omitempty"`
-	At        *Moment       `json:"at"`
-	Text      string        `json:"text"`
-	KnownBy   []Knowledge   `json:"knownBy"`
+	Initial   *InitialSetting `json:"initial,omitempty"`
+	Knowledge *KnowledgeRef   `json:"knowledge,omitempty"`
+	ID        string          `json:"id"`
+	ProjectID string          `json:"projectId"`
+	BranchID  string          `json:"branchId"`
+	Version   int             `json:"version"`
+	Kind      Kind            `json:"kind"`
+	Status    Status          `json:"status"`
+	ChapterID string          `json:"chapterId"`
+	SegmentID string          `json:"segmentId,omitempty"`
+	At        *Moment         `json:"at"`
+	Text      string          `json:"text"`
+	KnownBy   []Knowledge     `json:"knownBy"`
 }
 
 // Pin 固定整条记录的版本与摘要，包括可见性元数据，不能只固定正文。

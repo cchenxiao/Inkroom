@@ -1,4 +1,6 @@
 export const plannedRunMessages = {
+  knowledge: '查看知识发布',
+  published: '本次使用知识快照',
   editing: '请先保存或关闭细纲编辑',
   notReady: '请先确认当前章节的细纲与 Brief',
   finalizeTitle: '提交本段候选',

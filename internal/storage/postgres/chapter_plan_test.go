@@ -11,6 +11,7 @@ import (
 	"inkloom/internal/domain/planning"
 	"inkloom/internal/orchestration"
 	"os"
+	"strings"
 	"testing"
 	"time"
 )
@@ -38,6 +39,13 @@ func TestChapterPlanFrozenInputAndAuthorVersion(t *testing.T) {
 				if _, e := s.pool.Exec(ctx, q, plannedRun.ChapterID); e != nil {
 					t.Error(e)
 				}
+			}
+		}
+
+		project, _, _ := strings.Cut(scope, "/")
+		for _, q := range []string{"DELETE FROM memory_heads WHERE project_id=$1", "DELETE FROM memory_records WHERE project_id=$1", "DELETE FROM knowledge_heads WHERE project_id=$1", "DELETE FROM knowledge_snapshots WHERE project_id=$1"} {
+			if _, e := s.pool.Exec(ctx, q, project); e != nil {
+				t.Error(e)
 			}
 		}
 		for _, q := range []string{
@@ -275,6 +283,34 @@ func TestChapterPlanFrozenInputAndAuthorVersion(t *testing.T) {
 	}
 	if !found {
 		t.Fatal("commit omitted planning provenance")
+	}
+	knowledgeRef := false
+	for _, ref := range commit.Refs {
+		if ref.Kind == "knowledge_snapshot" {
+			knowledgeRef = true
+		}
+	}
+	if !knowledgeRef {
+		t.Fatal("commit omitted published knowledge")
+	}
+	reason, e := func() (string, error) {
+		tx, e := s.pool.Begin(ctx)
+		if e != nil {
+			return "", e
+		}
+		defer tx.Rollback(ctx)
+		// Simulate a legacy commit without planning association; initialization must still protect it.
+		if _, e = tx.Exec(ctx, "DELETE FROM planning_run_inputs WHERE run_id=$1", plannedRun.ID); e != nil {
+			return "", e
+		}
+		current, e := planningKnowledgeHead(ctx, tx, scope)
+		if e != nil {
+			return "", e
+		}
+		return knowledgePublishBlock(ctx, tx, scope, current)
+	}()
+	if e != nil || reason == "" {
+		t.Fatal("committed manuscript did not block initialization replacement", e)
 	}
 
 }

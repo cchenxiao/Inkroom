@@ -10,6 +10,7 @@ import (
 	"inkloom/internal/config"
 	"inkloom/internal/domain/planning"
 	"reflect"
+	"strings"
 )
 
 func (s *Store) StartPlannedRun(ctx context.Context, scope string, req app.PlannedRunRequest, cfg config.Config) (app.Run, bool, error) {
@@ -67,7 +68,18 @@ func (s *Store) StartPlannedRun(ctx context.Context, scope string, req app.Plann
 	if err != nil {
 		return r, false, fmt.Errorf("%w: %v", app.ErrPlanningNotReady, err)
 	}
-	source := &app.PlannedRunSource{Scope: scope, ChapterID: p.ChapterID, BeatID: frozen.Bundle.Beat.ID, Expected: versions, PlanVersion: p.Version}
+	current, err := planningKnowledgeHead(ctx, tx, scope)
+	if err != nil {
+		return r, false, err
+	}
+	if !publishedForPlan(current, p) {
+		return r, false, fmt.Errorf("%w: 请先在知识快照页发布当前已确认设定", app.ErrPlanningNotReady)
+	}
+	frozen, err = app.FreezePublishedKnowledge(frozen, current.Snapshot)
+	if err != nil {
+		return r, false, fmt.Errorf("%w: %v", app.ErrPlanningNotReady, err)
+	}
+	source := &app.PlannedRunSource{Knowledge: frozen.Bundle.WritingTask.Knowledge, Scope: scope, ChapterID: p.ChapterID, BeatID: frozen.Bundle.Beat.ID, Expected: versions, PlanVersion: p.Version}
 	r = app.Run{Planning: source, ID: req.RequestID, ChapterID: frozen.Bundle.ChapterID, BranchID: "main", BaseDraftVersion: req.DraftVersion, DraftVersion: req.DraftVersion, Status: "running", CurrentNode: "draft", Scenario: "normal", InputDigest: frozen.Manifest.Digest, AutoRevise: req.AutoRevise, MaxRounds: 2, MaxCalls: cfg.MaxCalls, MaxTokens: cfg.MaxTokens, Provider: cfg.Model, Model: cfg.ModelName, Nodes: []any{}, ActiveRoles: []string{}}
 	if err = createRunTx(ctx, tx, r, &frozen, nil); err != nil {
 		return r, false, err
@@ -106,6 +118,21 @@ func planningRunCurrent(ctx context.Context, q queryRow, p *app.PlannedRunSource
 	if err != nil {
 		return false, err
 	}
+	if p.Knowledge != nil {
+		project, branch, _ := strings.Cut(p.Scope, "/")
+		var version int
+		var digest string
+		err = q.QueryRow(ctx, "SELECT version,digest FROM knowledge_heads WHERE project_id=$1 AND branch_id=$2", project, branch).Scan(&version, &digest)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return false, nil
+		}
+		if err != nil {
+			return false, err
+		}
+		if version != p.Knowledge.Version || digest != p.Knowledge.Digest {
+			return false, nil
+		}
+	}
 	return confirmed && pv == p.PlanVersion && p.Expected == (planning.ChapterPlanVersions{Planning: planning.PlanningVersions{Input: iv, Direction: dv, Style: sv, Core: cv}, Outline: ov, Bindings: bv}), nil
 }
 
@@ -125,6 +152,11 @@ func lockPlanningRun(ctx context.Context, tx pgx.Tx, id string) error {
 	var scope string
 	if err := tx.QueryRow(ctx, "SELECT scope FROM planning_heads WHERE scope=$1 FOR SHARE", r.Planning.Scope).Scan(&scope); err != nil {
 		return err
+	}
+	if r.Planning.Knowledge != nil {
+		if _, err := planningKnowledgeHead(ctx, tx, r.Planning.Scope); err != nil {
+			return err
+		}
 	}
 	ok, err := planningRunCurrent(ctx, tx, r.Planning)
 	if err != nil {
@@ -164,8 +196,25 @@ func (s *Store) PlannedRunReadiness(ctx context.Context, scope, chapter string, 
 			if e != nil {
 				out.Reason = e.Error()
 			} else {
-				out.Ready = true
-				out.Reason = ""
+				project, branch, _ := strings.Cut(scope, "/")
+				current, readErr := s.GetKnowledge(ctx, project, branch, 0)
+				if readErr != nil && !errors.Is(readErr, app.ErrNotFound) {
+					return out, readErr
+				}
+				if !publishedForPlan(current, *p) {
+					out.Reason = "请先在知识快照页发布当前已确认设定"
+				} else {
+					prepared, prepErr := app.PreparePlannedContext(cfg, scope, "preview", out.DraftVersion, *p)
+					if prepErr == nil {
+						_, prepErr = app.FreezePublishedKnowledge(prepared, current.Snapshot)
+					}
+					if prepErr != nil {
+						out.Reason = prepErr.Error()
+					} else {
+						out.Ready = true
+						out.Reason = ""
+					}
+				}
 			}
 		}
 	}
