@@ -568,4 +568,7 @@ M0.2b 页面入口：**创作准备 → 风格**。先在立意区确认方向�
 
 准备页新增 **从一段文字识别风格**：粘贴最多 3 万字，查看带原文依据的文风分析，导入风格编辑器后人工确认。长文明确展示取样范围，不冒充通读；见 [文本风格分析](docs/reference-style-analysis.md)。
 
-M0.3a 独立核心设定候选：`INKLOOM_MODEL=fake go run ./cmd/inkloom -core-settings internal/demo/core_settings.json`。目前是 Go/CLI 切片，不直接保存为角色事实；见 [核心设定说明](docs/core-settings.md)。
+M0.3a 独立核心设定候选：`INKLOOM_MODEL=fake go run ./cmd/inkloom -core-settings internal/demo/core_settings.json`。CLI 仍可独立使用，不直接保存为角色事实；见 [核心设定说明](docs/core-settings.md)。
+
+
+M0.3b 页面入口：**创作准备 → 人物世界**。基于当前有效的方向与风格生成候选，逐条编辑并选择待确认/确认/舍弃，保存到 PG 规划版本。关联确认、过期复核与调用留痕已接通，未发布正文或检索知识；见 [人物与世界设定](docs/core-settings.md)。

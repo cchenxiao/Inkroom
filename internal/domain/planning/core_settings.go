@@ -63,6 +63,9 @@ type CoreSettingsOutput struct {
 }
 
 func (out CoreSettingsOutput) Validate() error {
+	if out.WorldFacts == nil || out.Plans == nil {
+		return fmt.Errorf("事实与计划必须为数组，没有条目时使用空数组")
+	}
 	if len(out.Characters) < 1 || len(out.Characters) > 3 || len(out.WorldFacts) > 8 || len(out.Plans) > 4 {
 		return fmt.Errorf("仅生成 1–3 位主要人物、最多 8 条事实提案与 4 条计划")
 	}
@@ -77,6 +80,9 @@ func (out CoreSettingsOutput) Validate() error {
 		return true
 	}
 	for _, c := range out.Characters {
+		if c.HardFactIDs == nil {
+			return fmt.Errorf("人物硬特质引用必须为数组")
+		}
 		if !add(c.ID) || len(c.Voice) < 1 || len(c.Voice) > 5 || len(c.HardFactIDs) > 8 {
 			return fmt.Errorf("人物 ID、声音或事实引用无效")
 		}
@@ -94,6 +100,9 @@ func (out CoreSettingsOutput) Validate() error {
 	}
 	validSubject := func(s string) bool { return s == "world" || chars[s] }
 	for _, f := range out.WorldFacts {
+		if f.KnownBy == nil {
+			return fmt.Errorf("知情范围必须为数组，未知时使用空数组")
+		}
 		if !add(f.ID) || !validSubject(f.Subject) || !bounded(f.Text, 900, true) || (f.Rigidity != "hard" && f.Rigidity != "soft") || len(f.KnownBy) > 3 || f.StoryTime != nil && *f.StoryTime < 0 {
 			return fmt.Errorf("事实提案或故事时间无效")
 		}

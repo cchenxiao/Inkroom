@@ -1,3 +1,4 @@
+import type { CoreJob, CoreSelection } from './core-settings';
 import type { StyleTrialJob, StyleSelection } from './style-trial';
 export interface PlanningIntake {
   premise: string;
@@ -61,6 +62,9 @@ export interface DirectionSelection {
   createdAt: string;
 }
 export interface PlanningState {
+  coreVersion?: number;
+  coreSelection?: CoreSelection | null;
+  coreJobs?: CoreJob[];
   styleVersion: number;
   styleJobs: StyleTrialJob[];
   styleSelection: StyleSelection | null;

@@ -45,3 +45,26 @@ func TestCoreSettingsKeepsReferencesAndAuthorMetadataOutsideKnowledge(t *testing
 		t.Fatal("stale style accepted")
 	}
 }
+
+func TestCoreSettingsRejectsNullCollections(t *testing.T) {
+	for name, mutate := range map[string]func(*planning.CoreSettingsOutput){
+		"facts": func(out *planning.CoreSettingsOutput) {
+			out.Characters[0].HardFactIDs = []string{}
+			out.WorldFacts = nil
+		},
+		"plans":           func(out *planning.CoreSettingsOutput) { out.Plans = nil },
+		"hard references": func(out *planning.CoreSettingsOutput) { out.Characters[0].HardFactIDs = nil },
+		"knowledge":       func(out *planning.CoreSettingsOutput) { out.WorldFacts[0].KnownBy = nil },
+	} {
+		t.Run(name, func(t *testing.T) {
+			out := fakeCoreSettings()
+			if err := out.Validate(); err != nil {
+				t.Fatal(err)
+			}
+			mutate(&out)
+			if err := out.Validate(); err == nil {
+				t.Fatal("null collection accepted by JSON boundary")
+			}
+		})
+	}
+}

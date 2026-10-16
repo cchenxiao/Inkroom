@@ -37,7 +37,7 @@ Go 前缀 `/api`；Vite 前端通过 `/go-api` 代理。所有写操作要求 JS
 4. `internal/server/planning.go`：202 + 后台任务 + 页面轮询，HTTP 请求不等待几十秒的模型生成；断开页面不会直接取消任务。
 5. `internal/storage/postgres/planning.go`：行锁与版本比较保证“读到的版本”和“提交时的版本”一致；模型不决定谁有权覆盖作者选择。
 
-下一步 M0.3：基于已确认方向与风格生成核心人物/世界设定候选，仍需作者确认。
+M0.3 已接入核心人物/世界设定候选与作者确认，详见下方 M0.3b。
 
 ## M0.2b 试笔与风格
 
@@ -60,3 +60,8 @@ Go 前缀 `/api`；Vite 前端通过 `/go-api` 代理。所有写操作要求 JS
 ## 参考文本风格分析
 
 新增 `GET/POST /planning/style-analyses`，与书名参考线索独立。POST `{requestId,title,text}` 创建只读分析任务，支持 80–30,000 字；长文明确取样首/中/尾共 3,000 字，全文做程序统计。采用接口新增 `analysisId/analysisVersion`，不得与试笔 job 来源混用；既有风格编辑继续保留来源。详见 [文本风格分析接口与边界](reference-style-analysis.md)。
+
+
+## M0.3b 人物与世界
+
+`GET /planning` 增加 coreVersion、coreSelection、coreJobs。新增 `POST /planning/core-jobs` 冻结当前上游生成候选，`POST /planning/core-selection` 保存作者逐条决策；两条接口的完整字段、关联约束与版本语义见 [核心设定说明](core-settings.md)。模型只生成提案，确认状态由作者请求与服务端事务控制，不发布到正式知识。迁移 012 自动执行。

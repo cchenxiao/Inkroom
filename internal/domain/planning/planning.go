@@ -104,6 +104,9 @@ type Selection struct {
 	CreatedAt        time.Time `json:"createdAt"`
 }
 type State struct {
+	CoreVersion      int             `json:"coreVersion"`
+	CoreSelection    *CoreSelection  `json:"coreSelection"`
+	CoreJobs         []CoreJob       `json:"coreJobs"`
 	StyleVersion     int             `json:"styleVersion"`
 	StyleSelection   *StyleSelection `json:"styleSelection"`
 	StyleJobs        []StyleJob      `json:"styleJobs"`

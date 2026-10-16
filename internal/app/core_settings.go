@@ -25,6 +25,10 @@ type CoreSettingsReport struct {
 }
 
 func GenerateCoreSettings(ctx context.Context, cfg config.Config, input planning.CoreSettingsInput) (CoreSettingsReport, error) {
+	return GenerateCoreSettingsWithCalls(ctx, cfg, input, nil)
+}
+
+func GenerateCoreSettingsWithCalls(ctx context.Context, cfg config.Config, input planning.CoreSettingsInput, onCall func(context.Context, model.CallRecord) error) (CoreSettingsReport, error) {
 	if err := input.Validate(); err != nil {
 		return CoreSettingsReport{}, err
 	}
@@ -39,7 +43,7 @@ func GenerateCoreSettings(ctx context.Context, cfg config.Config, input planning
 			return CoreSettingsReport{}, err
 		}
 	}
-	return generateCoreSettings(ctx, cfg, input, chat)
+	return generateCoreSettings(ctx, cfg, input, chat, onCall)
 }
 func coreMaterial(in planning.CoreSettingsInput) json.RawMessage {
 	// 故意不传 StyleSelection.AnchorText、参考文本或 StyleAnalysisOutput；仅传作者采用的规矩。
@@ -51,7 +55,7 @@ func coreMaterial(in planning.CoreSettingsInput) json.RawMessage {
 	}{in.Source.Intake, in.Selection.Direction, in.Style.Rules, in.Request})
 	return raw
 }
-func generateCoreSettings(ctx context.Context, cfg config.Config, input planning.CoreSettingsInput, chat model.ChatModel) (CoreSettingsReport, error) {
+func generateCoreSettings(ctx context.Context, cfg config.Config, input planning.CoreSettingsInput, chat model.ChatModel, onCall func(context.Context, model.CallRecord) error) (CoreSettingsReport, error) {
 	if err := input.Validate(); err != nil {
 		return CoreSettingsReport{}, err
 	}
@@ -67,7 +71,13 @@ func generateCoreSettings(ctx context.Context, cfg config.Config, input planning
 	if cfg.Model == "fake" {
 		report.Message = "Fake 流程样例，不代表模型对本次立意的创作结果；所有内容均待作者确认。"
 	}
-	guard := model.NewGuard(chat, model.Limits{Calls: min(cfg.MaxCalls, 3), Tokens: cfg.MaxTokens, OutputTokens: cfg.MaxOutputTokens, Timeout: cfg.CallTimeout, ModelName: cfg.ModelName, OnCall: func(_ context.Context, c model.CallRecord) error { report.Calls = append(report.Calls, c); return nil }})
+	guard := model.NewGuard(chat, model.Limits{Calls: min(cfg.MaxCalls, 3), Tokens: cfg.MaxTokens, OutputTokens: cfg.MaxOutputTokens, Timeout: cfg.CallTimeout, ModelName: cfg.ModelName, OnCall: func(ctx context.Context, c model.CallRecord) error {
+		report.Calls = append(report.Calls, c)
+		if onCall != nil {
+			return onCall(ctx, c)
+		}
+		return nil
+	}})
 	out, _, err := parse.Generate[planning.CoreSettingsOutput](ctx, prompts.Bind(guard), model.Input{Role: "core_planner", Task: "按作者限定范围提出主要人物、世界事实候选和未来计划，严格分区，不确认或写入事实。", Material: coreMaterial(frozen), OutputSchema: contracts.CorePlannerSchema}, planning.CoreSettingsOutput.Validate)
 	if err != nil {
 		report.Status = "failed"

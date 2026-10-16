@@ -1,3 +1,5 @@
+import { coreSettingsMessages } from '@/shared/lib/messages-core-settings';
+import BackendCoreSettings from './components/BackendCoreSettings';
 import { usePlanning } from './hooks/usePlanning';
 import BackendStyleTrial from './components/BackendStyleTrial';
 import { styleTrialMessages } from '@/shared/lib/messages-style-trial';
@@ -65,7 +67,7 @@ export default function PreparePage() {
   const sectionReady: Record<string, boolean> = {
     premise: Boolean(realPlanning && planningState?.selection && planningState.selection.inputVersion === planningState.input.version),
     style: realPlanning ? Boolean(planningState?.styleSelection && planningState.styleSelection.inputVersion === planningState.input.version && planningState.styleSelection.directionVersion === planningState.directionVersion) : Boolean(bible.data?.style.anchorText),
-    world: Boolean(bible.data?.characters.length && bible.data.rules.length),
+    world: realPlanning ? Boolean(planningState?.coreSelection && planningState.coreSelection.inputVersion === planningState.input.version && planningState.coreSelection.directionVersion === planningState.directionVersion && planningState.coreSelection.styleVersion === planningState.styleVersion && Object.values(planningState.coreSelection.decisions).some(s=>s==='confirmed') && !Object.values(planningState.coreSelection.decisions).includes('pending')) : false,
     outline: Boolean(tree.data?.length && tree.data.every((item) => item.scenes.length)),
   };
   async function saveProject() {
@@ -113,7 +115,7 @@ export default function PreparePage() {
             <span className="page-eyebrow">
               {section === 'knowledge' ? e.prepare.sources : e.prepare.preparation}
             </span>
-            {section !== 'knowledge' && section !== 'premise' && section !== 'style' && (
+            {section === 'outline' && (
               <div className="page-actions">
                 <Button variant="ghost" size="sm" onClick={() => setImportOpen(true)}>
                   <Upload size={14} />
@@ -134,6 +136,7 @@ export default function PreparePage() {
           {section === 'knowledge' && <BackendKnowledge />}
           {section === 'premise' && <BackendPlanning />}
           {section === 'style' && <BackendStyleTrial />}
+          {section === 'world' && <BackendCoreSettings />}
           <AsyncState
             loading={project.isLoading || bible.isLoading || tree.isLoading}
             error={project.error ?? bible.error ?? tree.error}
@@ -259,8 +262,13 @@ export default function PreparePage() {
                   </details>
                 )}
                 {bible.data && ['style', 'world'].includes(section) && (
-                  <details className="planning-mock" open={section === 'world' || undefined}>
-                    <summary>{section === 'style' ? styleTrialMessages.mock : t.prepare.bible}</summary>
+                  <details className="planning-mock">
+                    <summary>{section === 'style' ? styleTrialMessages.mock : coreSettingsMessages.mock}</summary>
+                    {section === 'world' && <div className="page-actions">
+                      <Button variant="ghost" size="sm" onClick={() => setImportOpen(true)}><Upload size={14} />{t.common.import}</Button>
+                      <Button size="sm" disabled={!version} onClick={() => setSuggestOpen(true)}><Sparkles size={14} />{t.common.suggestion}</Button>
+                    </div>}
+
                     <div className="section-title">
                       <h2>{section === 'style' ? t.bible.tabs.style : t.prepare.bible}</h2>
                       <small>{t.common.note}</small>

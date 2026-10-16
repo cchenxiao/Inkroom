@@ -49,6 +49,9 @@ var styleTrialsMigration string
 //go:embed migrations/011_style_analysis.sql
 var styleAnalysisMigration string
 
+//go:embed migrations/012_core_settings.sql
+var coreSettingsMigration string
+
 type Store struct {
 	pool  *pgxpool.Pool
 	lease *pgx.Conn
@@ -113,7 +116,7 @@ func (s *Store) migrate(ctx context.Context) error {
 	if _, err = tx.Exec(ctx, "CREATE TABLE IF NOT EXISTS schema_migrations(version integer PRIMARY KEY, checksum text NOT NULL)"); err != nil {
 		return err
 	}
-	for i, sql := range []string{migration, humanMigration, eventMigration, commitMigration, memoryMigration, preparationMigration, criticLookupMigration, knowledgeMigration, planningMigration, styleTrialsMigration, styleAnalysisMigration} {
+	for i, sql := range []string{migration, humanMigration, eventMigration, commitMigration, memoryMigration, preparationMigration, criticLookupMigration, knowledgeMigration, planningMigration, styleTrialsMigration, styleAnalysisMigration, coreSettingsMigration} {
 		version := i + 1
 		checksum := fmt.Sprintf("%x", sha256.Sum256([]byte(sql)))
 		var existing string
@@ -135,6 +138,13 @@ func (s *Store) migrate(ctx context.Context) error {
 	return tx.Commit(ctx)
 }
 func (s *Store) recoverInterrupted(ctx context.Context) error {
+	if _, err := s.pool.Exec(ctx, `UPDATE planning_core_jobs SET status='interrupted',record=record || '{"status":"interrupted","message":"服务中断，未自动重发设定生成；请手动重试。"}'::jsonb WHERE status='running'`); err != nil {
+		return err
+	}
+	if _, err := s.pool.Exec(ctx, `UPDATE planning_core_calls SET record=record || '{"phase":"unknown"}'::jsonb WHERE record->>'phase'='started'`); err != nil {
+		return err
+	}
+
 	if _, err := s.pool.Exec(ctx, `UPDATE planning_style_analyses SET status='interrupted',record=record || '{"status":"interrupted","message":"服务中断，未自动重发分析请求；请手动重试。"}'::jsonb WHERE status='running'`); err != nil {
 		return err
 	}

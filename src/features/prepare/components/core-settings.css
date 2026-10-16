@@ -1,0 +1,121 @@
+.core-workbench {
+  display: grid;
+  gap: 16px;
+  max-width: 1120px;
+}
+.core-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.core-heading h2,
+.core-heading h3 {
+  margin: 0;
+}
+.core-workbench label,
+.core-editor label {
+  display: grid;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+.core-workbench input:not([type='checkbox']),
+.core-workbench textarea,
+.core-workbench select {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  background: var(--bg);
+}
+.core-workbench textarea {
+  resize: vertical;
+  min-height: 56px;
+}
+.core-workbench details {
+  margin-top: 16px;
+}
+.core-workbench details summary {
+  cursor: pointer;
+  color: var(--text-dim);
+}
+.core-count {
+  margin-right: 16px;
+}
+.core-generate {
+  display: grid;
+  gap: 12px;
+  justify-items: start;
+}
+.core-generate > label {
+  width: 100%;
+}
+.core-editor {
+  display: grid;
+  gap: 16px;
+  scroll-margin-top: 24px;
+}
+.core-editor > fieldset {
+  border: 0;
+  padding: 0;
+  min-width: 0;
+}
+.core-item {
+  display: grid;
+  gap: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  background: var(--panel);
+  margin: 16px 0 24px;
+}
+.core-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.core-item .core-decision {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  color: var(--text);
+  font-weight: 600;
+}
+.core-decision select {
+  width: 120px;
+}
+.core-relations {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+.core-relations > label,
+.core-relations > div > label:first-child {
+  display: flex;
+  align-items: center;
+}
+.core-relations input[type='checkbox'] {
+  accent-color: var(--human);
+}
+.core-save {
+  position: sticky;
+  bottom: 0;
+  padding: 12px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.core-notice {
+  border-left: 2px solid var(--ai);
+  padding-left: 16px;
+}
