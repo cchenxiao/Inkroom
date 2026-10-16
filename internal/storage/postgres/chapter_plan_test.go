@@ -9,6 +9,7 @@ import (
 	"inkloom/internal/app"
 	"inkloom/internal/config"
 	"inkloom/internal/domain/planning"
+	"inkloom/internal/orchestration"
 	"os"
 	"testing"
 	"time"
@@ -24,8 +25,21 @@ func TestChapterPlanFrozenInputAndAuthorVersion(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	scope := "chapter-plan-test-" + rand.Text()
+	scope := "chapter-plan-test-" + rand.Text() + "/main"
+	var plannedRun app.Run
 	defer func() {
+		if plannedRun.ID != "" {
+			for _, table := range []string{"manuscript_commits", "planning_run_inputs", "run_artifacts", "run_actions", "run_checkpoints", "llm_calls", "reviews", "chapter_versions", "critic_lookups"} {
+				if _, e := s.pool.Exec(ctx, "DELETE FROM "+table+" WHERE run_id IN (SELECT id FROM runs WHERE chapter_id=$1)", plannedRun.ChapterID); e != nil {
+					t.Error(e)
+				}
+			}
+			for _, q := range []string{"DELETE FROM segment_versions WHERE chapter_id=$1", "DELETE FROM runs WHERE chapter_id=$1", "DELETE FROM chapters WHERE id=$1"} {
+				if _, e := s.pool.Exec(ctx, q, plannedRun.ChapterID); e != nil {
+					t.Error(e)
+				}
+			}
+		}
 		for _, q := range []string{
 			"DELETE FROM planning_chapter_plan_calls WHERE job_id IN(SELECT id FROM planning_chapter_plan_jobs WHERE scope=$1)", "DELETE FROM planning_chapter_plan_selections WHERE scope=$1", "DELETE FROM planning_chapter_plan_jobs WHERE scope=$1",
 			"DELETE FROM planning_outline_calls WHERE job_id IN(SELECT id FROM planning_outline_jobs WHERE scope=$1)", "DELETE FROM planning_outline_bindings WHERE scope=$1", "DELETE FROM planning_outline_selections WHERE scope=$1", "DELETE FROM planning_outline_jobs WHERE scope=$1",
@@ -67,6 +81,9 @@ func TestChapterPlanFrozenInputAndAuthorVersion(t *testing.T) {
 	if err = s.FinishCoreSettings(ctx, coreJob.ID, report, nil); err != nil {
 		t.Fatal(err)
 	}
+	zero := int64(0)
+	report.Output.WorldFacts[0].StoryTime = &zero
+	report.Output.WorldFacts[0].KnownBy = []planning.ProposedKnowledge{{CharacterID: report.Output.Characters[0].ID, LearnedAt: &zero}}
 	decisions := map[string]planning.CoreDecision{}
 	for _, c := range report.Output.Characters {
 		decisions[c.ID] = planning.CoreConfirmed
@@ -157,6 +174,7 @@ func TestChapterPlanFrozenInputAndAuthorVersion(t *testing.T) {
 		t.Fatal("candidate auto adopted or missing audit")
 	}
 	candidate := state.ChapterPlanJobs[0].Output
+	candidate.Scenes[0].StoryTime = &zero
 	if candidate.Scenes[0].ID == cpOut.Scenes[0].ID || candidate.Brief.SelectedBeatID != candidate.Scenes[0].Beats[0].ID {
 		t.Fatal("stable IDs not remapped")
 	}
@@ -182,6 +200,8 @@ func TestChapterPlanFrozenInputAndAuthorVersion(t *testing.T) {
 	if _, err = s.SaveChapterPlan(ctx, scope, forged); !errors.Is(err, app.ErrVersionMismatch) {
 		t.Fatal("cross chapter candidate accepted", err)
 	}
+
+	plannedRun = exercisePlannedRun(t, s, scope, selected, cfg, &plannedRun)
 	save.ExpectedVersion = 2
 	save.SourceVersion = 2
 	// Restart interrupts the worker, preserving the saved plan and its frozen input.
@@ -216,6 +236,21 @@ func TestChapterPlanFrozenInputAndAuthorVersion(t *testing.T) {
 	if _, err = s.SaveChapterPlan(ctx, scope, save); !errors.Is(err, app.ErrVersionMismatch) {
 		t.Fatal("outdated outline accepted", err)
 	}
+	stale, e := s.GetRun(ctx, plannedRun.ID)
+	if e != nil || stale.Status != "stale" || stale.ApprovalBlock == "" {
+		t.Fatal("planning change did not invalidate approval", e, stale.Status)
+	}
+	if _, _, e = s.ClaimAction(ctx, plannedRun.ID, orchestration.HumanAction{ID: rand.Text(), Type: "approve", DraftVersion: plannedRun.DraftVersion}); !errors.Is(e, app.ErrVersionMismatch) {
+		t.Fatal("stale approval accepted", e)
+	}
+	if _, e = s.Finalize(ctx, plannedRun.ID, app.FinalizeInput{ID: rand.Text(), DraftVersion: plannedRun.DraftVersion, InputDigest: plannedRun.InputDigest, FactsConfirmed: true}); !errors.Is(e, app.ErrVersionMismatch) {
+		t.Fatal("stale finalization accepted", e)
+	}
+	frozen, e := s.FrozenContext(ctx, plannedRun.ID)
+	if e != nil || frozen.Bundle.WritingTask.PlanVersion != 2 {
+		t.Fatal("old frozen input was replaced", e)
+	}
+
 	// Explicit author review can reuse old content against current input; it makes a new snapshot.
 	save.Expected.Outline = 3
 	save.Expected.Bindings = 3
@@ -226,4 +261,20 @@ func TestChapterPlanFrozenInputAndAuthorVersion(t *testing.T) {
 	if selected.Version != 3 {
 		t.Fatal("review replaced old record")
 	}
+	// A fresh reviewed plan can be written, approved, and committed with its exact planning source.
+	plannedRun = exercisePlannedRun(t, s, scope, selected, cfg, &plannedRun)
+	commit, e := s.Finalize(ctx, plannedRun.ID, app.FinalizeInput{ID: rand.Text(), DraftVersion: plannedRun.DraftVersion, InputDigest: plannedRun.InputDigest, FactsConfirmed: true})
+	if e != nil {
+		t.Fatal("planned commit", e)
+	}
+	found := false
+	for _, ref := range commit.Refs {
+		if ref.Kind == "planning_inputs" && ref.Version == selected.Version {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("commit omitted planning provenance")
+	}
+
 }

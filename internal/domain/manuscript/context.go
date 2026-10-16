@@ -82,6 +82,12 @@ func (b ContextBundle) Freeze() (ContextBundle, error) {
 			return frozen, fmt.Errorf("retrieval POV is not the writing POV")
 		}
 	}
+	if t := b.WritingTask; t != nil {
+		v := t.Versions
+		if !t.Opening || t.Scope == "" || t.ChapterID == "" || t.PlanVersion < 1 || len(t.SourceDigest) != 64 || t.StoryTime < 0 || v["input"] < 1 || v["direction"] < 1 || v["style"] < 1 || v["core"] < 1 || v["outline"] < 1 || v["bindings"] < 1 || t.Brief.SelectedBeatID != b.Beat.ID || t.Style.POV == "" {
+			return frozen, fmt.Errorf("invalid planned writing task")
+		}
+	}
 	seen := map[string]bool{b.Beat.ID: true}
 	for _, c := range b.Characters {
 		if c.ID == "" || c.Name == "" || c.Version < 1 || seen[c.ID] {

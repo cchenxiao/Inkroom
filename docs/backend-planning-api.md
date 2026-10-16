@@ -75,3 +75,7 @@ M0.3 已接入核心人物/世界设定候选与作者确认，详见下方 M0.3
 ## M0.4b 当前章细纲与 Brief
 
 `GET /planning` 增加 chapterPlans/chapterPlanJobs。新增 `POST /planning/chapter-plan-jobs` 与 `POST /planning/chapter-plan-selection`，冻结有效已确认章纲，生成单章场景/Beat/Brief 候选，按稳定章节 ID 递增作者版本。迁移 014 自动执行；候选与确认均不发布正文或正式知识。完整字段和边界见 [细纲说明](chapter-plan.md)。
+
+## M0.4c1 规划接单段写作
+
+新增 `GET/POST /planning/chapter-runs`，按确认规划启动第一章选定 Beat，冻结输入、隔离稿本并在批准/提交时复核上游版本。迁移 015 保存完整规划来源；已有事件、人审与提交 API 复用。字段及边界见 [规划写作说明](planned-writing.md)。

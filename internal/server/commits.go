@@ -42,8 +42,8 @@ func (s *service) finalize(w http.ResponseWriter, r *http.Request) {
 }
 func (s *service) commits(w http.ResponseWriter, r *http.Request) {
 	chapter, branch := r.URL.Query().Get("chapterId"), r.URL.Query().Get("branchId")
-	if chapter != "ch7" || branch != "main" {
-		fail(w, 400, "unsupported_scope", "当前定稿历史仅支持 ch7/main")
+	if (chapter != "ch7" && !strings.HasPrefix(chapter, "planned-")) || branch != "main" {
+		fail(w, 400, "unsupported_scope", "当前只支持 main 下的演示稿与规划候选稿")
 		return
 	}
 	commits, err := s.repo.Commits(r.Context(), chapter, branch)

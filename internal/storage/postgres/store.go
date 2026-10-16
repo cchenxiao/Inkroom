@@ -58,6 +58,9 @@ var outlineMigration string
 //go:embed migrations/014_chapter_plan.sql
 var chapterPlanMigration string
 
+//go:embed migrations/015_planned_runs.sql
+var plannedRunsMigration string
+
 type Store struct {
 	pool  *pgxpool.Pool
 	lease *pgx.Conn
@@ -122,7 +125,7 @@ func (s *Store) migrate(ctx context.Context) error {
 	if _, err = tx.Exec(ctx, "CREATE TABLE IF NOT EXISTS schema_migrations(version integer PRIMARY KEY, checksum text NOT NULL)"); err != nil {
 		return err
 	}
-	for i, sql := range []string{migration, humanMigration, eventMigration, commitMigration, memoryMigration, preparationMigration, criticLookupMigration, knowledgeMigration, planningMigration, styleTrialsMigration, styleAnalysisMigration, coreSettingsMigration, outlineMigration, chapterPlanMigration} {
+	for i, sql := range []string{migration, humanMigration, eventMigration, commitMigration, memoryMigration, preparationMigration, criticLookupMigration, knowledgeMigration, planningMigration, styleTrialsMigration, styleAnalysisMigration, coreSettingsMigration, outlineMigration, chapterPlanMigration, plannedRunsMigration} {
 		version := i + 1
 		checksum := fmt.Sprintf("%x", sha256.Sum256([]byte(sql)))
 		var existing string

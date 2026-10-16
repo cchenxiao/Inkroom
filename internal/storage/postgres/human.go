@@ -31,6 +31,9 @@ func (s *Store) Checkpoint(ctx context.Context, id string) ([]byte, bool, error)
 
 // lockHuman 固定章→run 顺序，和普通正文写入一致，防死锁及跨窗口覆盖。
 func lockHuman(ctx context.Context, tx pgx.Tx, id string) (app.Run, error) {
+	if err := lockPlanningRun(ctx, tx, id); err != nil {
+		return app.Run{}, err
+	}
 	var chapter, branch string
 	if err := tx.QueryRow(ctx, "SELECT chapter_id,branch_id FROM runs WHERE id=$1", id).Scan(&chapter, &branch); err != nil {
 		return app.Run{}, err

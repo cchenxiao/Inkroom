@@ -60,7 +60,7 @@ func (s *service) action(w http.ResponseWriter, r *http.Request) {
 	send(w, 202, run)
 }
 func (s *service) executeHuman(ctx context.Context, run app.Run) {
-	if err := app.ExecuteHuman(ctx, s.cfg, run, s.repo, app.NewConsistencyCheck(s.retriever, s.repo, run.ID)); err != nil {
+	if err := app.ExecuteHuman(ctx, s.cfg, run, s.repo, s.consistencyCheck(run)); err != nil {
 		status, reason := "failed", "本次人工操作未完成；已落库产物保留，可用同一操作 ID 继续"
 		if errors.Is(err, app.ErrVersionMismatch) {
 			status, reason = "stale", "稿本已更新，旧审核与操作失效"

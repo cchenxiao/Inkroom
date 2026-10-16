@@ -20,6 +20,13 @@ func (s *Store) createRun(ctx context.Context, r app.Run, input, preparation *ma
 		return err
 	}
 	defer tx.Rollback(context.Background())
+	if err = createRunTx(ctx, tx, r, input, preparation); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+func createRunTx(ctx context.Context, tx pgx.Tx, r app.Run, input, preparation *manuscript.FrozenInput) error {
+	var err error
 	if _, err = tx.Exec(ctx, "INSERT INTO chapters(id,branch_id) VALUES($1,$2) ON CONFLICT DO NOTHING", r.ChapterID, r.BranchID); err != nil {
 		return err
 	}
@@ -64,11 +71,11 @@ func (s *Store) createRun(ctx context.Context, r app.Run, input, preparation *ma
 	if err = appendEvent(ctx, tx, r.ID, "run.started"); err != nil {
 		return err
 	}
-	return tx.Commit(ctx)
+	return nil
 }
 func (s *Store) GetRun(ctx context.Context, id string) (app.Run, error) {
 	if id == "latest" {
-		if err := s.pool.QueryRow(ctx, "SELECT id FROM runs ORDER BY created_at DESC,id DESC LIMIT 1").Scan(&id); err != nil {
+		if err := s.pool.QueryRow(ctx, "SELECT id FROM runs WHERE payload->'planning' IS NULL ORDER BY created_at DESC,id DESC LIMIT 1").Scan(&id); err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
 				return app.Run{}, app.ErrNotFound
 			}

@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ApiError } from '@/shared/api/client';
 import { Badge, Button } from '@/shared/ui';
 import { backendMessages as t } from '@/shared/lib/messages-backend';
+import { plannedRunMessages as plannedText } from '@/shared/lib/messages-planned-run';
 import { trialApi } from '../api/backend';
 import { refreshEventQueries } from '../api/refresh-events';
 import type { BackendRun, FinalizeInput } from '../types/backend';
@@ -10,17 +11,19 @@ import type { BackendRun, FinalizeInput } from '../types/backend';
 export default function BackendFinalize({
   run,
   currentVersion,
+  chapterId = 'ch7',
 }: {
   run: BackendRun;
   currentVersion?: number;
+  chapterId?: string;
 }) {
   const client = useQueryClient();
   const [confirmedVersion, setConfirmedVersion] = useState<number | null>(null);
   const [uncertain, setUncertain] = useState<FinalizeInput | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   const history = useQuery({
-    queryKey: ['backend-commits'],
-    queryFn: ({ signal }) => trialApi.commits(signal),
+    queryKey: chapterId === 'ch7' ? ['backend-commits'] : ['backend-commits', chapterId],
+    queryFn: ({ signal }) => trialApi.commits(signal, chapterId),
     enabled: historyOpen || !!run.commitId,
     retry: false,
   });
@@ -57,8 +60,8 @@ export default function BackendFinalize({
   };
   return (
     <section className="backend-finalize page-stack">
-      <h3>{t.finalizeTitle}</h3>
-      <p>{t.finalizeNote}</p>
+      <h3>{run.planning ? plannedText.finalizeTitle : t.finalizeTitle}</h3>
+      <p>{run.planning ? plannedText.finalizeNote : t.finalizeNote}</p>
       {run.commitId ? (
         <p role="status">
           {t.committed} · <span className="mono">{run.commitId}</span>
@@ -88,7 +91,7 @@ export default function BackendFinalize({
               })
             }
           >
-            {t.finalizeAction} · v{run.draftVersion}
+            {run.planning ? plannedText.finalizeAction : t.finalizeAction} · v{run.draftVersion}
           </Button>
           {blocked && <p>{blocked}</p>}
           {uncertain && !submit.isPending && (

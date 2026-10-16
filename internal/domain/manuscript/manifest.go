@@ -75,6 +75,11 @@ func ContextRefs(b ContextBundle) ([]VersionRef, error) {
 	if err := add("outline", b.Beat.ID, b.Beat.Version, b.Beat); err != nil {
 		return nil, err
 	}
+	if b.WritingTask != nil {
+		if err := add("writing_task", b.WritingTask.ChapterID, b.WritingTask.PlanVersion, b.WritingTask); err != nil {
+			return nil, err
+		}
+	}
 	for _, c := range b.Characters {
 		if err := add("character", c.ID, c.Version, c); err != nil {
 			return nil, err
@@ -128,7 +133,7 @@ func (in FrozenInput) Validate() error {
 	if err != nil {
 		return err
 	}
-	if b.ProjectID == "" || b.PreviousEnding == nil || !b.Beat.Locked || (m.AssemblerVersion != AssemblerVersion && m.AssemblerVersion != "assembler.v1") || m.ProjectID != b.ProjectID || m.ChapterID != b.ChapterID || m.BranchID != b.BranchID || m.BaseDraftVersion < 0 || m.Digest != digest {
+	if b.ProjectID == "" || (b.PreviousEnding == nil && (b.WritingTask == nil || !b.WritingTask.Opening)) || !b.Beat.Locked || (m.AssemblerVersion != AssemblerVersion && m.AssemblerVersion != "assembler.v1") || m.ProjectID != b.ProjectID || m.ChapterID != b.ChapterID || m.BranchID != b.BranchID || m.BaseDraftVersion < 0 || m.Digest != digest {
 		return fmt.Errorf("invalid frozen context identity or digest")
 	}
 	raw, _ := json.Marshal(b)

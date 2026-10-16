@@ -15,8 +15,11 @@ export const trialApi = {
     backendApi.get<BackendManifest>(`/runs/${encodeURIComponent(id)}/context-manifest`, signal),
   finalize: (id: string, input: FinalizeInput) =>
     backendApi.post<BackendCommit>(`/runs/${encodeURIComponent(id)}/commit`, input),
-  commits: (signal?: AbortSignal) =>
-    backendApi.get<BackendCommit[]>('/commits?chapterId=ch7&branchId=main', signal),
+  commits: (signal?: AbortSignal, chapterId = 'ch7') =>
+    backendApi.get<BackendCommit[]>(
+      `/commits?chapterId=${encodeURIComponent(chapterId)}&branchId=main`,
+      signal,
+    ),
   action: (runId: string, action: HumanAction) =>
     backendApi.post<BackendRun>(`/runs/${encodeURIComponent(runId)}/actions`, action),
   health: () => backendApi.get<{ provider: string; model: string; scenarios: string[] }>('/health'),
@@ -34,7 +37,8 @@ export const trialApi = {
       text: input.text,
       draftVersion: input.draftVersion,
     }),
-  runs: (signal?: AbortSignal) => backendApi.get<BackendRun[]>('/runs', signal),
+  runs: (signal?: AbortSignal) =>
+    backendApi.get<BackendRun[]>('/runs', signal).then((runs) => runs.filter((r) => !r.planning)),
   calls: (id: string, signal?: AbortSignal) =>
     backendApi.get<ModelCall[]>(`/runs/${encodeURIComponent(id)}/calls`, signal),
   latest: () => backendApi.get<BackendRun>('/runs/latest'),

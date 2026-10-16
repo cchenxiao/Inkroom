@@ -27,10 +27,15 @@ type Options struct {
 // Assemble 当前只装必需材料。放不下就停止，不静默丢硬约束或挤掉前章结尾。
 // 未确认事实不进入 bundle；excluded 只记录缺失类别/原因，不把候选正文传给 Writer。
 func Assemble(b manuscript.ContextBundle, previous PreviousChapter, opts Options) (manuscript.FrozenInput, error) {
-	if !previous.Confirmed || previous.ProjectID != b.ProjectID || previous.BranchID != b.BranchID {
+	opening := b.WritingTask != nil && b.WritingTask.Opening
+	if !opening && (!previous.Confirmed || previous.ProjectID != b.ProjectID || previous.BranchID != b.BranchID) {
 		return manuscript.FrozenInput{}, fmt.Errorf("previous chapter must be confirmed and in the same project/branch")
 	}
-	b.PreviousEnding = &previous.Source
+	if opening {
+		b.PreviousEnding = nil
+	} else {
+		b.PreviousEnding = &previous.Source
+	}
 	// 可选前情按排名逐条装入，不能挤掉固定的 Beat/事实/上章结尾。
 	if opts.Memory != nil {
 		raw, _ := json.Marshal(opts.Memory)

@@ -1,3 +1,4 @@
+import PlannedBeatWriting from './PlannedBeatWriting';
 import { useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -307,6 +308,9 @@ function ChapterPlanWorkbench() {
             ))}
           </details>
         </Card>
+      )}
+      {chapter && (
+        <PlannedBeatWriting key={chapter.id} chapterId={chapter.id} editing={Boolean(edit)} />
       )}
       {edit && chapter && s.coreSelection && (
         <>

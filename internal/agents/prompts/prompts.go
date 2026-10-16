@@ -58,7 +58,7 @@ func render(in model.Input, candidate string) (model.Input, error) {
 		in.Temperature = 0.6
 	case "tone_director":
 		in.Temperature = 0.8
-	case "writer", "trial_writer":
+	case "writer", "trial_writer", "planned_writer":
 		in.Temperature = 0.8
 	case "context_assembler":
 		in.Temperature = 0.1
@@ -118,6 +118,7 @@ func render(in model.Input, candidate string) (model.Input, error) {
 	if in.Role == "hard_consistency" && len(in.Tools) > 0 {
 		in.SchemaVersion = "hard_consistency.tools.v1"
 	}
+	if in.Role == "planned_writer" {in.SchemaVersion="writer.v1"}
 	if in.Role == "ai_taste" {
 		in.SchemaVersion = "critic.v1"
 	}

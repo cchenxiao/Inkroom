@@ -21,8 +21,12 @@ func Write(ctx context.Context, chat model.ChatModel, bundle manuscript.ContextB
 	if err != nil {
 		return manuscript.Segment{}, model.Usage{}, err
 	}
+	role := "writer"
+	if bundle.WritingTask != nil {
+		role = "planned_writer"
+	}
 	draft, usage, err := parse.Generate[contracts.WriterOutput](ctx, chat, model.Input{
-		Role: "writer", Task: `按材料写一个正文段，返回 {"text":"正文"}，不修改设定。`,
+		Role: role, Task: `按材料写一个正文段，返回 {"text":"正文"}，不修改设定。`,
 		Material: material, OutputSchema: contracts.WriterSchema,
 	}, nil)
 	if err != nil {

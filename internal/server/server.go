@@ -68,6 +68,8 @@ func Serve(ctx context.Context) error {
 	mux.HandleFunc("POST /api/planning/core-jobs", s.generateCoreSettings)
 	mux.HandleFunc("POST /api/planning/core-selection", s.saveCoreSettings)
 	mux.HandleFunc("GET /api/planning", s.getPlanning)
+	mux.HandleFunc("GET /api/planning/chapter-runs", s.plannedRuns)
+	mux.HandleFunc("POST /api/planning/chapter-runs", s.startPlannedRun)
 	mux.HandleFunc("PATCH /api/planning/intake", s.savePlanning)
 	mux.HandleFunc("POST /api/planning/jobs", s.generatePlanning)
 	mux.HandleFunc("POST /api/planning/selection", s.selectPlanning)
@@ -253,7 +255,7 @@ func (s *service) execute(run app.Run) {
 		return
 	}
 	result, err := app.ExecuteChapter(ctx, s.cfg, run.Scenario, orchestration.Options{
-		ConsistencyCheck: app.NewConsistencyCheck(s.retriever, s.repo, run.ID),
+		ConsistencyCheck: s.consistencyCheck(run),
 		FrozenInput:      &input,
 		CallHistory:      history,
 		BaseDraftVersion: run.BaseDraftVersion, AllowLocalRewrite: run.AllowLocalRewrite, AutoRevise: run.AutoRevise, MaxRounds: run.MaxRounds,
@@ -330,6 +332,8 @@ func (s *service) calls(w http.ResponseWriter, r *http.Request) {
 }
 func storageError(w http.ResponseWriter, err error) {
 	switch {
+	case errors.Is(err, app.ErrPlanningNotReady):
+		fail(w, 422, "planning_not_ready", err.Error())
 	case errors.Is(err, app.ErrContextMismatch):
 		fail(w, 409, "context_mismatch", "冻结输入缺失或不匹配；旧运行不能补造清单，请重新装配并启动")
 	case errors.Is(err, app.ErrFactsUnconfirmed):

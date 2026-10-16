@@ -33,6 +33,9 @@ func ExecuteChapter(ctx context.Context, cfg config.Config, scenario string, opt
 		return orchestration.ChapterState{}, ErrContextMismatch
 	}
 	bundle := input.Bundle
+	if bundle.WritingTask != nil {
+		steps = plannedFakeSteps(bundle)
+	}
 	steps, err = demo.WithBaseVersion(steps, opts.BaseDraftVersion)
 	if err != nil {
 		return orchestration.ChapterState{}, err

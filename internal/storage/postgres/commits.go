@@ -104,6 +104,25 @@ func (s *Store) Finalize(ctx context.Context, id string, in app.FinalizeInput) (
 	if err != nil {
 		return app.FinalCommit{}, err
 	}
+	if r.Planning != nil {
+		var raw []byte
+		if err = tx.QueryRow(ctx, "SELECT record FROM planning_run_inputs WHERE run_id=$1", id).Scan(&raw); err != nil {
+			return app.FinalCommit{}, err
+		}
+		var binding app.PlannedRunBinding
+		if err = json.Unmarshal(raw, &binding); err != nil {
+			return app.FinalCommit{}, err
+		}
+		hash, e := manuscript.ContentDigest(binding)
+		if e != nil {
+			return app.FinalCommit{}, e
+		}
+		payload, e := json.Marshal(binding)
+		if e != nil {
+			return app.FinalCommit{}, e
+		}
+		refs = append(refs, manuscript.VersionRef{Kind: "planning_inputs", ID: r.Planning.ChapterID, Version: r.Planning.PlanVersion, Digest: hash, Payload: payload})
+	}
 	// 保存所有轮次的查证材料；当前版必须与已审核 Critic 结果完全一致。
 	rows, err := tx.Query(ctx, "SELECT payload FROM critic_lookups WHERE run_id=$1 ORDER BY draft_version", id)
 	if err != nil {

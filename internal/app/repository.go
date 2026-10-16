@@ -21,6 +21,7 @@ var ErrActionMismatch = errors.New("action id reused with different content")
 var ErrInvalidWrite = errors.New("invalid draft write")
 
 type Run struct {
+	Planning          *PlannedRunSource           `json:"planning,omitempty"`
 	CriticLookups     []CriticLookup              `json:"criticLookups,omitempty"`
 	Lookup            *memory.LookupTrace         `json:"lookup,omitempty"`
 	InputDigest       string                      `json:"inputDigest,omitempty"`

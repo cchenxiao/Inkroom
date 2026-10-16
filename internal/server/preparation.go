@@ -10,6 +10,10 @@ import (
 )
 
 func (s *service) prepare(ctx context.Context, r app.Run) (app.Run, manuscript.FrozenInput, error) {
+	if r.Planning != nil {
+		input, err := s.repo.FrozenContext(ctx, r.ID)
+		return r, input, err
+	}
 	base, err := s.repo.PreparationInput(ctx, r.ID)
 	if err != nil {
 		return r, base, err

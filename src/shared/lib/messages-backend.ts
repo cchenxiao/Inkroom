@@ -50,6 +50,7 @@ export const backendMessages = {
   } as Record<string, string>,
   contextExcluded: '未纳入材料',
   sourceKinds: {
+    writing_task: '已确认写作任务',
     critic_evidence: '一致性查证快照',
     retrieved_fact: '检索事实',
     retrieved_passage: '检索原文（非世界事实）',

@@ -1,6 +1,7 @@
 export const chapterPlanMessages = {
   title: '当前章细纲与写作简报',
-  boundary: '每次只展开一章；候选经你确认后才成为规划版本。正文生成的衔接将在下一步接入。',
+  boundary:
+    '每次只展开一章；候选经你确认后才成为规划版本。第一章确认后，可在下方生成选定 Beat 的单段正文。',
   prerequisite: '请先确认上方章纲，并确保方向、风格和人物设定仍为当前版本。',
   mainOnly: '当前仅《浊流》main 支持真实规划；其他作品仍为演示。',
   loading: '正在读取细纲…',

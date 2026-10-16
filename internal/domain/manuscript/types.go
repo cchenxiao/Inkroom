@@ -33,6 +33,7 @@ type SourceRef struct {
 
 // ContextBundle 是一次运行的冻结材料；角色只取需要的子集，不自行查询最新值。
 type ContextBundle struct {
+	WritingTask    *WritingTask             `json:"writingTask,omitempty"`
 	Retrieval      *memory.RetrievalContext `json:"retrieval,omitempty"`
 	POVCharacterID string                   `json:"povCharacterId,omitempty"`
 	ProjectID      string                   `json:"projectId,omitempty"`
