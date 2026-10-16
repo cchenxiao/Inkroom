@@ -1,3 +1,6 @@
+import BackendOutline from './components/BackendOutline';
+import { outlineMessages } from '@/shared/lib/messages-outline';
+import { planningVersions, sameVersions, outlineReady } from './types/outline';
 import { coreSettingsMessages } from '@/shared/lib/messages-core-settings';
 import BackendCoreSettings from './components/BackendCoreSettings';
 import { usePlanning } from './hooks/usePlanning';
@@ -68,7 +71,7 @@ export default function PreparePage() {
     premise: Boolean(realPlanning && planningState?.selection && planningState.selection.inputVersion === planningState.input.version),
     style: realPlanning ? Boolean(planningState?.styleSelection && planningState.styleSelection.inputVersion === planningState.input.version && planningState.styleSelection.directionVersion === planningState.directionVersion) : Boolean(bible.data?.style.anchorText),
     world: realPlanning ? Boolean(planningState?.coreSelection && planningState.coreSelection.inputVersion === planningState.input.version && planningState.coreSelection.directionVersion === planningState.directionVersion && planningState.coreSelection.styleVersion === planningState.styleVersion && Object.values(planningState.coreSelection.decisions).some(s=>s==='confirmed') && !Object.values(planningState.coreSelection.decisions).includes('pending')) : false,
-    outline: Boolean(tree.data?.length && tree.data.every((item) => item.scenes.length)),
+    outline: Boolean(realPlanning && planningState && outlineReady(planningState) && planningState.outlineSelection?.confirmed && sameVersions(planningState.outlineSelection.versions, planningVersions(planningState))),
   };
   async function saveProject() {
     await save.mutateAsync({ ...form, draftVersion: version, branchId });
@@ -115,28 +118,13 @@ export default function PreparePage() {
             <span className="page-eyebrow">
               {section === 'knowledge' ? e.prepare.sources : e.prepare.preparation}
             </span>
-            {section === 'outline' && (
-              <div className="page-actions">
-                <Button variant="ghost" size="sm" onClick={() => setImportOpen(true)}>
-                  <Upload size={14} />
-                  {t.common.import}
-                </Button>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  disabled={!version}
-                  onClick={() => setSuggestOpen(true)}
-                >
-                  <Sparkles size={14} />
-                  {t.common.suggestion}
-                </Button>
-              </div>
-            )}
+
           </div>
           {section === 'knowledge' && <BackendKnowledge />}
           {section === 'premise' && <BackendPlanning />}
           {section === 'style' && <BackendStyleTrial />}
           {section === 'world' && <BackendCoreSettings />}
+          {section === 'outline' && <BackendOutline />}
           <AsyncState
             loading={project.isLoading || bible.isLoading || tree.isLoading}
             error={project.error ?? bible.error ?? tree.error}
@@ -468,6 +456,24 @@ export default function PreparePage() {
                   </details>
                 )}
                 {section === 'outline' && (
+                  <details className="planning-mock"><summary>{outlineMessages.mock}</summary>
+            {section === 'outline' && (
+              <div className="page-actions">
+                <Button variant="ghost" size="sm" onClick={() => setImportOpen(true)}>
+                  <Upload size={14} />
+                  {t.common.import}
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={!version}
+                  onClick={() => setSuggestOpen(true)}
+                >
+                  <Sparkles size={14} />
+                  {t.common.suggestion}
+                </Button>
+              </div>
+            )}
                   <section className="page-section">
                     <div className="section-title">
                       <h2>{t.prepare.outline}</h2>
@@ -542,7 +548,7 @@ export default function PreparePage() {
                         </Card>
                       ))}
                     </div>
-                  </section>
+                  </section></details>
                 )}
               </>
             )}

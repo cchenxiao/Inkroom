@@ -1,0 +1,163 @@
+{
+  "type": "object",
+  "properties": {
+    "acts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "purpose": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "purpose"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 1,
+      "maxItems": 5
+    },
+    "chapters": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "actId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "purpose": {
+            "type": "string"
+          },
+          "event": {
+            "type": "string"
+          },
+          "arc": {
+            "type": "string"
+          },
+          "reveal": {
+            "type": "string"
+          },
+          "withhold": {
+            "type": "string"
+          },
+          "characterIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "maxItems": 3
+          },
+          "targetWords": {
+            "type": "integer",
+            "minimum": 100,
+            "maximum": 20000
+          },
+          "storyTime": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          }
+        },
+        "required": [
+          "id",
+          "actId",
+          "title",
+          "purpose",
+          "event",
+          "arc",
+          "reveal",
+          "withhold",
+          "characterIds",
+          "targetWords",
+          "storyTime"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 2,
+      "maxItems": 12
+    },
+    "bindings": {
+      "type": "object",
+      "properties": {
+        "style": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "chapterId": {
+                "type": "string"
+              },
+              "guidance": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "chapterId",
+              "guidance"
+            ],
+            "additionalProperties": false
+          },
+          "maxItems": 12
+        },
+        "plans": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "planId": {
+                "type": "string"
+              },
+              "chapterIds": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1,
+                "maxItems": 12
+              },
+              "purpose": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "planId",
+              "chapterIds",
+              "purpose"
+            ],
+            "additionalProperties": false
+          },
+          "maxItems": 4
+        }
+      },
+      "required": [
+        "style",
+        "plans"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "acts",
+    "chapters",
+    "bindings"
+  ],
+  "additionalProperties": false
+}

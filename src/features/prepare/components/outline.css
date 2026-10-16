@@ -1,0 +1,79 @@
+.outline-editor {
+  display: grid;
+  gap: 16px;
+  scroll-margin-top: 24px;
+}
+.outline-editor > fieldset {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+}
+.outline-acts {
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.outline-act {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(200px, 2fr) auto;
+  gap: 12px;
+  align-items: end;
+  margin: 16px 0;
+}
+.outline-split {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: 24px;
+  margin-top: 24px;
+}
+.outline-split > nav {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-self: start;
+  position: sticky;
+  top: 16px;
+  max-height: 65vh;
+  overflow: auto;
+}
+.outline-split > nav > button:not(.ui-button) {
+  text-align: left;
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+}
+.outline-split > nav > button[aria-current='true'] {
+  border-color: var(--ai);
+  box-shadow: inset 2px 0 var(--ai);
+}
+.outline-split > nav small,
+.outline-split > nav span {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.outline-detail {
+  display: grid;
+  gap: 16px;
+  padding: 20px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.outline-editor .core-save {
+  flex-wrap: wrap;
+  align-items: center;
+}
+.outline-editor .outline-check {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-right: auto;
+}
+.outline-summary {
+  padding-left: 20px;
+  display: grid;
+  gap: 8px;
+}

@@ -65,3 +65,8 @@ M0.3 已接入核心人物/世界设定候选与作者确认，详见下方 M0.3
 ## M0.3b 人物与世界
 
 `GET /planning` 增加 coreVersion、coreSelection、coreJobs。新增 `POST /planning/core-jobs` 冻结当前上游生成候选，`POST /planning/core-selection` 保存作者逐条决策；两条接口的完整字段、关联约束与版本语义见 [核心设定说明](core-settings.md)。模型只生成提案，确认状态由作者请求与服务端事务控制，不发布到正式知识。迁移 012 自动执行。
+
+
+## M0.4a 全书章纲
+
+`GET /planning` 增加 outlineVersion/outlineSelection/outlineJobs。新增 `POST /planning/outline-jobs` 与 `POST /planning/outline-selection`，分别生成与保存章纲；绑定单独版本化并与章纲原子保存。四个上游版本和章纲版本均校验，未确认设定不进入模型材料。完整字段与边界见 [全书章纲](outline.md)。迁移 013 自动执行。

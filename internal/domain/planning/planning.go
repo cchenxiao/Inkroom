@@ -104,17 +104,20 @@ type Selection struct {
 	CreatedAt        time.Time `json:"createdAt"`
 }
 type State struct {
-	CoreVersion      int             `json:"coreVersion"`
-	CoreSelection    *CoreSelection  `json:"coreSelection"`
-	CoreJobs         []CoreJob       `json:"coreJobs"`
-	StyleVersion     int             `json:"styleVersion"`
-	StyleSelection   *StyleSelection `json:"styleSelection"`
-	StyleJobs        []StyleJob      `json:"styleJobs"`
-	Input            InputSnapshot   `json:"input"`
-	DirectionVersion int             `json:"directionVersion"`
-	Selection        *Selection      `json:"selection"`
-	Jobs             []Job           `json:"jobs"`
-	Packs            []Pack          `json:"packs"`
+	OutlineVersion   int               `json:"outlineVersion"`
+	OutlineSelection *OutlineSelection `json:"outlineSelection"`
+	OutlineJobs      []OutlineJob      `json:"outlineJobs"`
+	CoreVersion      int               `json:"coreVersion"`
+	CoreSelection    *CoreSelection    `json:"coreSelection"`
+	CoreJobs         []CoreJob         `json:"coreJobs"`
+	StyleVersion     int               `json:"styleVersion"`
+	StyleSelection   *StyleSelection   `json:"styleSelection"`
+	StyleJobs        []StyleJob        `json:"styleJobs"`
+	Input            InputSnapshot     `json:"input"`
+	DirectionVersion int               `json:"directionVersion"`
+	Selection        *Selection        `json:"selection"`
+	Jobs             []Job             `json:"jobs"`
+	Packs            []Pack            `json:"packs"`
 }
 type SelectRequest struct {
 	ExpectedInputVersion     int       `json:"expectedInputVersion"`

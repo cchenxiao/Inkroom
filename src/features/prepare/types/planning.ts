@@ -1,3 +1,4 @@
+import type { OutlineJob, OutlineSelection } from './outline';
 import type { CoreJob, CoreSelection } from './core-settings';
 import type { StyleTrialJob, StyleSelection } from './style-trial';
 export interface PlanningIntake {
@@ -62,6 +63,9 @@ export interface DirectionSelection {
   createdAt: string;
 }
 export interface PlanningState {
+  outlineVersion?: number;
+  outlineSelection?: OutlineSelection | null;
+  outlineJobs?: OutlineJob[];
   coreVersion?: number;
   coreSelection?: CoreSelection | null;
   coreJobs?: CoreJob[];

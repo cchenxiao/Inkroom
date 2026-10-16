@@ -41,3 +41,6 @@ var StyleAnalystSchema []byte
 
 //go:embed core_planner.v1.json
 var CorePlannerSchema []byte
+
+//go:embed story_architect.v1.json
+var StoryArchitectSchema []byte
