@@ -1,3 +1,4 @@
+import { useWritingPending } from '@/shared/lib/pending-writing';
 import { useState } from 'react';
 import ChapterReview from './ChapterReview';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -61,6 +62,7 @@ export default function ChapterAssembly({
       }
     },
   });
+  useWritingPending(Boolean(uncertain || save.isPending));
   const data = query.data;
   const block = editing
     ? t.editing

@@ -1,5 +1,6 @@
-import PlannedBeatWriting from './PlannedBeatWriting';
-import ChapterAssembly from './ChapterAssembly';
+import { Link, useSearchParams } from 'react-router-dom';
+import { liveWorkspacePath } from '@/shared/lib/writing-mode';
+import { liveWriting } from '@/shared/lib/messages-live-writing';
 import { useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -28,7 +29,8 @@ export default function BackendChapterPlan() {
 function ChapterPlanWorkbench() {
   const query = usePlanning(),
     client = useQueryClient();
-  const [chapterID, setChapterID] = useState(''),
+  const [params] = useSearchParams();
+  const [chapterID, setChapterID] = useState(params.get('planningChapterId') ?? ''),
     [jobID, setJobID] = useState(''),
     [request, setRequest] = useState('');
   const [edit, setEdit] = useState<ChapterPlanSaveRequest | null>(null),
@@ -311,14 +313,16 @@ function ChapterPlanWorkbench() {
         </Card>
       )}
       {chapter && (
-        <>
-          <PlannedBeatWriting key={chapter.id} chapterId={chapter.id} editing={Boolean(edit)} />
-          <ChapterAssembly
-            key={`assembly-${chapter.id}`}
-            chapterId={chapter.id}
-            editing={Boolean(edit)}
-          />
-        </>
+        <div className="core-heading">
+          <p className="muted">{liveWriting.moved}</p>
+          {edit ? (
+            <Button disabled disabledReason={t.editing}>
+              {liveWriting.write}
+            </Button>
+          ) : (
+            <Link to={liveWorkspacePath(chapter.id)}>{liveWriting.write} →</Link>
+          )}
+        </div>
       )}
       {edit && chapter && s.coreSelection && (
         <>

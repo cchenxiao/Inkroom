@@ -1,3 +1,5 @@
+import { liveWorkspacePath } from '@/shared/lib/writing-mode';
+import { liveWriting as liveText } from '@/shared/lib/messages-live-writing';
 import { workPath, bookPath } from '@/shared/lib/book-context';
 import { Link, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useEffect, useLayoutEffect } from 'react';
@@ -28,8 +30,9 @@ const navigation = [
   ['versions', GitBranch],
   ['reports', ChartNoAxesCombined],
 ] as const;
-export function NavRail() {
-  const { data } = useChapter();
+export function NavRail({ realWriting = false }: { realWriting?: boolean }) {
+  const chapter = useChapter(!realWriting);
+  const data = realWriting ? undefined : chapter.data;
   const theme = useUIStore((s) => s.theme);
   useLayoutEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -37,7 +40,8 @@ export function NavRail() {
   const collapsed = useUIStore((s) => s.navCollapsed);
   const setCollapsed = useUIStore((s) => s.setNavCollapsed);
   const navigate = useNavigate();
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
+  const plannedChapter = new URLSearchParams(search).get('planningChapterId') ?? undefined;
   const projectId = useUIStore((s) => s.projectId);
   const chapterId = useUIStore((s) => s.chapterId);
   const globalPage = pathname.startsWith('/library');
@@ -45,14 +49,21 @@ export function NavRail() {
     const key = (event: KeyboardEvent) => {
       if (!(event.metaKey || event.ctrlKey) || !event.altKey) return;
       const index = Number(event.key) - 1;
-      if (navigation[index]) {
+      if (navigation[index] && (!realWriting || index < 3)) {
         event.preventDefault();
-        navigate(workPath(navigation[index][0], projectId, chapterId));
+        navigate(
+          realWriting && navigation[index][0] !== 'prepare'
+            ? liveWorkspacePath(
+                plannedChapter,
+                navigation[index][0] === 'review' ? 'assembly' : 'write',
+              )
+            : workPath(navigation[index][0], projectId, chapterId),
+        );
       }
     };
     window.addEventListener('keydown', key);
     return () => window.removeEventListener('keydown', key);
-  }, [navigate, projectId, chapterId]);
+  }, [navigate, projectId, chapterId, realWriting, plannedChapter]);
   return (
     <nav className={`nav-rail ${collapsed ? 'is-collapsed' : ''}`} aria-label={zh.brand}>
       <Link className="rail-logo" to="/library" aria-label="墨枢 · 返回作品库">
@@ -91,11 +102,24 @@ export function NavRail() {
                     ['waiting_human', 'escalated'].includes(data.run.status)
                   ? 1
                   : 0;
+            if (realWriting && index > 2)
+              return (
+                <Tooltip key={key} content={liveText.unavailable}>
+                  <span className="rail-link" aria-disabled="true" title={liveText.unavailable}>
+                    <Icon size={18} />
+                    <span className="rail-label">{zh.nav[key]}</span>
+                  </span>
+                </Tooltip>
+              );
             return (
               <Tooltip key={key} content={`${zh.nav[key]} · ⌘⌥${index + 1}`}>
-                <NavLink
-                  to={workPath(key, projectId, chapterId)}
-                  className={`rail-link ${pathname === `/${key}` ? 'active' : ''}`}
+                <Link
+                  to={
+                    realWriting && key !== 'prepare'
+                      ? liveWorkspacePath(plannedChapter, key === 'review' ? 'assembly' : 'write')
+                      : workPath(key, projectId, chapterId)
+                  }
+                  className={`rail-link ${(realWriting ? key === (new URLSearchParams(search).get('stage') === 'assembly' ? 'review' : 'workspace') : pathname === `/${key}`) ? 'active' : ''}`}
                   aria-label={zh.nav[key]}
                 >
                   <Icon size={18} />
@@ -108,7 +132,7 @@ export function NavRail() {
                   ) : (
                     <kbd>⌥{index + 1}</kbd>
                   )}
-                </NavLink>
+                </Link>
               </Tooltip>
             );
           })}

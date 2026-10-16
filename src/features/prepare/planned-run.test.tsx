@@ -61,8 +61,8 @@ it('sends planning and draft versions, preserves retry identity, and blocks an o
     start = await screen.findByRole('button', { name: '生成选定 Beat 正文' }, { timeout: 5000 });
   await waitFor(() => expect(start).toBeEnabled());
   await user.click(start);
-  await waitFor(() => expect(start).toBeEnabled());
-  await user.click(start);
+  await user.click(await screen.findByRole('button', { name: '重试本次开工请求' }));
+  expect(screen.getByRole('button', { name: '生成选定 Beat 正文' })).toBeDisabled();
   await waitFor(() => expect(requests).toHaveLength(2));
   expect(requests[0]).toMatchObject({
     chapterId: 'first',

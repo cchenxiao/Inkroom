@@ -50,8 +50,11 @@ export function useBible() {
   return useResource<Bible>(endpoints.bible() + '?branchId=' + branch);
 }
 export const useBranches = () => useResource<Branch[]>(endpoints.branches);
-export function useChapter() {
+export function useChapter(enabled = true) {
   const chapterId = useUIStore((s) => s.chapterId);
   const branchId = useUIStore((s) => s.branchId);
-  return useResource<ChapterDocument>(endpoints.chapter(chapterId, branchId), Boolean(chapterId));
+  return useResource<ChapterDocument>(
+    endpoints.chapter(chapterId, branchId),
+    enabled && Boolean(chapterId),
+  );
 }

@@ -1,3 +1,5 @@
+import { LiveWritingLayout } from './components/live-writing-layout';
+import { isLiveWorkspace } from '@/shared/lib/writing-mode';
 import { useChapter } from '@/shared/api/hooks';
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
@@ -18,6 +20,16 @@ import { studio } from '@/shared/lib/messages-studio';
 const BiblePanel = lazy(() => import('@/features/bible'));
 const RunDrawer = lazy(() => import('@/features/orchestration'));
 export function Layout() {
+  const { pathname, search } = useLocation();
+  const project = useUIStore((s) => s.projectId),
+    branch = useUIStore((s) => s.branchId);
+  return isLiveWorkspace(pathname, search, project, branch) ? (
+    <LiveWritingLayout />
+  ) : (
+    <DemoLayout />
+  );
+}
+function DemoLayout() {
   const chapter = useChapter();
   const { pathname } = useLocation();
   const attention = useUIStore((s) => s.attention);

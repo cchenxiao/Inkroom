@@ -9,7 +9,7 @@ import { Layout } from './layout';
 const Library = lazy(() => import('@/features/library/LibraryPage'));
 const Book = lazy(() => import('@/features/library/BookPage'));
 const Wizard = lazy(() => import('@/features/library/WizardPage'));
-const Workspace = lazy(() => import('@/features/workspace'));
+const Workspace = lazy(() => import('./components/workspace-entry'));
 const Prepare = lazy(() => import('@/features/prepare'));
 const Review = lazy(() => import('@/features/review'));
 const Changes = lazy(() => import('@/features/changes'));
@@ -33,7 +33,7 @@ export const router = createBrowserRouter([
       { path: 'library', element: wrap(Library) },
       { path: 'library/new', element: wrap(Wizard) },
       { path: 'book/:projectId', element: wrap(Book) },
-      { path: 'workspace', element: <BookFeature page="workspace">{wrap(Workspace)}</BookFeature> },
+      { path: 'workspace', element: wrap(Workspace) },
       { path: 'prepare', element: <BookFeature page="prepare">{wrap(Prepare)}</BookFeature> },
       { path: 'review', element: <BookFeature page="review">{wrap(Review)}</BookFeature> },
       { path: 'changes', element: <BookFeature page="changes">{wrap(Changes)}</BookFeature> },

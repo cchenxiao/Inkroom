@@ -1,3 +1,4 @@
+import { useWritingPending } from '@/shared/lib/pending-writing';
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ApiError } from '@/shared/api/client';
@@ -46,6 +47,7 @@ export default function BackendFinalize({
       ]);
     },
   });
+  useWritingPending(Boolean(uncertain || submit.isPending));
   const current = currentVersion === run.draftVersion;
   const blocked = !run.inputDigest
     ? t.legacyContext

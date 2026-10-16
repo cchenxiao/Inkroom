@@ -1,3 +1,4 @@
+import { useWritingPending } from '@/shared/lib/pending-writing';
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { ApiError } from '@/shared/api/client';
@@ -34,6 +35,7 @@ export default function BackendHumanGate({
       void client.invalidateQueries({ queryKey: ['backend-runs'] });
     },
   });
+  useWritingPending(Boolean(draft || uncertain || mutation.isPending));
   const current = currentVersion === run.draftVersion;
   const waiting = run.status === 'waiting_human' && current;
   const locked = mutation.isPending || !!uncertain || !waiting;

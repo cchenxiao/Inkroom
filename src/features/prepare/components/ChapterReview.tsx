@@ -1,3 +1,4 @@
+import { useWritingPending, useWritingLocked } from '@/shared/lib/pending-writing';
 import { useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ApiError } from '@/shared/api/client';
@@ -19,6 +20,7 @@ export default function ChapterReview({
   editing: boolean;
 }) {
   const [selected, setSelected] = useState('');
+  const localEdit = useWritingLocked();
   const a = assemblies.find((a) => a.id === selected) ?? assemblies[0];
   if (!a) return null;
   return (
@@ -26,7 +28,7 @@ export default function ChapterReview({
       <h3>{t.title}</h3>
       <label>
         {t.chooseAssembly}
-        <select value={a.id} onChange={(e) => setSelected(e.target.value)}>
+        <select disabled={localEdit} value={a.id} onChange={(e) => setSelected(e.target.value)}>
           {assemblies.map((x) => (
             <option key={x.id} value={x.id}>
               v{x.version} · {new Date(x.createdAt).toLocaleString('zh-CN')}
@@ -41,6 +43,7 @@ export default function ChapterReview({
 function ReviewSession({ assembly: a, editing }: { assembly: ChapterAssembly; editing: boolean }) {
   const client = useQueryClient();
   const [selected, setSelected] = useState('');
+  const localEdit = useWritingLocked();
   const [pending, setPending] = useState<ChapterReviewRequest | null>(null);
   const query = useQuery({
     queryKey: ['chapter-review', a.id],
@@ -62,6 +65,7 @@ function ReviewSession({ assembly: a, editing }: { assembly: ChapterAssembly; ed
       refresh();
     },
   });
+  useWritingPending(Boolean(pending || start.isPending));
   const job = query.data?.jobs.find((j) => j.id === selected) ?? query.data?.jobs[0];
   const running = query.data?.jobs.some((j) => j.status === 'running');
   const blocked = editing
@@ -78,7 +82,7 @@ function ReviewSession({ assembly: a, editing }: { assembly: ChapterAssembly; ed
       <p className="muted">{t.note}</p>
       <div className="core-heading">
         <Button
-          disabled={!!blocked || !!pending}
+          disabled={!!blocked || !!pending || localEdit}
           disabledReason={blocked || t.uncertainSave}
           loading={start.isPending}
           onClick={() => {
@@ -116,7 +120,11 @@ function ReviewSession({ assembly: a, editing }: { assembly: ChapterAssembly; ed
       {!!query.data?.jobs.length && (
         <label>
           {t.chooseReview}
-          <select value={job?.id ?? ''} onChange={(e) => setSelected(e.target.value)}>
+          <select
+            disabled={localEdit}
+            value={job?.id ?? ''}
+            onChange={(e) => setSelected(e.target.value)}
+          >
             {query.data.jobs.map((j) => (
               <option key={j.id} value={j.id}>
                 {new Date(j.createdAt).toLocaleString('zh-CN')} · {t[j.status]}
@@ -171,6 +179,7 @@ function ReviewResult({
   const current = job.current && !stale && !blocked;
   const confirmationKey = `${job.id}:${job.status}:${job.inputDigest}`;
   const existing = job.decision ?? save.data?.decision;
+  useWritingPending(Boolean(pending || (!existing && reason.trim())));
   const decisionBlock = !current
     ? t.sourceChanged
     : job.status === 'running'

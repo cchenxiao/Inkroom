@@ -1,5 +1,6 @@
-import { useSearchParams } from 'react-router-dom';
-import { useEffect, useRef, useState } from 'react';
+import { useWritingLocked, useWritingPending } from '@/shared/lib/pending-writing';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, Card, Badge } from '@/shared/ui';
 import { ApiError } from '@/shared/api/client';
@@ -15,24 +16,29 @@ import BackendHumanGate from './BackendHumanGate';
 import BackendContextManifest from './BackendContextManifest';
 import BackendFinalize from './BackendFinalize';
 import BackendTrialResult from './BackendTrialResult';
+import { liveWriting } from '@/shared/lib/messages-live-writing';
 import { assemblyMessages } from '@/shared/lib/messages-assembly';
 
 export default function PlannedBeatWriting({
   chapterId,
   editing,
+  workspace = false,
 }: {
   chapterId: string;
   editing: boolean;
+  workspace?: boolean;
 }) {
   const client = useQueryClient();
-  const [params, setParams] = useSearchParams();
+  const localEdit = useWritingLocked();
+  const [params] = useSearchParams();
+  const navigate = useNavigate();
   const planning = usePlanning();
   const [runId, setRunId] = useState<string | null>(null),
     [autoRevise, setAutoRevise] = useState(false);
   const [chosenBeat, setChosenBeat] = useState('');
   const plan = planning.data?.chapterPlans?.find((c) => c.chapterId === chapterId);
   const beatId = chosenBeat || plan?.content?.brief.selectedBeatId || '';
-  const requestKey = useRef<{ key: string; id: string } | null>(null);
+  const [pendingStart, setPendingStart] = useState<PlannedRunRequest | null>(null);
   const gate = useQuery({
     queryKey: ['planned-run-gate', chapterId, beatId],
     queryFn: ({ signal }) => plannedRunApi.get(chapterId, signal, beatId),
@@ -66,20 +72,30 @@ export default function PlannedBeatWriting({
     void client.invalidateQueries({ queryKey: ['backend-draft'] });
   };
   const start = useMutation({
-    mutationFn: (req: Omit<PlannedRunRequest, 'requestId'>) => {
-      const key = JSON.stringify(req);
-      if (requestKey.current?.key !== key) requestKey.current = { key, id: crypto.randomUUID() };
-      return plannedRunApi.start({ ...req, requestId: requestKey.current.id });
-    },
+    mutationFn: plannedRunApi.start,
     retry: false,
     onSuccess: (r) => {
-      requestKey.current = null;
+      setPendingStart(null);
       client.setQueryData(['backend-trial', r.id], r);
       setRunId(r.id);
       refresh();
     },
-    onError: refresh,
+    onError: (error) => {
+      if (error instanceof ApiError && error.status < 500) setPendingStart(null);
+      refresh();
+    },
   });
+  useWritingPending(start.isPending || !!pendingStart);
+  const { isError: startFailed, reset: resetStart } = start;
+  useEffect(() => {
+    const id = pendingStart?.requestId;
+    const recovered = id && gate.data?.runs.find((r) => r.id === id);
+    if (recovered && startFailed) {
+      setPendingStart(null);
+      setRunId(recovered.id);
+      resetStart();
+    }
+  }, [gate.data?.runs, pendingStart, startFailed, resetStart]);
   const ready = gate.data;
   const p = planning.data;
 
@@ -117,83 +133,105 @@ export default function PlannedBeatWriting({
           {t.refresh}
         </Button>
       </div>
-      <p className="muted">{t.note}</p>
-      <label>
-        {assemblyMessages.targetBeat}
-        <select
-          value={beatId}
-          disabled={start.isPending}
-          onChange={(e) => {
-            setChosenBeat(e.target.value);
-            setRunId(null);
-          }}
-        >
-          {plan?.content?.scenes.flatMap((scene) =>
-            scene.beats.map((beat) => (
-              <option key={beat.id} value={beat.id}>
-                {scene.title} · {beat.title}
-              </option>
-            )),
-          )}
-        </select>
-      </label>
-      <p className="muted">{assemblyMessages.targetNote}</p>
-      <Button
-        size="sm"
-        onClick={() => {
-          const next = new URLSearchParams(params);
-          next.set('section', 'knowledge');
-          setParams(next);
-        }}
-      >
-        {t.knowledge}
-      </Button>
-      {!ready && (
-        <p role={gate.isError ? 'alert' : 'status'}>{gate.isError ? t.error : t.loading}</p>
-      )}
-      {ready && (
-        <>
-          <label className="outline-check">
-            <input
-              type="checkbox"
-              checked={autoRevise}
-              disabled={start.isPending || run?.status === 'running'}
-              onChange={(e) => setAutoRevise(e.target.checked)}
-            />
-            {t.authorize}
-          </label>
-          <Button
-            variant="default"
-            loading={start.isPending}
-            disabled={
-              Boolean(block) || !ready.ready || start.isPending || run?.status === 'running'
-            }
-            disabledReason={block || t.running}
-            onClick={() => {
-              if (ready.draftVersion > 0 && !window.confirm(t.regenerate)) return;
-              start.mutate({
-                chapterId,
-                beatId: ready.beatId,
-                expected: ready.expected,
-                planVersion: ready.planVersion,
-                draftVersion: ready.draftVersion,
-                autoRevise,
-              });
+      {!workspace && <p className="muted">{t.note}</p>}
+      <div className={workspace ? 'planned-write-controls' : 'page-stack'}>
+        <label>
+          {assemblyMessages.targetBeat}
+          <select
+            value={beatId}
+            disabled={start.isPending || localEdit}
+            onChange={(e) => {
+              setChosenBeat(e.target.value);
+              setRunId(null);
             }}
           >
-            {t.start}
-          </Button>
-          {block && <p>{block}</p>}
-        </>
-      )}
+            {plan?.content?.scenes.flatMap((scene) =>
+              scene.beats.map((beat) => (
+                <option key={beat.id} value={beat.id}>
+                  {scene.title} · {beat.title}
+                </option>
+              )),
+            )}
+          </select>
+        </label>
+        {!workspace && <p className="muted">{assemblyMessages.targetNote}</p>}
+        <Button
+          size="sm"
+          onClick={() => {
+            const next = new URLSearchParams(params);
+            next.set('section', 'knowledge');
+            next.set('projectId', 'project-zhuoliu');
+            next.set('branchId', 'main');
+            navigate(`/prepare?${next}`);
+          }}
+        >
+          {t.knowledge}
+        </Button>
+        {!ready && (
+          <p role={gate.isError ? 'alert' : 'status'}>{gate.isError ? t.error : t.loading}</p>
+        )}
+        {ready && (
+          <>
+            <label className="outline-check">
+              <input
+                type="checkbox"
+                checked={autoRevise}
+                disabled={start.isPending || localEdit || run?.status === 'running'}
+                onChange={(e) => setAutoRevise(e.target.checked)}
+              />
+              {t.authorize}
+            </label>
+            <Button
+              variant="default"
+              loading={start.isPending}
+              disabled={
+                Boolean(block) ||
+                !ready.ready ||
+                start.isPending ||
+                localEdit ||
+                !!pendingStart ||
+                run?.status === 'running'
+              }
+              disabledReason={block || t.running}
+              onClick={() => {
+                if (ready.draftVersion > 0 && !window.confirm(t.regenerate)) return;
+                const req: PlannedRunRequest = {
+                  requestId: crypto.randomUUID(),
+                  chapterId,
+                  beatId: ready.beatId,
+                  expected: ready.expected,
+                  planVersion: ready.planVersion,
+                  draftVersion: ready.draftVersion,
+                  autoRevise,
+                };
+                setPendingStart(req);
+                start.mutate(req);
+              }}
+            >
+              {t.start}
+            </Button>
+            {block && <p>{block}</p>}
+          </>
+        )}
+      </div>
       {start.isError && (
         <p role="alert">{start.error instanceof ApiError ? start.error.message : t.error}</p>
+      )}
+      {pendingStart && !start.isPending && (
+        <div>
+          <p>{liveWriting.uncertainStart}</p>
+          <Button onClick={() => start.mutate(pendingStart)}>{liveWriting.retryStart}</Button>
+        </div>
       )}
       {ready?.runs.length === 0 && <p>{t.empty}</p>}
       {!!ready?.runs.length && (
         <label>
           {t.history}
-          <select value={activeID ?? ''} onChange={(e) => setRunId(e.target.value)}>
+          <select
+            disabled={localEdit}
+            value={activeID ?? ''}
+            onChange={(e) => setRunId(e.target.value)}
+          >
             {ready.runs.map((r) => (
               <option key={r.id} value={r.id}>
                 {new Date(r.createdAt).toLocaleString('zh-CN')} · v{r.draftVersion} · {r.status}
@@ -203,8 +241,9 @@ export default function PlannedBeatWriting({
         </label>
       )}
       {runQuery.isError && <p role="alert">{t.error}</p>}
+      {!guardedRun && workspace && <p className="planned-empty">{liveWriting.noCandidate}</p>}
       {guardedRun && (
-        <>
+        <section className="planned-write-result page-stack">
           <div className="core-heading">
             <Badge>{guardedRun.status}</Badge>
             <span>
@@ -231,6 +270,22 @@ export default function PlannedBeatWriting({
               </div>
             </>
           )}
+          {!!run?.result?.report.findings.length && (
+            <section className="page-stack" aria-label={liveWriting.findings}>
+              <h3>{liveWriting.findings}</h3>
+              {run.result.report.findings.map((f) => (
+                <details key={f.id}>
+                  <summary>
+                    <Badge tone={f.severity === 'P0' ? 'danger' : 'muted'}>{f.severity}</Badge>{' '}
+                    {f.reason}
+                  </summary>
+                  <blockquote>{f.quote}</blockquote>
+                  <p>{f.suggestion}</p>
+                  <small>{f.evidenceRefs.join(' · ')}</small>
+                </details>
+              ))}
+            </section>
+          )}
           <p className="muted">{t.segmentNote}</p>
           <BackendHumanGate
             key={`human-${run?.id}`}
@@ -251,14 +306,17 @@ export default function PlannedBeatWriting({
                 : draft.data?.draftVersion
             }
           />
-          <BackendContextManifest run={guardedRun} />
+          <details>
+            <summary>{liveWriting.details}</summary>
+            <BackendContextManifest run={guardedRun} />
+          </details>
           {run?.result && (
             <details>
               <summary>{t.audit}</summary>
               <BackendTrialResult result={run.result} stale={guardedRun.status === 'stale'} />
             </details>
           )}
-        </>
+        </section>
       )}
     </Card>
   );
