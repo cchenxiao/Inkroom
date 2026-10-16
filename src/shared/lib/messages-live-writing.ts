@@ -28,7 +28,7 @@ export const liveWriting = {
   prerequisite: '本章细纲尚未确认，或上游规划已变化。请在准备页复核 Scene / Beat 与 Brief。',
   unsupported: '该作品或分支尚未接入真实规划写作',
   unsupportedNote: '当前 Go 规划流程只支持《浊流》main；其他作品仍可在作品库查看演示。',
-  boundary: '当前支持第一章逐 Beat 写作、组稿和复审；全章最终定稿与下一章前情尚未接入。',
+  boundary: '当前支持第一章逐 Beat 写作、组稿、复审与整章定稿；新增事实同步与下一章前情尚未接入。',
   otherChapter: '本章暂未开放写作：前章定稿与前情交接尚未接入。可先在准备页完善细纲。',
   confirmed: '已确认细纲',
   pending: '待确认细纲',

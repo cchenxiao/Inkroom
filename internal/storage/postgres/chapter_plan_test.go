@@ -29,6 +29,9 @@ func TestChapterPlanFrozenInputAndAuthorVersion(t *testing.T) {
 	scope := "chapter-plan-test-" + rand.Text() + "/main"
 	var plannedRun app.Run
 	defer func() {
+		if _, e := s.pool.Exec(ctx, "DELETE FROM chapter_publications WHERE scope=$1", scope); e != nil {
+			t.Error(e)
+		}
 		if _, e := s.pool.Exec(ctx, "DELETE FROM chapter_review_jobs WHERE scope=$1", scope); e != nil {
 			t.Error(e)
 		}

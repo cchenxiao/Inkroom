@@ -1,5 +1,6 @@
 import { useWritingPending, useWritingLocked } from '@/shared/lib/pending-writing';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import ChapterPublication from './ChapterPublication';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ApiError } from '@/shared/api/client';
 import { Button, Badge } from '@/shared/ui';
@@ -21,7 +22,16 @@ export default function ChapterReview({
 }) {
   const [selected, setSelected] = useState('');
   const localEdit = useWritingLocked();
-  const a = assemblies.find((a) => a.id === selected) ?? assemblies[0];
+  const retained = useRef<ChapterAssembly>();
+  const a =
+    assemblies.find((a) => a.id === selected) ??
+    (selected && retained.current?.id === selected ? retained.current : assemblies[0]);
+  useEffect(() => {
+    if (a) {
+      retained.current = a;
+      if (!selected) setSelected(a.id);
+    }
+  }, [a, selected]);
   if (!a) return null;
   return (
     <section className="page-stack" aria-label={t.title}>
@@ -55,9 +65,9 @@ function ReviewSession({ assembly: a, editing }: { assembly: ChapterAssembly; ed
   const start = useMutation({
     mutationFn: chapterReviewApi.start,
     retry: false,
-    onSuccess: () => {
+    onSuccess: (job) => {
       setPending(null);
-      setSelected('');
+      setSelected(job.id);
       refresh();
     },
     onError: (e) => {
@@ -66,7 +76,17 @@ function ReviewSession({ assembly: a, editing }: { assembly: ChapterAssembly; ed
     },
   });
   useWritingPending(Boolean(pending || start.isPending));
-  const job = query.data?.jobs.find((j) => j.id === selected) ?? query.data?.jobs[0];
+  const retainedJob = useRef<ChapterReviewJob>();
+  const job =
+    query.data?.jobs.find((j) => j.id === selected) ??
+    (selected && retainedJob.current?.id === selected ? retainedJob.current : query.data?.jobs[0]);
+  // Pin a viewed review: a new batch in another window must not unmount pending author actions.
+  useEffect(() => {
+    if (job) {
+      retainedJob.current = job;
+      if (!selected) setSelected(job.id);
+    }
+  }, [selected, job]);
   const running = query.data?.jobs.some((j) => j.status === 'running');
   const blocked = editing
     ? t.editBlock
@@ -137,7 +157,13 @@ function ReviewSession({ assembly: a, editing }: { assembly: ChapterAssembly; ed
         <ReviewResult
           key={job.id}
           job={job}
-          blocked={editing || query.isError || start.isPending || !!pending}
+          blocked={
+            editing ||
+            query.isError ||
+            start.isPending ||
+            !!pending ||
+            !query.data?.jobs.some((j) => j.id === job.id)
+          }
           onChange={refresh}
         />
       )}
@@ -313,7 +339,7 @@ function ReviewResult({
           </p>
         ))}
       </details>
-      <p className="muted">{t.notFinal}</p>
+      {!existing && <p className="muted">{t.notFinal}</p>}
       {existing ? (
         <p role="status">
           {existing.action === 'approve' ? t.approved : t.requested}：{existing.reason}
@@ -359,6 +385,12 @@ function ReviewResult({
             </Button>
           </div>
         </>
+      )}
+      {existing?.action === 'approve' && (
+        <ChapterPublication
+          job={{ ...job, decision: existing }}
+          blocked={blocked || stale || !!pending || save.isPending}
+        />
       )}
       {save.isError && (
         <p role="alert">{save.error instanceof ApiError ? save.error.message : t.uncertainSave}</p>

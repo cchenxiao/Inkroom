@@ -95,6 +95,9 @@ func exerciseChapterAssembly(t *testing.T, s *Store, scope string, p planning.Ch
 	if err = s.FinishChapterReview(ctx, lateReview.ID, reviewOutput, nil); err != nil {
 		t.Fatal(err)
 	}
+	if _, e := s.PublishChapter(ctx, scope, app.ChapterPublicationRequest{RequestID: rand.Text(), ReviewID: lateReview.ID, AssemblyVersion: saved.Version, InputDigest: lateReview.InputDigest, ApprovalID: "old-approval", NoPendingFacts: true}); !errors.Is(e, app.ErrVersionMismatch) {
+		t.Fatal("changed draft published", e)
+	}
 	reviews, e := s.ChapterReviews(ctx, scope, saved.ID)
 	if e != nil || reviews.Current || reviews.Jobs[0].Current {
 		t.Fatal("late review accepted as current", e)

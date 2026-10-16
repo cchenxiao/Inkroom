@@ -586,4 +586,5 @@ M0.4c1：在准备页用确认规划启动真实单段 Writer/双 Critic/人审/
 M0.4c2：在“创作准备 → 知识快照”预览并发布已确认初始设定；新规划写作绑定发布版本与 POV/时间投影。见 [初始知识发布](docs/planning-knowledge.md)。
 
 - M0.4c3 [整章组稿](docs/chapter-assembly.md)：选择 Beat、逐段审核提交、预览与保存待全章审核稿。
+- M0.4c5a [整章定稿](docs/chapter-publication.md)：作者确认无待同步事实后冻结整章与审查，支持版本校验、原请求重试及历史回执。事实抽取/同步和下一章交接待下一段。
 - M0.4c4 [整章复审](docs/chapter-review.md)：双 Critic 完整审读、证据校验、作者决定与旧版本失效；不自动改稿或最终定稿。

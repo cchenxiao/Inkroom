@@ -6,6 +6,7 @@ export const assemblyMessages = {
   refresh: '刷新组稿来源',
   loading: '正在核对细纲与已提交段落…',
   error: '无法读取组稿材料，请重试。',
+  otherPending: '请先处理其他未保存的编辑或尚未确认结果的请求，再切换组稿来源。',
   editing: '请先保存或取消正在编辑的细纲。',
   missing: '尚无可采用的审核提交',
   preview: '连续正文预览',

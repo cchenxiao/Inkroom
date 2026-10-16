@@ -12,6 +12,7 @@ import { Button, Modal } from '@/shared/ui';
 import { liveWriting as t } from './messages-live-writing';
 const Context = createContext({
   pending: false,
+  entries: {} as Record<string, boolean>,
   set: (() => {}) as (id: string, value: boolean) => void,
 });
 /** Track only unsaved author input and unresolved writes, never a background model run. */
@@ -58,7 +59,7 @@ export function PendingWritingProvider({ children }: { children: ReactNode }) {
     ),
   );
   return (
-    <Context.Provider value={{ pending, set }}>
+    <Context.Provider value={{ pending, entries, set }}>
       {children}
       <Modal
         open={blocker.state === 'blocked'}
@@ -82,12 +83,13 @@ export function PendingWritingProvider({ children }: { children: ReactNode }) {
   );
 }
 export function useWritingPending(value: boolean) {
-  const { set } = useContext(Context),
+  const { set, entries } = useContext(Context),
     id = useId();
   useEffect(() => {
     set(id, value);
     return () => set(id, false);
   }, [set, id, value]);
+  return Object.keys(entries).some((entry) => entry !== id);
 }
 export function useWritingLocked() {
   return useContext(Context).pending;

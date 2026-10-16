@@ -67,6 +67,9 @@ var chapterAssembliesMigration string
 //go:embed migrations/017_chapter_reviews.sql
 var chapterReviewsMigration string
 
+//go:embed migrations/018_chapter_publications.sql
+var chapterPublicationsMigration string
+
 type Store struct {
 	pool  *pgxpool.Pool
 	lease *pgx.Conn
@@ -131,7 +134,7 @@ func (s *Store) migrate(ctx context.Context) error {
 	if _, err = tx.Exec(ctx, "CREATE TABLE IF NOT EXISTS schema_migrations(version integer PRIMARY KEY, checksum text NOT NULL)"); err != nil {
 		return err
 	}
-	for i, sql := range []string{migration, humanMigration, eventMigration, commitMigration, memoryMigration, preparationMigration, criticLookupMigration, knowledgeMigration, planningMigration, styleTrialsMigration, styleAnalysisMigration, coreSettingsMigration, outlineMigration, chapterPlanMigration, plannedRunsMigration, chapterAssembliesMigration, chapterReviewsMigration} {
+	for i, sql := range []string{migration, humanMigration, eventMigration, commitMigration, memoryMigration, preparationMigration, criticLookupMigration, knowledgeMigration, planningMigration, styleTrialsMigration, styleAnalysisMigration, coreSettingsMigration, outlineMigration, chapterPlanMigration, plannedRunsMigration, chapterAssembliesMigration, chapterReviewsMigration, chapterPublicationsMigration} {
 		version := i + 1
 		checksum := fmt.Sprintf("%x", sha256.Sum256([]byte(sql)))
 		var existing string

@@ -62,15 +62,17 @@ export default function ChapterAssembly({
       }
     },
   });
-  useWritingPending(Boolean(uncertain || save.isPending));
+  const otherEdits = useWritingPending(Boolean(uncertain || save.isPending));
   const data = query.data;
   const block = editing
     ? t.editing
-    : query.isError
-      ? t.error
-      : !data?.ready
-        ? data?.reason || t.loading
-        : '';
+    : otherEdits
+      ? t.otherPending
+      : query.isError
+        ? t.error
+        : !data?.ready
+          ? data?.reason || t.loading
+          : '';
   const locked = save.isPending || !!uncertain;
   return (
     <Card className="core-workbench" aria-label={t.title}>
@@ -94,7 +96,8 @@ export default function ChapterAssembly({
                 {slot.part.sceneTitle} · {slot.part.beatTitle}
                 <select
                   value={choices[slot.part.beatId] ?? slot.part.commitId}
-                  disabled={locked || editing}
+                  disabled={locked || editing || otherEdits}
+                  title={otherEdits ? t.otherPending : undefined}
                   onChange={(e) => {
                     setConfirmed('');
                     setChoices({ ...choices, [slot.part.beatId]: e.target.value });

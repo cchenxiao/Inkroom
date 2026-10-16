@@ -38,6 +38,9 @@ func exerciseChapterReview(t *testing.T, s *Store, scope string, a app.ChapterAs
 	if err = s.FinishChapterReview(ctx, job.ID, out, nil); err != nil {
 		t.Fatal(err)
 	}
+	if _, e := s.PublishChapter(ctx, scope, app.ChapterPublicationRequest{RequestID: rand.Text(), ReviewID: job.ID, AssemblyVersion: a.Version, InputDigest: job.InputDigest, ApprovalID: decision.RequestID, NoPendingFacts: true}); !errors.Is(e, app.ErrGateBlocked) {
+		t.Fatal("review published without author approval", e)
+	}
 	approved, err := s.DecideChapterReview(ctx, scope, job.ID, decision)
 	if err != nil || approved.Decision == nil || approved.Decision.Action != "approve" {
 		t.Fatal("author review", err)
@@ -49,6 +52,7 @@ func exerciseChapterReview(t *testing.T, s *Store, scope string, a app.ChapterAs
 	if err != nil || len(listing.Jobs) != 1 || len(listing.Jobs[0].Calls) != 2 || !listing.Current {
 		t.Fatal("trace listing", err, listing)
 	}
+	publication := exerciseChapterPublication(t, s, scope, approved)
 	req.RequestID = rand.Text()
 	newJob, _, err := s.StartChapterReview(ctx, scope, req, cfg)
 	if err != nil {
@@ -58,6 +62,7 @@ func exerciseChapterReview(t *testing.T, s *Store, scope string, a app.ChapterAs
 	if err != nil || listing.Jobs[1].Current || listing.Jobs[1].ApprovalBlock == "" {
 		t.Fatal("new review did not supersede old approval", err)
 	}
+	assertHistoricalPublication(t, s, scope, publication)
 	failed := app.ChapterReviewOutput{Critics: []app.ChapterCriticResult{{Critic: "hard_consistency", Status: "completed", Findings: []app.ChapterFinding{}}, {Critic: "ai_taste", Status: "failed", Findings: []app.ChapterFinding{}, Error: "provider timeout"}}}
 	if err = s.FinishChapterReview(ctx, newJob.ID, failed, errors.New("provider timeout")); err != nil {
 		t.Fatal(err)
