@@ -1,3 +1,4 @@
+import { editorialPages as e } from '@/shared/lib/messages-editorial-pages';
 import OverviewCharts from './components/OverviewCharts';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -8,6 +9,9 @@ import {
   BarChart3,
   FlaskConical,
   ShieldCheck,
+  Bookmark,
+  Waves,
+  Flame,
 } from 'lucide-react';
 import { useAction, useResource, useTree } from '@/shared/api/hooks';
 import { api } from '@/shared/api/client';
@@ -92,175 +96,215 @@ export default function ReportsPage() {
           {exportError}
         </p>
       )}
-      <div className="report-tabs" role="tablist">
-        {[
-          { id: 'overview', label: t.reports.overview, icon: BarChart3 },
-          { id: 'experiments', label: t.reports.experiments, icon: FlaskConical },
-          { id: 'regression', label: t.reports.regression, icon: ShieldCheck },
-        ].map(({ id, label, icon: Icon }) => (
-          <button
-            key={id}
-            role="tab"
-            aria-selected={tab === id}
-            className={tab === id ? 'active' : ''}
-            onClick={() => setTab(id)}
-          >
-            <Icon size={15} />
-            {label}
+      {data && (
+        <div className="report-metrics">
+          <button onClick={() => setTab('overview')}>
+            <small>{t.reports.words}</small>
+            <strong>
+              {data.chapterStats.reduce((sum, ch) => sum + ch.words, 0).toLocaleString()}{' '}
+              <span>{e.reports.words}</span>
+            </strong>
           </button>
-        ))}
-      </div>
-      {tab === 'overview' && (
-        <AsyncState
-          loading={overview.isLoading}
-          error={overview.error}
-          onRetry={() => overview.refetch()}
-          empty={!data}
-        >
-          {data && <OverviewCharts data={data} />}
-        </AsyncState>
+          <button onClick={() => setTab('overview')}>
+            <small>{t.reports.chapters}</small>
+            <strong>
+              {data.chapterStats.length} <span>{e.reports.chapters}</span>
+            </strong>
+          </button>
+          <button onClick={() => setTab('foreshadow')}>
+            <small>{t.reports.foreshadow}</small>
+            <strong>{percentage(data.foreshadowRate)}</strong>
+          </button>
+          <button onClick={() => setTab('ai')}>
+            <small>{t.reports.aiTaste}</small>
+            <strong>
+              {data.chapterStats.length
+                ? (
+                    data.chapterStats.reduce((sum, ch) => sum + ch.aiTaste, 0) /
+                    data.chapterStats.length
+                  ).toFixed(2)
+                : '—'}{' '}
+              <span>{e.reports.uncalibrated}</span>
+            </strong>
+          </button>
+        </div>
       )}
-      {tab === 'experiments' && (
-        <>
-          <Card className="experiment-controls">
-            <p>{t.reports.actual}</p>
-            <div className="page-row">
-              {[
-                { label: t.reports.memory, value: memory, set: setMemory },
-                { label: t.reports.revision, value: revision, set: setRevision },
-              ].map((field) => (
-                <Field key={field.label} label={field.label}>
-                  <Select value={field.value} onChange={(e) => field.set(e.target.value)}>
-                    <option value="all">{t.reports.all}</option>
-                    <option value="on">{t.reports.enabled}</option>
-                    <option value="off">{t.reports.disabled}</option>
-                  </Select>
-                </Field>
-              ))}
-            </div>
-          </Card>
-          <AsyncState
-            loading={experiments.isLoading}
-            error={experiments.error}
-            onRetry={() => experiments.refetch()}
-          >
-            {filtered.length ? (
-              <div className="table-scroll">
-                <table className="report-table">
-                  <thead>
-                    <tr>
-                      {[
-                        t.reports.experiments,
-                        t.reports.memory,
-                        t.reports.revision,
-                        t.reports.tokens,
-                        t.reports.cost,
-                        t.reports.rounds,
-                        t.reports.pass,
-                        t.reports.preference,
-                        t.reports.samples,
-                      ].map((s) => (
-                        <th key={s}>{s}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filtered.map((e) => (
-                      <tr key={e.id}>
-                        <td>
-                          <strong>{e.name}</strong>
-                        </td>
-                        <td>
-                          <Badge tone={e.memory ? 'ai' : 'muted'}>
-                            {e.memory ? t.reports.enabled : t.reports.disabled}
-                          </Badge>
-                        </td>
-                        <td>
-                          <Badge tone={e.revision ? 'ai' : 'muted'}>
-                            {e.revision ? t.reports.enabled : t.reports.disabled}
-                          </Badge>
-                        </td>
-                        <td>{e.tokens.toLocaleString()}</td>
-                        <td>{e.cost.toFixed(3)}</td>
-                        <td>{e.rounds}</td>
-                        <td>{percentage(e.passRate)}</td>
-                        <td>{percentage(e.preference)}</td>
-                        <td>
-                          <div className="experiment-sample-links">
-                            {e.sampleIds.map((id) => {
-                              const evidence = data?.samples.find((item) => item.id === id);
-                              return (
-                                <Button
-                                  key={id}
-                                  variant="ghost"
-                                  size="sm"
-                                  disabled={!evidence}
-                                  disabledReason={t.reports.noSamples}
-                                  onClick={() => setSampleId(id)}
-                                >
-                                  {evidence?.title ?? id}
-                                  <ArrowUpRight size={11} />
-                                </Button>
-                              );
-                            })}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <Card>
-                <p>{t.reports.none}</p>
-              </Card>
-            )}
-          </AsyncState>
-        </>
-      )}
-      {tab === 'regression' && (
-        <AsyncState
-          loading={regression.isLoading}
-          error={regression.error}
-          onRetry={() => regression.refetch()}
-          empty={!regression.data?.length}
-        >
-          <div className="page-stack">
-            {regression.data?.map((item) => (
-              <Card key={item.id}>
+      <div className="reports-layout">
+        <div className="report-tabs" role="tablist">
+          {[
+            { id: 'overview', label: e.reports.overview, icon: BarChart3 },
+            { id: 'foreshadow', label: e.reports.foreshadow, icon: Bookmark },
+            { id: 'style', label: e.reports.style, icon: Waves },
+            { id: 'ai', label: e.reports.ai, icon: Flame },
+            { id: 'experiments', label: e.reports.experiments, icon: FlaskConical },
+            { id: 'regression', label: t.reports.regression, icon: ShieldCheck },
+          ].map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              role="tab"
+              aria-selected={tab === id}
+              className={tab === id ? 'active' : ''}
+              onClick={() => setTab(id)}
+            >
+              <Icon size={15} />
+              {label}
+            </button>
+          ))}
+        </div>
+        <div className="reports-detail">
+          {['overview', 'foreshadow', 'style', 'ai'].includes(tab) && (
+            <AsyncState
+              loading={overview.isLoading}
+              error={overview.error}
+              onRetry={() => overview.refetch()}
+              empty={!data}
+            >
+              {data && <OverviewCharts data={data} section={tab} onSample={setSampleId} />}
+            </AsyncState>
+          )}
+          {tab === 'experiments' && (
+            <>
+              <Card className="experiment-controls">
+                <p>{t.reports.actual}</p>
                 <div className="page-row">
-                  <div>
-                    <small className="page-eyebrow">{item.category}</small>
-                    <h3>{item.name}</h3>
-                  </div>
-                  <Badge
-                    tone={
-                      item.status === 'passed'
-                        ? 'success'
-                        : item.status === 'failed'
-                          ? 'danger'
-                          : 'muted'
-                    }
-                  >
-                    {t.reports[item.status]}
-                  </Badge>
-                </div>
-                <blockquote>{item.sample}</blockquote>
-                <div className="evidence-pair">
-                  <div>
-                    <small>{t.reports.expected}</small>
-                    <p>{item.expected}</p>
-                  </div>
-                  <div>
-                    <small>{t.reports.observed}</small>
-                    <p>{item.actual}</p>
-                  </div>
+                  {[
+                    { label: t.reports.memory, value: memory, set: setMemory },
+                    { label: t.reports.revision, value: revision, set: setRevision },
+                  ].map((field) => (
+                    <Field key={field.label} label={field.label}>
+                      <Select value={field.value} onChange={(e) => field.set(e.target.value)}>
+                        <option value="all">{t.reports.all}</option>
+                        <option value="on">{t.reports.enabled}</option>
+                        <option value="off">{t.reports.disabled}</option>
+                      </Select>
+                    </Field>
+                  ))}
                 </div>
               </Card>
-            ))}
-          </div>
-        </AsyncState>
-      )}
+              <AsyncState
+                loading={experiments.isLoading}
+                error={experiments.error}
+                onRetry={() => experiments.refetch()}
+              >
+                {filtered.length ? (
+                  <div className="table-scroll">
+                    <table className="report-table">
+                      <thead>
+                        <tr>
+                          {[
+                            t.reports.experiments,
+                            t.reports.memory,
+                            t.reports.revision,
+                            t.reports.tokens,
+                            t.reports.cost,
+                            t.reports.rounds,
+                            t.reports.pass,
+                            t.reports.preference,
+                            t.reports.samples,
+                          ].map((s) => (
+                            <th key={s}>{s}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filtered.map((e) => (
+                          <tr key={e.id}>
+                            <td>
+                              <strong>{e.name}</strong>
+                            </td>
+                            <td>
+                              <Badge tone={e.memory ? 'ai' : 'muted'}>
+                                {e.memory ? t.reports.enabled : t.reports.disabled}
+                              </Badge>
+                            </td>
+                            <td>
+                              <Badge tone={e.revision ? 'ai' : 'muted'}>
+                                {e.revision ? t.reports.enabled : t.reports.disabled}
+                              </Badge>
+                            </td>
+                            <td>{e.tokens.toLocaleString()}</td>
+                            <td>{e.cost.toFixed(3)}</td>
+                            <td>{e.rounds}</td>
+                            <td>{percentage(e.passRate)}</td>
+                            <td>{percentage(e.preference)}</td>
+                            <td>
+                              <div className="experiment-sample-links">
+                                {e.sampleIds.map((id) => {
+                                  const evidence = data?.samples.find((item) => item.id === id);
+                                  return (
+                                    <Button
+                                      key={id}
+                                      variant="ghost"
+                                      size="sm"
+                                      disabled={!evidence}
+                                      disabledReason={t.reports.noSamples}
+                                      onClick={() => setSampleId(id)}
+                                    >
+                                      {evidence?.title ?? id}
+                                      <ArrowUpRight size={11} />
+                                    </Button>
+                                  );
+                                })}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <Card>
+                    <p>{t.reports.none}</p>
+                  </Card>
+                )}
+              </AsyncState>
+            </>
+          )}
+          {tab === 'regression' && (
+            <AsyncState
+              loading={regression.isLoading}
+              error={regression.error}
+              onRetry={() => regression.refetch()}
+              empty={!regression.data?.length}
+            >
+              <div className="page-stack">
+                {regression.data?.map((item) => (
+                  <Card key={item.id}>
+                    <div className="page-row">
+                      <div>
+                        <small className="page-eyebrow">{item.category}</small>
+                        <h3>{item.name}</h3>
+                      </div>
+                      <Badge
+                        tone={
+                          item.status === 'passed'
+                            ? 'success'
+                            : item.status === 'failed'
+                              ? 'danger'
+                              : 'muted'
+                        }
+                      >
+                        {t.reports[item.status]}
+                      </Badge>
+                    </div>
+                    <blockquote>{item.sample}</blockquote>
+                    <div className="evidence-pair">
+                      <div>
+                        <small>{t.reports.expected}</small>
+                        <p>{item.expected}</p>
+                      </div>
+                      <div>
+                        <small>{t.reports.observed}</small>
+                        <p>{item.actual}</p>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </AsyncState>
+          )}
+        </div>
+      </div>
       <Modal
         open={!!sampleId}
         onOpenChange={(open) => {

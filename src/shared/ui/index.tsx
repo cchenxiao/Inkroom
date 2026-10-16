@@ -184,9 +184,7 @@ export function Field({
   );
 }
 export function PageHeader({
-  eyebrow,
   title,
-  description,
   actions,
 }: {
   eyebrow?: string;
@@ -197,9 +195,7 @@ export function PageHeader({
   return (
     <header className="page-heading">
       <div>
-        {eyebrow && <div className="eyebrow">{eyebrow}</div>}
         <h1>{title}</h1>
-        {description && <p>{description}</p>}
       </div>
       {actions && <div className="page-actions">{actions}</div>}
     </header>

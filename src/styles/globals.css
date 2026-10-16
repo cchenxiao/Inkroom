@@ -88,11 +88,11 @@ svg {
   color: var(--text-dim);
 }
 .eyebrow {
-  font-size: 10px;
-  letter-spacing: 2px;
+  font-size: 11px;
+  letter-spacing: 1.8px;
   text-transform: uppercase;
   color: var(--text-dim);
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 .ui-button {
   display: inline-flex;
@@ -122,10 +122,10 @@ svg {
 }
 .button-primary {
   background: var(--ai);
-  color: var(--paper);
+  color: var(--on-accent);
 }
 .button-primary:hover {
-  filter: brightness(1.1);
+  background: var(--ai-hover);
 }
 .button-secondary {
   background: var(--overlay);
@@ -217,7 +217,7 @@ svg {
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 12px;
-  padding: 20px;
+  padding: 16px;
 }
 .ui-input {
   display: block;
@@ -234,7 +234,7 @@ svg {
   border-color: var(--ai);
 }
 .ui-input:disabled {
-  opacity: 0.45;
+  opacity: 0.8;
 }
 .ui-textarea {
   min-height: 94px;
@@ -256,18 +256,25 @@ svg {
 .page-heading {
   display: flex;
   justify-content: space-between;
-  gap: 20px;
+  gap: 16px;
   align-items: center;
-  margin-bottom: 30px;
+  margin-bottom: 16px;
+  position: sticky;
+  top: -24px;
+  z-index: 5;
+  background: var(--bg);
+  padding-block: 8px;
+  border-bottom: 1px solid var(--border);
 }
 .page-heading h1 {
-  font-size: 26px;
+  font-size: 18px;
+  font-family: var(--font-ui);
   font-weight: 600;
   letter-spacing: -0.5px;
 }
 .page-heading p {
   color: var(--text-dim);
-  margin-top: 10px;
+  margin-top: 8px;
   font-size: 12px;
   line-height: 1.8;
 }
@@ -277,8 +284,8 @@ svg {
   gap: 8px;
 }
 .page-content {
-  padding: 36px 40px;
-  max-width: 1400px;
+  padding: 24px 32px;
+  max-width: 1600px;
   margin: auto;
 }
 .ui-tabs {
@@ -540,4 +547,237 @@ svg {
     transition: none !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* Shared business-page primitives */
+.page-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.page-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.page-form {
+  display: grid;
+  gap: 16px;
+}
+.page-section {
+  margin-top: 24px;
+}
+.page-content h2 {
+  font-size: 16px;
+  font-weight: 550;
+}
+.page-content h3,
+.bible-panel h3 {
+  font-size: 14px;
+  font-weight: 550;
+  line-height: 1.5;
+}
+.page-content p,
+.bible-panel p {
+  font-size: 12px;
+  line-height: 1.85;
+}
+.page-content small,
+.bible-panel small {
+  font-size: 10px;
+  color: var(--text-dim);
+  line-height: 1.7;
+}
+.page-content .section-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.page-content .section-title > small {
+  margin-left: auto;
+}
+.page-content .page-actions {
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+.page-content .page-heading > .page-actions {
+  margin: 0;
+  flex-wrap: nowrap;
+}
+.quiet {
+  color: var(--text-dim);
+}
+.page-error {
+  color: var(--p0);
+  margin-top: 12px;
+  line-height: 1.7;
+}
+.page-warning {
+  color: var(--p1);
+  padding: 10px;
+  background: color-mix(in srgb, var(--p1) 8%, transparent);
+  border-radius: 6px;
+}
+.page-eyebrow {
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: var(--text-dim);
+  line-height: 1.8;
+}
+.voice-tags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: 12px 0;
+}
+.character-identity {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.character-avatar {
+  height: 38px;
+  width: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--ai) 25%, transparent);
+  background: color-mix(in srgb, var(--ai) 9%, transparent);
+  color: var(--ai);
+  font-family: var(--font-manuscript);
+  font-size: 19px;
+}
+.character-motivations {
+  margin: 16px 0;
+  display: grid;
+  gap: 10px;
+}
+.character-motivations > div {
+  display: grid;
+  grid-template-columns: 36px 1fr;
+  gap: 10px;
+  font-size: 11px;
+  line-height: 1.8;
+}
+.character-motivations dt {
+  color: var(--text-dim);
+}
+.character-motivations dd {
+  margin: 0;
+}
+.style-anchor {
+  margin: 16px 0;
+  padding: 12px 16px;
+  border-left: 2px solid var(--ai);
+  background: color-mix(in srgb, var(--ai) 4%, transparent);
+  font-family: var(--font-manuscript);
+  font-size: 14px;
+  line-height: 2;
+  color: var(--text);
+}
+.metric-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  margin: 18px 0;
+  padding: 14px 0;
+  border-block: 1px solid var(--border);
+}
+.metric-pair > div {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.metric-pair strong {
+  font-size: 21px;
+  font-weight: 400;
+}
+.page-diff,
+.evidence-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.page-diff > div,
+.evidence-pair > div {
+  background: var(--bg);
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  min-width: 0;
+}
+.page-diff small,
+.evidence-pair small {
+  color: var(--text-dim);
+  font-size: 10px;
+}
+.page-diff pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 11px;
+  line-height: 1.8;
+  max-height: 300px;
+  overflow: auto;
+}
+.page-diff > div:first-child {
+  border-top-color: var(--p0);
+}
+.page-diff > div:last-child {
+  border-top-color: var(--success);
+}
+.evidence-pair p {
+  margin: 10px 0 0;
+  line-height: 1.8;
+}
+.impact-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  width: 100%;
+  text-align: left;
+  padding: 14px 0;
+}
+.impact-row > div {
+  flex: 1;
+  min-width: 0;
+}
+.impact-row strong {
+  font-size: 12px;
+  font-weight: 500;
+}
+.impact-row p {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-top: 4px;
+  line-height: 1.65;
+}
+.check-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  font-size: 11px;
+  color: var(--text-dim);
+  line-height: 1.7;
+  margin: 16px 0;
+}
+.check-label input,
+input[type='checkbox'] {
+  accent-color: var(--human);
+}
+.full-width {
+  width: 100%;
+  margin-top: 10px;
+}
+.diff-old {
+  background: color-mix(in srgb, var(--p0) 5%, transparent);
+  color: color-mix(in srgb, var(--text) 75%, var(--p0));
+  border-left: 2px solid color-mix(in srgb, var(--p0) 45%, transparent);
+}
+.diff-new {
+  background: color-mix(in srgb, var(--success) 6%, transparent);
+  color: color-mix(in srgb, var(--text) 75%, var(--success));
+  border-left: 2px solid color-mix(in srgb, var(--success) 45%, transparent);
 }

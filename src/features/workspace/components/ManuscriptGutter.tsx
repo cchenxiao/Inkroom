@@ -70,12 +70,12 @@ export function ManuscriptGutter({
           {marker.findings.slice(0, 3).map((f) => (
             <button
               key={f.id}
-              className={`gutter-dot dot-${f.severity.toLowerCase()}`}
-              aria-label={`${f.severity} ${m.critics[f.critic]} ${m.details}`}
+              className={`gutter-dot dot-${f.critic === 'reader' ? 'p3' : f.severity.toLowerCase()}`}
+              aria-label={`${f.critic === 'reader' ? 'P3' : f.severity} ${m.critics[f.critic]} ${m.details}`}
               title={f.reason}
               onClick={() => onSelect(f.id)}
             >
-              {f.severity}
+              {f.critic === 'reader' ? 'P3' : f.severity}
             </button>
           ))}
         </div>

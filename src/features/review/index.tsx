@@ -1,7 +1,10 @@
+import { editorialPages as e } from '@/shared/lib/messages-editorial-pages';
+import { QualityGateCard } from '@/shared/ui/quality-gate-card';
 import ReviewPatch from './components/ReviewPatch';
 import { useState } from 'react';
+import { studio } from '@/shared/lib/messages-studio';
 import { useNavigate } from 'react-router-dom';
-import { ShieldCheck, Check, ArrowUpRight, MessageSquare, Undo2 } from 'lucide-react';
+import { ShieldCheck, Check, ArrowUpRight, MessageSquare } from 'lucide-react';
 import { useAction, useChapter } from '@/shared/api/hooks';
 import { useUIStore } from '@/shared/lib/ui-store';
 import { pages as t } from '@/shared/lib/messages-pages';
@@ -13,6 +16,7 @@ import {
   Modal,
   AsyncState,
   Textarea,
+  Input,
   Select,
   PageHeader,
   Field,
@@ -20,14 +24,15 @@ import {
 import type { Critic, RunActionInput, RunState, RepairScope } from '@/types/domain';
 import { approveReview, reviewBlockers } from './gates';
 import './review.css';
-export default function ReviewPage() {
+export default function ReviewPage({ embedded = false }: { embedded?: boolean } = {}) {
   const query = useChapter();
   const stale = useUIStore((s) => s.stale);
   const navigate = useNavigate();
   const [critic, setCritic] = useState<Critic | 'all'>('all');
-  const [modal, setModal] = useState<'instruct' | 'redirect' | null>(null);
+  const [modal, setModal] = useState<'redirect' | null>(null);
   const [instruction, setInstruction] = useState('');
   const [scope, setScope] = useState<RepairScope>('segment');
+  const [inlineScope, setInlineScope] = useState<RepairScope>('segment');
   const data = query.data;
   const action = useAction<RunState, RunActionInput>(`/runs/${data?.run.id ?? ''}/actions`);
   const gate = data
@@ -41,7 +46,14 @@ export default function ReviewPage() {
   const blockers = gate ? reviewBlockers(gate) : [];
   const waiting = data && ['waiting_human', 'escalated'].includes(data.run.status);
   if (!waiting) blockers.push(t.review.noRun);
-  const selected = data?.findings.filter((f) => critic === 'all' || f.critic === critic) ?? [];
+  const selected =
+    data?.findings
+      .filter((f) => critic === 'all' || f.critic === critic)
+      .sort(
+        (a, b) =>
+          Number(a.status !== 'open') - Number(b.status !== 'open') ||
+          a.severity.localeCompare(b.severity),
+      ) ?? [];
   const sendInstruction = async () => {
     if (!data || !modal) return;
     await action.mutateAsync({
@@ -53,18 +65,20 @@ export default function ReviewPage() {
     setModal(null);
   };
   return (
-    <main className="page-content review-page">
-      <PageHeader
-        eyebrow={t.review.eyebrow}
-        title={t.review.title}
-        description={t.review.description}
-        actions={
-          <Button variant="ghost" onClick={() => navigate('/workspace')}>
-            {t.common.back}
-            <ArrowUpRight size={14} />
-          </Button>
-        }
-      />
+    <main className={embedded ? 'review-page review-embedded' : 'page-content review-page'}>
+      {!embedded && (
+        <PageHeader
+          eyebrow={t.review.eyebrow}
+          title={t.review.title}
+          description={t.review.description}
+          actions={
+            <Button variant="ghost" onClick={() => navigate('/workspace')}>
+              {t.common.back}
+              <ArrowUpRight size={14} />
+            </Button>
+          }
+        />
+      )}
       <AsyncState
         loading={query.isLoading}
         error={query.error}
@@ -81,42 +95,43 @@ export default function ReviewPage() {
                 </h2>
                 <p>{waiting ? t.review.runReady : zh.nodes[data.run.currentNode]}</p>
               </div>
-              <ShieldCheck size={36} />
+              <ShieldCheck size={20} />
             </div>
-            <div className="critic-grid">
+            <nav className="critic-grid" aria-label={e.review.groups}>
+              <button
+                className={`critic-card ${critic === 'all' ? 'selected' : ''}`}
+                onClick={() => setCritic('all')}
+                aria-pressed={critic === 'all'}
+              >
+                {e.review.all}{' '}
+                <strong>{data.findings.filter((f) => f.status === 'open').length}</strong>
+              </button>
               {(Object.keys(zh.critics) as Critic[]).map((key) => {
                 const findings = data.findings.filter(
                   (f) => f.critic === key && f.status === 'open',
                 );
+                const planned = key === 'style' || key === 'reader';
                 return (
                   <button
                     key={key}
                     className={`critic-card ${critic === key ? 'selected' : ''}`}
-                    onClick={() => setCritic(critic === key ? 'all' : key)}
+                    aria-pressed={critic === key}
+                    onClick={() => setCritic(key)}
                   >
                     <span>{zh.critics[key]}</span>
-                    <strong>{findings.length.toString().padStart(2, '0')}</strong>
-                    <small>{findings.length ? t.review.pending : t.review.passed}</small>
-                    <div>
-                      {findings.slice(0, 4).map((f) => (
-                        <Badge
-                          key={f.id}
-                          tone={
-                            f.severity === 'P0'
-                              ? 'danger'
-                              : f.severity === 'P1'
-                                ? 'warning'
-                                : 'muted'
-                          }
-                        >
-                          {f.severity}
-                        </Badge>
-                      ))}
-                    </div>
+                    {!planned && <strong>{findings.length}</strong>}
+                    <small>
+                      {planned
+                        ? embedded
+                          ? e.review.planned
+                          : `${e.review.planned} · ${e.review.examples}`
+                        : e.review.wired}
+                      {key === 'reader' && !embedded ? ` · ${e.review.readerHint}` : ''}
+                    </small>
                   </button>
                 );
               })}
-            </div>
+            </nav>
             <div className="review-columns">
               <section className="page-stack">
                 <div className="section-title">
@@ -131,20 +146,34 @@ export default function ReviewPage() {
                       <div className="voice-tags">
                         <Badge
                           tone={
-                            f.severity === 'P0'
-                              ? 'danger'
-                              : f.severity === 'P1'
-                                ? 'warning'
-                                : 'info'
+                            f.critic === 'reader'
+                              ? 'muted'
+                              : f.severity === 'P0'
+                                ? 'danger'
+                                : f.severity === 'P1'
+                                  ? 'warning'
+                                  : 'info'
                           }
                         >
-                          {f.severity}
+                          {f.critic === 'reader' ? e.review.advice : f.severity}
                         </Badge>
                         <Badge tone="muted">{zh.critics[f.critic]}</Badge>
                         <small>{zh.repair[f.repairScope]}</small>
                       </div>
-                      <Badge tone={f.status === 'open' ? 'warning' : 'success'}>
-                        {f.status === 'open' ? t.common.pending : t.common.done}
+                      <Badge
+                        tone={
+                          f.critic === 'reader'
+                            ? 'muted'
+                            : f.status === 'open'
+                              ? 'warning'
+                              : 'success'
+                        }
+                      >
+                        {f.critic === 'reader'
+                          ? e.review.nonBlocking
+                          : f.status === 'open'
+                            ? t.common.pending
+                            : t.common.done}
                       </Badge>
                     </div>
                     <blockquote>{f.quote}</blockquote>
@@ -162,7 +191,7 @@ export default function ReviewPage() {
                         onClick={() => {
                           useUIStore.getState().selectSegment(f.segmentId);
                           useUIStore.getState().selectFinding(f.id);
-                          navigate('/workspace');
+                          if (!embedded) navigate('/workspace');
                         }}
                       >
                         {t.common.locate}
@@ -174,132 +203,147 @@ export default function ReviewPage() {
                 {!selected.length && (
                   <Card>
                     <Check size={18} />
-                    <p>{t.review.passed}</p>
+                    <p>
+                      {critic === 'style' || critic === 'reader'
+                        ? e.review.unconnected
+                        : t.review.passed}
+                    </p>
                   </Card>
                 )}
-                <div className="section-title">
-                  <h2>{t.review.diff}</h2>
-                  <Badge tone="ai">
-                    {data.patches.filter((p) => p.status === 'pending').length}
-                  </Badge>
-                </div>
-                {data.patches.length ? (
-                  data.patches.map((p) => (
-                    <ReviewPatch key={p.id} patch={p} version={data.chapter.draftVersion} />
-                  ))
-                ) : (
-                  <Card>
-                    <p className="quiet">{t.review.noDiff}</p>
-                  </Card>
+                {!embedded && (
+                  <>
+                    <div className="section-title">
+                      <h2>{t.review.diff}</h2>
+                      <Badge tone="ai">
+                        {data.patches.filter((p) => p.status === 'pending').length}
+                      </Badge>
+                    </div>
+                    {data.patches.length ? (
+                      data.patches.map((p) => (
+                        <ReviewPatch key={p.id} patch={p} version={data.chapter.draftVersion} />
+                      ))
+                    ) : (
+                      <Card>
+                        <p className="quiet">{t.review.noDiff}</p>
+                      </Card>
+                    )}
+                  </>
                 )}
               </section>
               <aside className="review-gate">
-                <Card>
-                  <div className="section-title">
-                    <ShieldCheck size={18} />
-                    <h2>{t.review.gate}</h2>
-                  </div>
-                  {data.scores.items.map((score) => (
-                    <div className="gate-metric" key={score.key}>
-                      <div className="page-row">
-                        <span>{score.label}</span>
-                        <strong>{score.value}</strong>
-                      </div>
-                      <div className="page-row">
-                        <small>
-                          {score.direction === 'lower' ? '≤' : '≥'} {score.threshold}
-                        </small>
-                        <Badge
-                          tone={!score.calibrated ? 'muted' : score.passed ? 'success' : 'danger'}
-                        >
-                          {!score.calibrated
-                            ? zh.common.hint
-                            : score.passed
-                              ? t.review.passed
-                              : t.review.pending}
-                        </Badge>
-                      </div>
-                      <details>
-                        <summary>{t.review.reason}</summary>
-                        {score.features.map((f, i) => (
-                          <p key={i}>
-                            <strong>
-                              {f.label} {f.value}
-                            </strong>
-                            <br />
-                            {f.reason}
-                            <br />
-                            <small>{f.source}</small>
-                          </p>
-                        ))}
-                      </details>
-                    </div>
-                  ))}
-                  {blockers.length > 0 && (
-                    <div className="gate-blockers">
-                      {blockers.map((b, i) => (
-                        <p key={i}>{b}</p>
-                      ))}
-                    </div>
-                  )}
-                  {stale && (
-                    <Button
-                      variant="secondary"
-                      onClick={() =>
-                        void query
-                          .refetch()
-                          .then((result) => {
-                            if (result.data && !result.error) useUIStore.getState().setStale(false);
-                          })
-                          .catch(() => undefined)
-                      }
-                    >
-                      {t.review.reviewed}
-                    </Button>
-                  )}
+                <details open={embedded ? undefined : true}>
+                  <summary>{studio.gateDetails}</summary>
+                  <QualityGateCard scores={data.scores} blockers={blockers} />
+                </details>
+                {stale && (
                   <Button
-                    variant="human"
-                    className="full-width"
-                    disabled={!!blockers.length || action.isPending}
-                    disabledReason={blockers.join('；')}
-                    onClick={() => {
-                      if (gate) void approveReview(action.mutateAsync, gate).catch(() => undefined);
-                    }}
+                    variant="secondary"
+                    onClick={() =>
+                      void query
+                        .refetch()
+                        .then((result) => {
+                          if (result.data && !result.error) useUIStore.getState().setStale(false);
+                        })
+                        .catch(() => undefined)
+                    }
                   >
-                    <Check size={15} />
-                    {t.review.approve}
+                    {t.review.reviewed}
                   </Button>
-                  <Button
-                    className="full-width"
+                )}
+                <Button
+                  variant="ghost"
+                  disabled={stale || action.isPending}
+                  onClick={() => {
+                    setModal('redirect');
+                    setScope('beat');
+                  }}
+                >
+                  {t.review.redirect}
+                </Button>
+              </aside>
+            </div>
+            <div className="review-decision-bar">
+              <div className="review-decision-status">
+                <strong>
+                  v{data.chapter.draftVersion} ·{' '}
+                  {blockers.length ? `${blockers.length} ${e.review.blocked}` : e.review.ready}
+                </strong>
+                <small>{t.review.approveHint}</small>
+              </div>
+              <div className="review-decision-actions">
+                <Button
+                  variant="human"
+                  disabled={!!blockers.length || action.isPending}
+                  disabledReason={blockers.join('；')}
+                  onClick={() => {
+                    if (gate) void approveReview(action.mutateAsync, gate).catch(() => undefined);
+                  }}
+                >
+                  <Check size={15} />
+                  {e.review.approve}
+                </Button>
+                <div className="review-inline-instruction">
+                  <Select
+                    aria-label={t.review.scope}
+                    value={inlineScope}
+                    onChange={(event) => setInlineScope(event.target.value as RepairScope)}
                     disabled={stale || action.isPending}
+                  >
+                    {(Object.keys(zh.repair) as RepairScope[]).map((key) => (
+                      <option key={key} value={key}>
+                        {zh.repair[key]}
+                      </option>
+                    ))}
+                  </Select>
+                  <Input
+                    aria-label={e.review.instruction}
+                    placeholder={e.review.placeholder}
+                    value={instruction}
+                    onChange={(event) => setInstruction(event.target.value)}
+                    disabled={stale || action.isPending}
+                  />
+                  <Button
+                    variant="ghost"
+                    disabled={!instruction.trim() || stale || action.isPending}
                     onClick={() => {
-                      setModal('instruct');
-                      setScope('segment');
+                      if (!data) return;
+                      void action
+                        .mutateAsync({
+                          action: 'instruct',
+                          instruction,
+                          scope: inlineScope,
+                          draftVersion: data.chapter.draftVersion,
+                        })
+                        .then(() => setInstruction(''))
+                        .catch(() => undefined);
                     }}
                   >
                     <MessageSquare size={15} />
-                    {t.review.instruct}
+                    {e.review.instruct}
                   </Button>
-                  <Button
-                    variant="ghost"
-                    className="full-width"
-                    disabled={stale || action.isPending}
-                    onClick={() => {
-                      setModal('redirect');
-                      setScope('beat');
-                    }}
-                  >
-                    <Undo2 size={15} />
-                    {t.review.redirect}
-                  </Button>
-                  <p className="quiet">{t.review.approveHint}</p>
-                  {action.error && (
-                    <p role="alert" className="page-error">
-                      {action.error.message}
-                    </p>
-                  )}
-                </Card>
-              </aside>
+                </div>
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    const finding = selected.find((f) => f.status === 'open');
+                    if (finding) {
+                      useUIStore.getState().selectSegment(finding.segmentId);
+                      useUIStore.getState().selectFinding(finding.id);
+                    }
+                    if (embedded) useUIStore.getState().setAttention(null);
+                    else navigate('/workspace');
+                  }}
+                >
+                  <ArrowUpRight size={15} />
+                  {e.review.edit}
+                </Button>
+
+                {action.error && (
+                  <p role="alert" className="page-error">
+                    {action.error.message}
+                  </p>
+                )}
+              </div>
             </div>
           </>
         )}

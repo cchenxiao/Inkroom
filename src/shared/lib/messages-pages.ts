@@ -32,7 +32,7 @@ export const pages = {
   },
   prepare: {
     eyebrow: 'CREATIVE FOUNDATION',
-    title: '故事，从确定方向开始',
+    title: '创作准备',
     description: '把想写的故事说清楚，让每一次生成都有所依循。',
     premise: '故事立意',
     project: '项目设定',
@@ -121,7 +121,7 @@ export const pages = {
   },
   review: {
     eyebrow: 'HUMAN REVIEW',
-    title: '把最后的决定，留给作者',
+    title: '人工审核',
     description: '逐项看过证据与修订，再让这个版本进入故事。',
     critics: '四路审稿',
     diff: '本轮修订对照',
@@ -156,7 +156,7 @@ export const pages = {
   },
   changes: {
     eyebrow: 'CHANGE CONTROL',
-    title: '让每一次修改，都有来处',
+    title: '变更冲突',
     description: '看清修改触及的章节、事实和伏笔，再决定故事如何向前。',
     entries: ['改设定 / 大纲', '直接改正文', '下批注'],
     entryDescriptions: [
@@ -203,7 +203,7 @@ export const pages = {
   },
   versions: {
     eyebrow: 'VERSIONS & BRANCHES',
-    title: '故事可以走向另一条路',
+    title: '版本试写',
     description: '每个确定的版本都留下足迹，每次试写都有回来的地方。',
     timeline: '版本时间线',
     branches: '试写分支',
@@ -237,7 +237,7 @@ export const pages = {
   },
   reports: {
     eyebrow: 'MANUSCRIPT INSIGHTS',
-    title: '看见整部故事的呼吸',
+    title: '质量评测',
     description: '从单章质量走向全书一致，同时保留每场戏自己的节奏。',
     overview: '全稿概览',
     experiments: '对照实验',

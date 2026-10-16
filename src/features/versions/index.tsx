@@ -1,10 +1,21 @@
+import { editorialPages as e } from '@/shared/lib/messages-editorial-pages';
 import MergeDialog from './components/MergeDialog';
 import { useState } from 'react';
 import { GitBranch, History, Plus, RotateCcw, Check } from 'lucide-react';
 import { useAction, useBranches, useChapter, useResource } from '@/shared/api/hooks';
 import { useUIStore } from '@/shared/lib/ui-store';
 import { pages as t } from '@/shared/lib/messages-pages';
-import { Button, Badge, Card, Modal, AsyncState, Input, PageHeader, Field } from '@/shared/ui';
+import {
+  Button,
+  Badge,
+  Card,
+  Modal,
+  AsyncState,
+  Input,
+  Select,
+  PageHeader,
+  Field,
+} from '@/shared/ui';
 import type { Branch, Commit } from '@/types/domain';
 import './versions.css';
 export default function VersionsPage() {
@@ -44,66 +55,41 @@ export default function VersionsPage() {
         onRetry={() => branches.refetch()}
         empty={!branches.data?.length}
       >
-        <div className="branch-grid">
+        <div className="branch-grid" aria-label={e.versions.branches}>
           {branches.data?.map((branch) => (
-            <Card
+            <div
               key={branch.id}
               className={`branch-card ${branch.id === branchId ? 'current' : ''}`}
             >
-              <div className="page-row">
-                <GitBranch size={18} />
-                <Badge tone={branch.isMain ? 'ai' : branch.id === branchId ? 'human' : 'muted'}>
-                  {branch.isMain
-                    ? t.versions.main
-                    : branch.status === 'merged'
-                      ? t.versions.merged
-                      : branch.status === 'abandoned'
-                        ? t.versions.abandoned
-                        : branch.id === branchId
-                          ? t.versions.current
-                          : t.versions.branches}
-                </Badge>
-              </div>
-              <h3>{branch.name}</h3>
-              <p>{branch.description}</p>
-              <small>{new Date(branch.createdAt).toLocaleDateString('zh-CN')}</small>
-              <div className="page-actions">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  disabled={branch.id === branchId || branch.status === 'abandoned'}
-                  onClick={() => {
-                    useUIStore.getState().setBranch(branch.id);
-                    setSelected(null);
-                  }}
-                >
-                  {branch.id === branchId ? (
-                    <>
-                      <Check size={13} />
-                      {t.versions.current}
-                    </>
-                  ) : (
-                    t.versions.switch
-                  )}
-                </Button>
-                {!branch.isMain && branch.status === 'active' && (
-                  <>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setMergeBranch(branch);
-                      }}
-                    >
-                      {t.versions.merge}
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => setAbandon(branch)}>
-                      {t.versions.abandon}
-                    </Button>
-                  </>
+              <button
+                className="branch-switch"
+                disabled={branch.id === branchId || branch.status === 'abandoned'}
+                onClick={() => {
+                  useUIStore.getState().setBranch(branch.id);
+                  setSelected(null);
+                }}
+                title={branch.description}
+              >
+                <GitBranch size={14} />
+                {branch.name}
+                {branch.id === branchId && <Check size={12} />}
+                {branch.status !== 'active' && (
+                  <small>
+                    {branch.status === 'merged' ? t.versions.merged : t.versions.abandoned}
+                  </small>
                 )}
-              </div>
-            </Card>
+              </button>
+              {!branch.isMain && branch.status === 'active' && (
+                <>
+                  <Button variant="ghost" size="sm" onClick={() => setMergeBranch(branch)}>
+                    {t.versions.merge}
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => setAbandon(branch)}>
+                    {t.versions.abandon}
+                  </Button>
+                </>
+              )}
+            </div>
           ))}
         </div>
       </AsyncState>
@@ -120,9 +106,27 @@ export default function VersionsPage() {
         >
           <div className="version-layout">
             <div className="commit-timeline">
+              <Field label={e.versions.filter}>
+                <Select
+                  value={branchId}
+                  onChange={(event) => {
+                    useUIStore.getState().setBranch(event.target.value);
+                    setSelected(null);
+                  }}
+                >
+                  {branches.data
+                    ?.filter((branch) => branch.status !== 'abandoned')
+                    .map((branch) => (
+                      <option key={branch.id} value={branch.id}>
+                        {branch.name}
+                      </option>
+                    ))}
+                </Select>
+              </Field>
               {commits.data?.map((commit) => (
                 <button
                   className={`commit-item ${activeCommit?.id === commit.id ? 'selected' : ''}`}
+                  aria-pressed={activeCommit?.id === commit.id}
                   key={commit.id}
                   onClick={() => setSelected(commit.id)}
                 >

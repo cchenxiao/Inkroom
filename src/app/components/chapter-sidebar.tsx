@@ -1,12 +1,12 @@
 import { useShallow } from 'zustand/react/shallow';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Check,
   ChevronDown,
   ChevronRight,
   FileText,
   Layers,
-  MoreHorizontal,
+  PanelLeftClose,
   Plus,
 } from 'lucide-react';
 import { useTree, useChapter } from '@/shared/api/hooks';
@@ -14,13 +14,30 @@ import { AsyncState, Badge, Button, Progress, Tabs } from '@/shared/ui';
 import { useUIStore } from '@/shared/lib/ui-store';
 import { shellText as t } from '@/shared/lib/messages-shell';
 import { useNavigate } from 'react-router-dom';
-export function ChapterSidebar() {
+export function ChapterSidebar({ onCollapse }: { onCollapse?: () => void }) {
   const tree = useTree();
   const { data } = useChapter();
   const ui = useUIStore(
     useShallow(({ events: _events, node: _node, streamText: _stream, ...state }) => state),
   );
   const [tab, setTab] = useState('structure');
+  const [pendingChapter, setPendingChapter] = useState<string | null>(null);
+  useEffect(() => {
+    if (!pendingChapter) return;
+    if (ui.chapterId !== pendingChapter) {
+      setPendingChapter(null);
+      return;
+    }
+    if (data?.chapter.id !== pendingChapter) return;
+    const finding = data.findings
+      .filter((f) => f.status === 'open')
+      .sort((a, b) => a.severity.localeCompare(b.severity))[0];
+    if (finding) {
+      useUIStore.getState().selectFinding(finding.id);
+      useUIStore.getState().selectSegment(finding.segmentId);
+    }
+    setPendingChapter(null);
+  }, [pendingChapter, data, ui.chapterId]);
   const navigate = useNavigate();
   return (
     <aside className="chapter-sidebar">
@@ -29,10 +46,10 @@ export function ChapterSidebar() {
         <Button
           size="icon"
           variant="ghost"
-          aria-label={t.overview}
-          onClick={() => navigate('/prepare')}
+          aria-label={t.toggleLeft}
+          onClick={() => (onCollapse ? onCollapse() : ui.setPanel('left', false))}
         >
-          <MoreHorizontal size={17} />
+          <PanelLeftClose size={17} />
         </Button>
       </div>
       <Tabs
@@ -50,18 +67,28 @@ export function ChapterSidebar() {
               key={ch.id}
               className={`chapter-group ${ui.chapterId === ch.id ? 'selected' : ''}`}
             >
-              <button className="chapter-row" onClick={() => ui.setChapter(ch.id)}>
-                {ui.chapterId === ch.id ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
-                <FileText size={14} />
-                <span>
-                  第 {ch.number} 章<span className="chapter-name">{ch.title}</span>
-                </span>
-                {ch.status === 'finalized' ? (
-                  <Check size={13} className="text-success" />
-                ) : ch.issueCount > 0 ? (
-                  <span className="issue-count">{ch.issueCount}</span>
-                ) : null}
-              </button>
+              <div className="chapter-entry">
+                <button className="chapter-row" onClick={() => ui.setChapter(ch.id)}>
+                  {ui.chapterId === ch.id ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+                  <FileText size={14} />
+                  <span>
+                    第 {ch.number} 章<span className="chapter-name">{ch.title}</span>
+                  </span>
+                  {ch.status === 'finalized' && <Check size={13} className="text-success" />}
+                </button>
+                {ch.status !== 'finalized' && ch.issueCount > 0 && (
+                  <button
+                    className="issue-count"
+                    aria-label={`${ch.issueCount} 处问题，定位最严重问题`}
+                    onClick={() => {
+                      ui.setChapter(ch.id);
+                      setPendingChapter(ch.id);
+                    }}
+                  >
+                    {ch.issueCount}
+                  </button>
+                )}
+              </div>
               {ui.chapterId === ch.id &&
                 ch.scenes.map((s, i) => (
                   <div className="scene-group" key={s.id}>
@@ -110,7 +137,7 @@ export function ChapterSidebar() {
         />
         <div className="sidebar-tags">
           <Badge>{data?.chapter.pov}</Badge>
-          <Badge tone="warning">{data?.chapter.scenes[0]?.title}</Badge>
+          <Badge>{data?.chapter.scenes[0]?.title}</Badge>
         </div>
         <small>
           {t.beatProgress}{' '}

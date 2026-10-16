@@ -19,17 +19,23 @@ export function FindingPopover({
 }) {
   return (
     <aside
-      className={`finding-popover severity-${finding.severity.toLowerCase()}`}
+      className={`finding-popover severity-${finding.critic === 'reader' ? 'p3' : finding.severity.toLowerCase()}`}
       aria-label={m.finding}
     >
       <header>
         <ShieldAlert size={16} />
         <Badge
           tone={
-            finding.severity === 'P0' ? 'danger' : finding.severity === 'P1' ? 'warning' : 'info'
+            finding.critic === 'reader'
+              ? 'muted'
+              : finding.severity === 'P0'
+                ? 'danger'
+                : finding.severity === 'P1'
+                  ? 'warning'
+                  : 'info'
           }
         >
-          {finding.severity}
+          {finding.critic === 'reader' ? '建议 · 不阻断' : finding.severity}
         </Badge>
         <strong>{m.critics[finding.critic]}</strong>
         <span>v{finding.draftVersion}</span>

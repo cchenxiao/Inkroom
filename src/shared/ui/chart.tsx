@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { useUIStore } from '@/shared/lib/ui-store';
 import type { EChartsOption } from 'echarts';
 import type { EChartsType } from 'echarts/core';
 /** 按可见区域加载 ECharts；团队色板作为主题，业务组件只传数据。 */
@@ -11,6 +12,7 @@ export function Chart({
   height?: number;
   className?: string;
 }) {
+  const theme = useUIStore((s) => s.theme);
   const ref = useRef<HTMLDivElement>(null);
   const chart = useRef<EChartsType>();
   useEffect(() => {
@@ -67,7 +69,7 @@ export function Chart({
       chart.current?.dispose();
       chart.current = undefined;
     };
-  }, [option]);
+  }, [option, theme]);
   return (
     <div
       ref={ref}

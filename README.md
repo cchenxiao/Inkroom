@@ -530,3 +530,15 @@ go run ./cmd/inkloom -knowledge-import /absolute/path/publication.json
 验证使用独立测试库：确认要求、重复发布、版本冲突、撤下事实、事务回滚、旧查询目录稳定、向量调用前过滤、上下文清单与 Fake Writer 均已检查；未调用真实模型，未向主数据库导入教学知识。
 
 待加固的小项：008 的 SQL JSON 来源约束未完全排除 NULL；现有 Go 发布路径始终填入并校验版本/摘要，正常入口不受影响。后续用新增迁移收紧该约束，避免维护脚本绕过应用时写入不完整来源。
+
+### I12c：页面只读查看真实知识版本
+
+入口在 `/prepare` 顶部的「已保存的知识快照 · Go 后端 · 只读」。展开后读取 `/go-api/knowledge`，与页面下方 Mock 创作设定独立。当前范围固定为 zhuoliu/main，显示来源标识（人工确认/教学）、版本、发布时间、发布理由及摘要；历史版本号提交后请求 `?version=N`，返回当前版本会重新读取 head。没有恢复、发布或写正文操作。
+
+三页签分别显示事实与获知依据、按故事时间排序的事件及因果关联、伏笔用途与埋设/回收依据。知情记录明确标出“误解/未证实理解”和独立读者主体，不推算当前章节的已知状态；伏笔不按页面章节自动判逾期。后端目前只提供人物 ID，页面如实显示标识，不从 Mock 人物卡偷取名字。人物名称接入真实人物资料后再补。
+
+- `features/prepare/api/knowledge.ts` 通过统一 backendApi 请求，`types/knowledge.ts` 对应 Go JSON 契约（包括可能为 null 的切片）。
+- `hooks/useKnowledge.ts` 用 TanStack Query 按版本分开缓存，请求可取消；界面选择状态留在组件内。
+- `BackendKnowledge` 管展开、版本与状态；`KnowledgeSnapshot` 管版本信息/页签；`KnowledgeSections` 渲染三类台账。文案在 `shared/lib/messages-knowledge.ts`。
+
+404 区分“尚未发布”和“历史版本不存在”；连接失败保留重试入口，不显示成功旧数据或回填 Mock。主库当前未导入知识快照，因此实际页面显示空状态是正常结果。成功态与历史切换由测试专用 MSW 数据验证，测试数据不会进入生产浏览器请求；本步没有修改数据库或重启后端。

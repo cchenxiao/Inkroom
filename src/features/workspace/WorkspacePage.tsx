@@ -31,6 +31,7 @@ import { SegmentEditor, type SelectedText } from './editor/SegmentEditor';
 import { InlineDiff } from './components/InlineDiff';
 import { FindingPopover } from './components/FindingPopover';
 import { ManuscriptGutter } from './components/ManuscriptGutter';
+import { studio } from '@/shared/lib/messages-studio';
 import './workspace.css';
 export default function WorkspacePage() {
   const chapter = useChapter();
@@ -110,7 +111,7 @@ function Manuscript({
       Math.max(105, Math.ceil(document.segments[index].text.length / 32) * 35 + 36),
     overscan: 5,
     enabled: long,
-    scrollMargin: 230,
+    scrollMargin: 24,
     rangeExtractor: (range) => {
       const base = defaultRangeExtractor(range);
       return activeIndex < 0 ? base : [...new Set([...base, activeIndex])].sort((a, b) => a - b);
@@ -128,12 +129,12 @@ function Manuscript({
     scrolledSelection.current = ui.selectedSegment;
     const index = document.segments.findIndex((s) => s.id === ui.selectedSegment);
     if (index < 0) return;
-    if (long) virtualizer.scrollToIndex(index, { align: 'center' });
+    if (long) virtualizer.scrollToIndex(index, { align: 'start' });
     else
       requestAnimationFrame(() =>
         scrollRef.current
           ?.querySelector(`[data-manuscript-segment="${ui.selectedSegment}"]`)
-          ?.scrollIntoView({ behavior: 'smooth', block: 'center' }),
+          ?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
       );
   }, [ui.selectedSegment, document.segments, long, virtualizer]);
   useEffect(() => {
@@ -274,6 +275,13 @@ function Manuscript({
     (sum, s) => sum + (autosave.drafts[s.id] ?? s.text).replace(/\s/g, '').length,
     0,
   );
+  const activeSegment =
+    document.segments.find((s) => s.id === ui.selectedSegment) ?? document.segments[0];
+  const activeScene =
+    document.chapter.scenes.find((s) => s.id === activeSegment?.sceneId) ??
+    document.chapter.scenes[0];
+  const activeBeat =
+    activeScene?.beats.find((b) => b.id === activeSegment?.beatId) ?? activeScene?.beats[0];
   const status = stale ? 'failed' : autosave.status;
   const renderSegment = (index: number) => {
     const segment = document.segments[index];
@@ -357,7 +365,24 @@ function Manuscript({
   };
   return (
     <section className={`workspace-center ${mode === 'final' ? 'is-final' : ''}`}>
+      {ui.focus && (
+        <div className="focus-exit-bar">
+          <Button size="sm" variant="ghost" onClick={() => ui.setFocus(false)}>
+            {studio.exitFocus}
+          </Button>
+        </div>
+      )}
       <header className="manuscript-toolbar">
+        <div
+          className="manuscript-context"
+          title={`${activeScene?.title ?? ''} · ${activeBeat?.title ?? ''} · ${document.chapter.pov}`}
+        >
+          <span>{activeBeat?.title ?? activeScene?.title}</span>
+          <span>
+            {studio.pov} · {document.chapter.pov}
+          </span>
+          <span className="rhythm-label">{bible.data?.style.tone ?? ''}</span>
+        </div>
         <div className="manuscript-tabs" role="tablist" aria-label={m.editor}>
           {(
             [
@@ -426,27 +451,6 @@ function Manuscript({
       <div className="manuscript-region">
         <div className="manuscript-scroll" ref={scrollRef}>
           <div className="manuscript-page">
-            <header className="chapter-heading">
-              <div className="chapter-kicker">
-                {m.chapter(document.chapter.number)}
-                <span /> {m.draft}
-              </div>
-              <h1>{document.chapter.title}</h1>
-              <div className="chapter-byline">
-                <span>
-                  {m.pov} · {document.chapter.pov}
-                </span>
-                <span className="meta-dot" />
-                <span>
-                  {count.toLocaleString()} {m.words}
-                </span>
-                <span className="meta-dot" />
-                <span>v{version}</span>
-              </div>
-              <div className="chapter-rule">
-                <span />◆<span />
-              </div>
-            </header>
             {mode === 'final' && (
               <p className="final-preview-note">
                 <Eye size={13} />
@@ -519,10 +523,6 @@ function Manuscript({
         <div>
           <span>
             {count.toLocaleString()} / {document.chapter.targetWords.toLocaleString()} {m.words}
-          </span>
-          <span className="status-separator" />
-          <span>
-            {m.pov} · {document.chapter.pov}
           </span>
         </div>
       </footer>

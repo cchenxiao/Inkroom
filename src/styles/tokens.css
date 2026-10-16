@@ -1,27 +1,60 @@
 :root {
-  --bg: #0e1013;
-  --panel: #161a20;
-  --overlay: #1e242d;
-  --border: rgba(255, 255, 255, 0.08);
-  --text: #e6e8ec;
-  --text-dim: #9aa1ac;
-  --paper: #fbf9f4;
-  --ai: #6366f1;
-  --human: #10b981;
-  --p0: #f04d5e;
-  --p1: #f59e0b;
-  --p2: #3b82f6;
-  --success: #22c55e;
-  --foreshadow: #a855f7;
-  --paper-ink: #161a20;
-  --paper-dim: #9aa1ac;
+  /* Day studio: neutral surfaces, a restrained blue accent. */
+  --bg: #f1f2f5;
+  --panel: #f8f9fb;
+  --overlay: #e7eaf0;
+  --border: rgba(41, 47, 61, 0.14);
+  --text: #2b303b;
+  --text-dim: #626977;
+  --ai: #355fc5;
+  --ai-hover: #294da5;
+  --on-accent: #f7f9ff;
+  --human: #287153;
+  --p0: #b5423b;
+  --p1: #846014;
+  --p2: #326798;
+  --success: #307244;
+  --foreshadow: #7951a6;
+  --paper: #fcfcfd;
+  --paper-ink: #292e38;
+  --paper-dim: #646b78;
+  --paper-ai: var(--ai);
+  --paper-human: var(--human);
+  --paper-p0: var(--p0);
+  --paper-p1: var(--p1);
+  --paper-p2: var(--p2);
+  --paper-foreshadow: var(--foreshadow);
   --radius: 8px;
   --radius-lg: 12px;
   --ease: 200ms ease;
-  --shadow: 0 12px 48px color-mix(in srgb, var(--bg) 55%, transparent);
+  --shadow: 0 8px 32px color-mix(in srgb, var(--text) 8%, transparent);
   --font-ui:
     Inter, -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Source Han Sans SC', sans-serif;
   --font-manuscript: 'Noto Serif SC', 'Source Han Serif SC', 'Songti SC', STSong, serif;
+  --font-prose: var(--font-manuscript);
   --font-mono: 'JetBrains Mono', 'SFMono-Regular', monospace;
+  color-scheme: light;
+}
+
+:root[data-theme='night'] {
   color-scheme: dark;
+  --bg: #191b20;
+  --panel: #202329;
+  --overlay: #2b2f38;
+  --border: rgba(226, 230, 238, 0.13);
+  --text: #e0e4ed;
+  --text-dim: #a6adbc;
+  --ai: #91b2f5;
+  --ai-hover: #b2c9f8;
+  --on-accent: #17223b;
+  --human: #88bba4;
+  --p0: #e59b96;
+  --p1: #d7b67c;
+  --p2: #9bbbe0;
+  --success: #9fc6aa;
+  --foreshadow: #bea7db;
+  --paper: #23262d;
+  --paper-ink: #dbe0ea;
+  --paper-dim: #a9b0bf;
+  --shadow: 0 8px 32px color-mix(in srgb, var(--bg) 55%, transparent);
 }

@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
 import { ReactFlow, Background, MarkerType, type Node, type Edge } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+import { plannedNodes } from '@/shared/lib/node-capabilities';
+import { studio } from '@/shared/lib/messages-studio';
 import { zh } from '@/shared/lib/messages';
 import type { RunNode, RunState } from '@/types/domain';
 const positions: Record<RunNode, [number, number]> = {
@@ -33,8 +35,17 @@ export function RunFlowGraph({
       Object.entries(positions).map(([id, [x, y]]) => ({
         id,
         position: { x, y },
-        data: { label: zh.nodes[id as RunNode] },
-        className: `run-graph-node ${id === active || run.nodes.find((n) => n.id === id)?.status === 'running' ? 'is-current' : ''} ${run.nodes.find((n) => n.id === id)?.status === 'done' ? 'is-done' : ''}`,
+        data: {
+          label: (
+            <>
+              <span>{zh.nodes[id as RunNode]}</span>
+              {plannedNodes.has(id as RunNode) && (
+                <small className="graph-planned">{studio.planned}</small>
+              )}
+            </>
+          ),
+        },
+        className: `run-graph-node ${plannedNodes.has(id as RunNode) ? 'is-planned' : `${id === active || run.nodes.find((n) => n.id === id)?.status === 'running' ? 'is-current' : ''} ${run.nodes.find((n) => n.id === id)?.status === 'done' ? 'is-done' : ''}`}`,
         style: { width: 140 },
         sourcePosition: 'right' as Node['sourcePosition'],
         targetPosition: 'left' as Node['targetPosition'],
@@ -57,7 +68,7 @@ export function RunFlowGraph({
       ['aggregate', 'scene_reviser', 'P1'],
       ['scene_reviser', 'aggregate'],
       ['aggregate', 'micro_polisher', 'P2'],
-      ['micro_polisher', 'style', '复检'],
+      ['micro_polisher', 'ai_taste', '复检'],
       ['micro_polisher', 'hard_consistency', '复检'],
       ['human_gate', 'bible_update'],
       ['bible_update', 'commit'],
@@ -68,15 +79,18 @@ export function RunFlowGraph({
       target,
       label,
       animated:
-        source === active ||
-        target === active ||
-        run.nodes.some((n) => n.id === source && n.status === 'running'),
+        !plannedNodes.has(source) &&
+        !plannedNodes.has(target) &&
+        (source === active ||
+          target === active ||
+          run.nodes.some((n) => n.id === source && n.status === 'running')),
       type: 'smoothstep',
       markerEnd: { type: MarkerType.ArrowClosed, color: 'var(--text-dim)' },
       style: {
         stroke: source === active ? 'var(--ai)' : 'var(--text-dim)',
         opacity: source === active ? 1 : 0.45,
         strokeWidth: 1.5,
+        strokeDasharray: plannedNodes.has(source) || plannedNodes.has(target) ? '4 4' : undefined,
       },
       labelStyle: { fill: 'var(--text-dim)', fontSize: 10 },
       labelBgStyle: { fill: 'var(--panel)' },

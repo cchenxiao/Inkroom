@@ -48,7 +48,7 @@ export function seedRun(chapterId = 'ch7', branchId = 'main', version = 3): RunS
       input: '第七章 v3 · 受锁定约束的上下文',
       output:
         id === 'hard_consistency'
-          ? '1 个 P0 与 2 个 P1 待裁决'
+          ? '1 个 P0 与 1 个 P1 待裁决'
           : id === 'ai_taste'
             ? '检测到抽象情绪与套话'
             : '审阅完成；候选等待作者接受',
@@ -66,7 +66,7 @@ export const project: Project = {
   tone: '克制、潮湿、含蓄的紧张',
   pov: '第三人称限知 · 沈砚',
   tense: '过去时',
-  targetWords: 180000,
+  targetWords: 50000,
   logline: '旧河港的失踪案，把一名档案员与一位摆渡人的命运重新缠在一起。',
   coreConflict: '沈砚追查父亲沉船的真相，却发现证人都在保护同一个人。',
   currentChapterId: 'ch7',
@@ -345,7 +345,7 @@ export const findings: Finding[] = [
   {
     id: 'f-p1-clue',
     critic: 'reader',
-    severity: 'P1',
+    severity: 'P3',
     segmentId: 'ch7-s6',
     quote: '陆青将话题转向旧闸，没有解释暗号',
     evidenceRefs: ['foreshadow-button'],

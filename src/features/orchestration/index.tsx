@@ -37,7 +37,11 @@ export default function RunDrawer() {
   return (
     <section className={`run-drawer drawer-${ui.drawer}`}>
       <header className="run-drawer-header">
-        <button className="drawer-toggle" onClick={() => ui.setDrawer(open ? 'closed' : 'half')}>
+        <button
+          className="drawer-toggle"
+          aria-expanded={open}
+          onClick={() => ui.setDrawer(open ? 'closed' : 'half')}
+        >
           <Activity size={16} className={run.status === 'running' ? 'pulse' : ''} />
           <strong>{t.workbench}</strong>
           {open ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
@@ -46,8 +50,11 @@ export default function RunDrawer() {
           <i />
           {t.status[run.status]}
         </span>
-        <span className="drawer-current">{event?.data.message ?? zh.nodes[run.currentNode]}</span>
+        {open && (
+          <span className="drawer-current">{event?.data.message ?? zh.nodes[run.currentNode]}</span>
+        )}
         <span className="drawer-spacer" />
+        <span className="drawer-tokens mono">{run.tokens.toLocaleString()} tokens</span>
         <span className="rework-counter">
           {t.rounds}{' '}
           <b>
@@ -57,8 +64,7 @@ export default function RunDrawer() {
         <button
           className="drawer-conflicts"
           onClick={() => {
-            ui.setDrawer('half');
-            ui.setDrawerTab('findings');
+            ui.setAttention('conflicts');
           }}
         >
           <AlertTriangle size={13} />
@@ -146,7 +152,11 @@ export default function RunDrawer() {
                 {context ? (
                   <ContextManifestPanel runId={run.id} />
                 ) : (
-                  <NodeInspector run={run} selected={selected} />
+                  <NodeInspector
+                    run={run}
+                    selected={selected}
+                    currentVersion={data.chapter.draftVersion}
+                  />
                 )}
               </>
             ) : (

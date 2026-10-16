@@ -115,7 +115,11 @@ export function SegmentEditor({
   const annotationFindings = JSON.stringify(
     findings
       .filter((f) => f.status === 'open')
-      .map(({ id, quote, severity }) => ({ id, quote, severity })),
+      .map(({ id, quote, severity, critic }) => ({
+        id,
+        quote,
+        severity: critic === 'reader' ? 'P3' : severity,
+      })),
   );
   const heat = segment.styleStats.aiTaste;
   const extensions = useMemo(
@@ -158,6 +162,12 @@ export function SegmentEditor({
           const element = event.target as HTMLElement;
           const id = element.closest('[data-finding-id]')?.getAttribute('data-finding-id');
           if (id) handlers.current.onFinding(id);
+          else if (element.closest('.entity-mention'))
+            handlers.current.onSelection({
+              segmentId: segment.id,
+              quote: element.textContent ?? '',
+              action: 'bible',
+            });
           return false;
         },
       },

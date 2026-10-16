@@ -34,6 +34,7 @@ function mount() {
 }
 it('uses the supplied fractional range and names style distance accurately', async () => {
   mount();
+  await userEvent.click(screen.getByRole('tab', { name: '风格趋势' }));
   const charts = await screen.findAllByTestId('chart');
   const option = JSON.parse(charts[0].textContent!);
   expect(option.yAxis.max).toBe(1);
@@ -44,6 +45,7 @@ it('shows chapter structure and routes an overdue foreshadow to its planted evid
   mount();
   await screen.findByRole('heading', { name: '章节状态与结构' });
   expect(screen.getByRole('button', { name: '打开章节 夜谈' })).toBeInTheDocument();
+  await userEvent.click(screen.getByRole('tab', { name: '伏笔' }));
   const section = await screen.findByRole('region', { name: '逾期伏笔' });
   expect(within(section).getByText('铜扣的三道划痕')).toBeInTheDocument();
   await userEvent.click(within(section).getByRole('button', { name: '定位原文 铜扣的三道划痕' }));
@@ -52,9 +54,17 @@ it('shows chapter structure and routes an overdue foreshadow to its planted evid
 });
 it('opens the actual sample evidence from the experiment table', async () => {
   mount();
-  await screen.findAllByTestId('chart');
-  await userEvent.click(screen.getByRole('tab', { name: '对照实验' }));
+  await screen.findByRole('heading', { name: '章节状态与结构' });
+  await userEvent.click(screen.getByRole('tab', { name: '消融实验' }));
   await userEvent.click((await screen.findAllByRole('button', { name: '知识越界 · P0' }))[0]);
   const dialog = screen.getByRole('dialog');
   expect(within(dialog).getByText('他认出了那个从未见过的人')).toBeInTheDocument();
+});
+
+it('opens the selected AI heat value in its chapter manuscript', async () => {
+  mount();
+  await userEvent.click(screen.getByRole('tab', { name: 'AI味热区' }));
+  await userEvent.click(await screen.findByRole('button', { name: '查看原文热区 第2章 铜扣' }));
+  expect(useUIStore.getState().chapterId).toBe('ch2');
+  expect(useUIStore.getState().heatmap).toBe(true);
 });

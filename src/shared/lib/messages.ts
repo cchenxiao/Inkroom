@@ -5,11 +5,11 @@ export const zh = {
   tagline: '多线交织，故事生长',
   nav: {
     prepare: '创作准备',
-    workspace: '章节工作台',
+    workspace: '章节写作',
     review: '人工审核',
-    changes: '变更与冲突',
-    versions: '版本与分支',
-    reports: '全稿与评测',
+    changes: '变更冲突',
+    versions: '版本试写',
+    reports: '质量评测',
   },
   common: {
     loading: '正在载入…',

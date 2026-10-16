@@ -1,16 +1,44 @@
+import { plannedNodes } from '@/shared/lib/node-capabilities';
+import { studio } from '@/shared/lib/messages-studio';
 import { Badge, Empty } from '@/shared/ui';
 import { shellText as t } from '@/shared/lib/messages-shell';
 import { zh } from '@/shared/lib/messages';
 import type { RunNode, RunState } from '@/types/domain';
-export function NodeInspector({ run, selected }: { run: RunState; selected: RunNode | null }) {
+export function NodeInspector({
+  run,
+  selected,
+  currentVersion,
+}: {
+  run: RunState;
+  selected: RunNode | null;
+  currentVersion: number;
+}) {
   const node = run.nodes.find((n) => n.id === (selected ?? run.currentNode));
-  if (!node) return <Empty title={t.idle} />;
+  if (plannedNodes.has(selected ?? run.currentNode))
+    return (
+      <section className="node-inspector">
+        <div className="section-title">
+          {zh.nodes[selected ?? run.currentNode]} <Badge>{studio.planned}</Badge>
+        </div>
+        <p>{studio.planningNote}</p>
+      </section>
+    );
+  if (!node)
+    return (
+      <section className="node-inspector">
+        <Empty title={t.idle} />
+      </section>
+    );
   return (
     <section className="node-inspector">
       <div className="section-title">
         {t.trace}
         <Badge tone="ai">{zh.nodes[node.id]}</Badge>
       </div>
+      <p className="node-version-context">
+        {studio.reviewVersion} draft v{node.inputVersion} · {studio.currentVersion} v
+        {currentVersion}
+      </p>
       <dl>
         <dt>{t.input}</dt>
         <dd>{node.input}</dd>

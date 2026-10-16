@@ -1,9 +1,10 @@
+import { editorialPages as e } from '@/shared/lib/messages-editorial-pages';
 import { useState } from 'react';
 import { Waypoints } from 'lucide-react';
 import { useAction } from '@/shared/api/hooks';
 import { useUIStore } from '@/shared/lib/ui-store';
 import { pages as t } from '@/shared/lib/messages-pages';
-import { Button, Badge, Card, Field, Textarea } from '@/shared/ui';
+import { Button, Card, Field, Textarea } from '@/shared/ui';
 import type { Conflict, ConflictChoice } from '@/types/domain';
 import { resolveConflict, type ConflictDecision } from '../conflict';
 export default function ConflictCard({
@@ -24,9 +25,9 @@ export default function ConflictCard({
     <Card className="conflict-card">
       <div className="page-row">
         <h3>{conflict.title}</h3>
-        <Badge tone="danger">{conflict.field}</Badge>
+        <small title={conflict.field}>{conflict.field.split('.').at(-1)}</small>
       </div>
-      <div className="evidence-pair">
+      <div className="evidence-pair conflict-comparison">
         <div>
           <small>{t.changes.bible}</small>
           <p>{conflict.bibleSays}</p>
@@ -35,10 +36,11 @@ export default function ConflictCard({
           <small>{t.changes.manuscript}</small>
           <p>{conflict.manuscriptSays}</p>
         </div>
+        <div>
+          <small>{t.changes.evidence}</small>
+          <p>{conflict.witnessRefs.join(' · ') || e.changes.noEvidence}</p>
+        </div>
       </div>
-      <p className="quiet">
-        {t.changes.evidence} · {conflict.witnessRefs.join(' · ')}
-      </p>
       <div className="conflict-choices" role="group" aria-label={t.changes.choice}>
         {conflict.options.map((option) => (
           <Button

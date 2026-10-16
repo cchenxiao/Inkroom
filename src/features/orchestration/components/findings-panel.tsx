@@ -1,5 +1,4 @@
 import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { AlertTriangle, ArrowUpRight, LocateFixed } from 'lucide-react';
 import { Badge, Button, Empty } from '@/shared/ui';
 import { useAction } from '@/shared/api/hooks';
@@ -13,9 +12,17 @@ function FindingRow({ finding, version }: { finding: Finding; version: number })
   return (
     <div className="run-finding">
       <Badge
-        tone={finding.severity === 'P0' ? 'danger' : finding.severity === 'P1' ? 'warning' : 'info'}
+        tone={
+          finding.critic === 'reader'
+            ? 'muted'
+            : finding.severity === 'P0'
+              ? 'danger'
+              : finding.severity === 'P1'
+                ? 'warning'
+                : 'info'
+        }
       >
-        {finding.severity}
+        {finding.critic === 'reader' ? '建议' : finding.severity}
       </Badge>
       <div>
         <strong>
@@ -30,6 +37,7 @@ function FindingRow({ finding, version }: { finding: Finding; version: number })
         onClick={() => {
           ui.selectSegment(finding.segmentId);
           ui.selectFinding(finding.id);
+          ui.setDrawer('closed');
         }}
       >
         <LocateFixed size={15} />
@@ -57,7 +65,6 @@ function FindingRow({ finding, version }: { finding: Finding; version: number })
 }
 export function FindingsPanel({ data }: { data: ChapterDocument }) {
   const ui = useUIStore();
-  const navigate = useNavigate();
   const findings = data.findings.filter((f) => f.status === 'open');
   useEffect(() => {
     function key(e: KeyboardEvent) {
@@ -118,7 +125,7 @@ export function FindingsPanel({ data }: { data: ChapterDocument }) {
                 variant="danger"
                 onClick={() => {
                   ui.setDrawer('closed');
-                  navigate('/changes');
+                  ui.setAttention('conflicts');
                 }}
               >
                 {t.resolve}

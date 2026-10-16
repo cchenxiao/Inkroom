@@ -45,7 +45,7 @@ export function CommandPalette() {
                     ui.setChapter('ch7');
                     ui.setBranch('main');
                     ui.setPanel('left', true);
-                    ui.setPanel('right', true);
+                    ui.setPanel('right', false);
                     ui.setDrawer('closed');
                     navigate('/workspace');
                   },

@@ -12,6 +12,7 @@ import type {
   RunState,
 } from '../../types/domain';
 import { bible, branches, commits, project, seedDocuments, now } from './seed';
+import { migrateDemoWordTarget } from './presentation-migration';
 import { measureStyle } from './statistics';
 export interface BranchData {
   documents: Record<string, ChapterDocument>;
@@ -95,6 +96,7 @@ export function enablePersistence() {
       const value = JSON.parse(saved) as Database;
       if (value.project?.id === project.id && value.data?.main?.documents?.ch7) {
         db = value;
+        db.project = migrateDemoWordTarget(db.project, project);
         for (const data of Object.values(db.data))
           for (const doc of Object.values(data.documents)) {
             db.runs[doc.run.id] = doc.run;

@@ -2,6 +2,12 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { RunEvent, RunNode } from '@/types/domain';
 interface UIState {
+  theme: 'day' | 'night';
+  setTheme: (value: 'day' | 'night') => void;
+  attention: 'review' | 'conflicts' | null;
+  setAttention: (value: 'review' | 'conflicts' | null) => void;
+  navCollapsed: boolean;
+  setNavCollapsed: (value: boolean) => void;
   maxRounds: 2 | 3;
   setMaxRounds: (value: 2 | 3) => void;
   leftOpen: boolean;
@@ -38,10 +44,21 @@ interface UIState {
 export const useUIStore = create<UIState>()(
   persist(
     (set) => ({
+      theme: 'day',
+      setTheme: (theme) => set({ theme }),
+      attention: null,
+      setAttention: (attention) =>
+        set(
+          attention
+            ? { attention, drawer: 'closed', rightOpen: false, focus: false }
+            : { attention },
+        ),
+      navCollapsed: false,
+      setNavCollapsed: (navCollapsed) => set({ navCollapsed }),
       maxRounds: 2,
       setMaxRounds: (maxRounds) => set({ maxRounds }),
       leftOpen: true,
-      rightOpen: true,
+      rightOpen: false,
       focus: false,
       heatmap: true,
       commandOpen: false,
@@ -67,6 +84,7 @@ export const useUIStore = create<UIState>()(
       setChapter: (chapterId) =>
         set({
           chapterId,
+          attention: null,
           selectedSegment: null,
           selectedFinding: null,
           stale: false,
@@ -76,7 +94,15 @@ export const useUIStore = create<UIState>()(
           streamText: '',
         }),
       setBranch: (branchId) =>
-        set({ branchId, stale: false, runId: null, node: null, events: [], streamText: '' }),
+        set({
+          branchId,
+          attention: null,
+          stale: false,
+          runId: null,
+          node: null,
+          events: [],
+          streamText: '',
+        }),
       setStale: (stale) => set({ stale }),
       setRun: (runId) => set({ runId, events: [], streamText: '' }),
       addEvent: (event) =>
@@ -97,10 +123,19 @@ export const useUIStore = create<UIState>()(
     }),
     {
       name: 'inkloom-layout',
+      version: 2,
+      migrate: (persisted) => ({
+        ...(persisted as UIState),
+        rightOpen: false,
+        drawer: 'closed',
+        navCollapsed: false,
+      }),
       partialize: (s) => ({
+        theme: s.theme,
+        navCollapsed: s.navCollapsed,
         leftOpen: s.leftOpen,
         rightOpen: s.rightOpen,
-        drawer: s.drawer,
+
         heatmap: s.heatmap,
       }),
     },

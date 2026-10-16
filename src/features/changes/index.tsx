@@ -1,3 +1,4 @@
+import { editorialPages as e } from '@/shared/lib/messages-editorial-pages';
 import ChangePreviewDialog from './components/ChangePreviewDialog';
 import ConflictCard from './components/ConflictCard';
 import { useState } from 'react';
@@ -28,6 +29,9 @@ export default function ChangesPage() {
   const bible = useBible();
   const navigate = useNavigate();
   const stale = useUIStore((s) => s.stale);
+  const [tab, setTab] = useState('conflicts');
+  const [selectedConflict, setSelectedConflict] = useState<string | null>(null);
+  const [selectedChange, setSelectedChange] = useState<string | null>(null);
   const [mode, setMode] = useState<number | null>(null);
   const [targetType, setTargetType] = useState('characters');
   const [target, setTarget] = useState('');
@@ -112,6 +116,8 @@ export default function ChangesPage() {
     conflicts.data?.filter(
       (c) => c.status === 'open' && (!c.branchId || c.branchId === branchId),
     ) ?? [];
+  const activeConflict = openConflicts.find((c) => c.id === selectedConflict) ?? openConflicts[0];
+  const activeChange = changes.data?.find((c) => c.id === selectedChange) ?? changes.data?.[0];
   return (
     <main className="page-content changes-page">
       <PageHeader
@@ -119,152 +125,219 @@ export default function ChangesPage() {
         title={t.changes.title}
         description={t.changes.description}
       />
-      <div className="change-entry-grid">
-        {[GitCompareArrows, Pencil, MessageSquare].map((Icon, index) => (
-          <button
-            className="change-entry"
-            key={index}
-            disabled={!version}
-            onClick={() => open(index)}
-          >
-            <Icon size={20} />
-            <h3>{t.changes.entries[index]}</h3>
-            <p>{t.changes.entryDescriptions[index]}</p>
-            <ArrowUpRight size={15} />
-          </button>
-        ))}
-      </div>
-      {patchCreated && (
-        <Card className="page-row">
-          <span>
-            <Check size={14} />
-            {t.changes.created}
-          </span>
-          <Button onClick={() => navigate('/workspace')}>{t.changes.openPatch}</Button>
-        </Card>
-      )}
-      <section className="page-section">
-        <div className="section-title">
-          <h2>{t.changes.conflicts}</h2>
-          <Badge tone={openConflicts.length ? 'danger' : 'success'}>{openConflicts.length}</Badge>
-        </div>
-        <AsyncState
-          loading={conflicts.isLoading}
-          error={conflicts.error}
-          onRetry={() => conflicts.refetch()}
-        >
-          {openConflicts.length ? (
+      <div className="changes-layout">
+        <aside className="changes-queue">
+          <nav className="change-tabs" aria-label={e.changes.category}>
+            {[
+              ['conflicts', e.changes.conflicts, openConflicts.length],
+              ['entries', e.changes.entries, 3],
+              ['history', e.changes.history, changes.data?.length ?? 0],
+            ].map(([id, label, count]) => (
+              <button
+                key={id}
+                aria-current={tab === id ? 'page' : undefined}
+                onClick={() => setTab(String(id))}
+              >
+                {label}
+                <span>{count}</span>
+              </button>
+            ))}
+          </nav>
+          {tab === 'conflicts' &&
             openConflicts.map((conflict) => (
-              <ConflictCard
+              <button
+                className={`change-queue-item ${activeConflict?.id === conflict.id ? 'active' : ''}`}
                 key={conflict.id}
-                conflict={conflict}
-                version={version}
-                branchId={branchId}
-              />
-            ))
-          ) : (
-            <Card className="quiet">
-              <Check size={16} />
-              {t.changes.noConflicts}
+                onClick={() => setSelectedConflict(conflict.id)}
+              >
+                <small>
+                  {e.changes.conflict} · {conflict.field}
+                </small>
+                <strong>{conflict.title}</strong>
+              </button>
+            ))}
+          {tab === 'history' &&
+            changes.data?.map((change) => (
+              <button
+                className={`change-queue-item ${activeChange?.id === change.id ? 'active' : ''}`}
+                key={change.id}
+                onClick={() => setSelectedChange(change.id)}
+              >
+                <small>
+                  v{change.draftVersion} · {t.changes[change.status]}
+                </small>
+                <strong>{change.reason}</strong>
+              </button>
+            ))}
+          {tab === 'entries' && <p className="quiet">{e.changes.entryHint}</p>}
+        </aside>
+        <div className="changes-detail">
+          {tab === 'entries' && (
+            <section>
+              <div className="section-title">
+                <h2>{e.changes.start}</h2>
+              </div>
+              <div className="change-entry-grid">
+                {[GitCompareArrows, Pencil, MessageSquare].map((Icon, index) => (
+                  <button
+                    className="change-entry"
+                    key={index}
+                    disabled={!version}
+                    onClick={() => open(index)}
+                  >
+                    <Icon size={20} />
+                    <h3>{t.changes.entries[index]}</h3>
+                    <p>{t.changes.entryDescriptions[index]}</p>
+                    <ArrowUpRight size={15} />
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
+          {patchCreated && (
+            <Card className="page-row">
+              <span>
+                <Check size={14} />
+                {t.changes.created}
+              </span>
+              <Button onClick={() => navigate('/workspace')}>{t.changes.openPatch}</Button>
             </Card>
           )}
-        </AsyncState>
-      </section>
-      <section className="page-section">
-        <div className="section-title">
-          <h2>{t.changes.blast}</h2>
-          <Badge>{changes.data?.length ?? 0}</Badge>
-        </div>
-        <AsyncState
-          loading={changes.isLoading}
-          error={changes.error}
-          onRetry={() => changes.refetch()}
-          empty={!changes.data?.length}
-        >
-          {changes.data?.map((change) => (
-            <Card key={change.id} className="change-record">
-              <div className="page-row">
-                <div>
-                  <small>
-                    {new Date(change.createdAt).toLocaleString('zh-CN')} · v{change.draftVersion}
-                  </small>
-                  <h3>{change.reason}</h3>
-                </div>
-                <Badge
-                  tone={
-                    change.status === 'preview'
-                      ? 'human'
-                      : change.status === 'applied'
-                        ? 'success'
-                        : 'muted'
-                  }
-                >
-                  {t.changes[change.status]}
+          {tab === 'conflicts' && (
+            <section className="page-section">
+              <div className="section-title">
+                <h2>{t.changes.conflicts}</h2>
+                <Badge tone={openConflicts.length ? 'danger' : 'success'}>
+                  {openConflicts.length}
                 </Badge>
               </div>
-              <div className="propagation-steps">
-                {t.changes.phases.map((phase, i) => (
-                  <div
-                    key={phase}
-                    className={
-                      i < 2 ||
-                      (change.status === 'applied' &&
-                        ((i === 2 && change.conflicts.every((c) => c.status === 'resolved')) ||
-                          (i === 3 && change.blastRadius.every((r) => r.status === 'resolved'))))
-                        ? 'complete'
-                        : ''
-                    }
-                  >
-                    <span>{i + 1}</span>
-                    {phase}
-                  </div>
-                ))}
+              <AsyncState
+                loading={conflicts.isLoading}
+                error={conflicts.error}
+                onRetry={() => conflicts.refetch()}
+              >
+                {openConflicts.length ? (
+                  [activeConflict!].map((conflict) => (
+                    <ConflictCard
+                      key={conflict.id}
+                      conflict={conflict}
+                      version={version}
+                      branchId={branchId}
+                    />
+                  ))
+                ) : (
+                  <Card className="quiet">
+                    <Check size={16} />
+                    {t.changes.noConflicts}
+                  </Card>
+                )}
+              </AsyncState>
+            </section>
+          )}
+          {tab === 'history' && (
+            <section className="page-section">
+              <div className="section-title">
+                <h2>{t.changes.blast}</h2>
+                <Badge>{changes.data?.length ?? 0}</Badge>
               </div>
-              <div className="blast-counts">
-                {(['rewrite', 'review', 'orphan_foreshadow'] as const).map((level) => (
-                  <span key={level}>
-                    <strong>{change.blastRadius.filter((r) => r.level === level).length}</strong>
-                    {t.changes[level]}
-                  </span>
+              <AsyncState
+                loading={changes.isLoading}
+                error={changes.error}
+                onRetry={() => changes.refetch()}
+                empty={!changes.data?.length}
+              >
+                {(activeChange ? [activeChange] : []).map((change) => (
+                  <Card key={change.id} className="change-record">
+                    <div className="page-row">
+                      <div>
+                        <small>
+                          {new Date(change.createdAt).toLocaleString('zh-CN')} · v
+                          {change.draftVersion}
+                        </small>
+                        <h3>{change.reason}</h3>
+                      </div>
+                      <Badge
+                        tone={
+                          change.status === 'preview'
+                            ? 'human'
+                            : change.status === 'applied'
+                              ? 'success'
+                              : 'muted'
+                        }
+                      >
+                        {t.changes[change.status]}
+                      </Badge>
+                    </div>
+                    <div className="propagation-steps">
+                      {t.changes.phases.map((phase, i) => (
+                        <div
+                          key={phase}
+                          className={
+                            i < 2 ||
+                            (change.status === 'applied' &&
+                              ((i === 2 &&
+                                change.conflicts.every((c) => c.status === 'resolved')) ||
+                                (i === 3 &&
+                                  change.blastRadius.every((r) => r.status === 'resolved'))))
+                              ? 'complete'
+                              : ''
+                          }
+                        >
+                          <span>{i + 1}</span>
+                          {phase}
+                        </div>
+                      ))}
+                    </div>
+                    <div className="blast-counts">
+                      {(['rewrite', 'review', 'orphan_foreshadow'] as const).map((level) => (
+                        <span key={level}>
+                          <strong>
+                            {change.blastRadius.filter((r) => r.level === level).length}
+                          </strong>
+                          {t.changes[level]}
+                        </span>
+                      ))}
+                    </div>
+                    {change.blastRadius.map((ref) => (
+                      <button
+                        key={ref.id}
+                        className="impact-row"
+                        onClick={() => jump(ref.chapterId, ref.segmentId)}
+                      >
+                        <Badge
+                          tone={
+                            ref.level === 'rewrite'
+                              ? 'warning'
+                              : ref.level === 'orphan_foreshadow'
+                                ? 'foreshadow'
+                                : 'info'
+                          }
+                        >
+                          {t.changes[ref.level]}
+                        </Badge>
+                        <div>
+                          <strong>{ref.label}</strong>
+                          <p>
+                            {ref.chapterId} / {ref.sceneId} / {ref.segmentId} · {ref.reason}
+                          </p>
+                        </div>
+                        <Badge tone={ref.status === 'resolved' ? 'success' : 'muted'}>
+                          {ref.status === 'resolved' ? t.common.done : t.common.pending}
+                        </Badge>
+                        <ArrowUpRight size={14} />
+                      </button>
+                    ))}
+                    <Button variant="ghost" onClick={() => setPreview(change)}>
+                      {t.common.preview}
+                      <ArrowUpRight size={13} />
+                    </Button>
+                  </Card>
                 ))}
-              </div>
-              {change.blastRadius.map((ref) => (
-                <button
-                  key={ref.id}
-                  className="impact-row"
-                  onClick={() => jump(ref.chapterId, ref.segmentId)}
-                >
-                  <Badge
-                    tone={
-                      ref.level === 'rewrite'
-                        ? 'warning'
-                        : ref.level === 'orphan_foreshadow'
-                          ? 'foreshadow'
-                          : 'info'
-                    }
-                  >
-                    {t.changes[ref.level]}
-                  </Badge>
-                  <div>
-                    <strong>{ref.label}</strong>
-                    <p>
-                      {ref.chapterId} / {ref.sceneId} / {ref.segmentId} · {ref.reason}
-                    </p>
-                  </div>
-                  <Badge tone={ref.status === 'resolved' ? 'success' : 'muted'}>
-                    {ref.status === 'resolved' ? t.common.done : t.common.pending}
-                  </Badge>
-                  <ArrowUpRight size={14} />
-                </button>
-              ))}
-              <Button variant="ghost" onClick={() => setPreview(change)}>
-                {t.common.preview}
-                <ArrowUpRight size={13} />
-              </Button>
-            </Card>
-          ))}
-        </AsyncState>
-      </section>
+              </AsyncState>
+            </section>
+          )}
+        </div>
+      </div>
       <Modal
         open={mode !== null}
         onOpenChange={(open) => {
@@ -385,3 +458,5 @@ export default function ChangesPage() {
     </main>
   );
 }
+
+export { default as ConflictCard } from './components/ConflictCard';

@@ -52,6 +52,11 @@ it('shows generated suggestions as an unapplied preview before author confirmati
     </QueryClientProvider>,
   );
   await screen.findByDisplayValue('浊流');
+  expect(screen.queryByRole('heading', { name: '人物、世界与风格' })).not.toBeInTheDocument();
+  await userEvent.click(screen.getByRole('button', { name: /风格/ }));
+  expect(screen.queryByDisplayValue('浊流')).not.toBeInTheDocument();
+  await userEvent.click(screen.getByRole('button', { name: /立意/ }));
+  expect(screen.getByDisplayValue('浊流')).toBeInTheDocument();
   await userEvent.click(screen.getByRole('button', { name: '生成候选建议' }));
   const dialog = screen.getByRole('dialog');
   await userEvent.click(within(dialog).getByRole('button', { name: '生成候选建议' }));

@@ -14,14 +14,16 @@ export function StreamingCandidate({ segmentId, runId }: { segmentId: string; ru
   if (!delta) return null;
   return (
     <aside className={`streaming-candidate ${live ? 'is-streaming' : ''}`} aria-live="polite">
-      <span>
-        <Sparkles size={13} />
-        {live ? m.streaming : m.streamReady}
-      </span>
-      <p>
-        {delta.data.text}
-        {live && <i className="stream-cursor" />}
-      </p>
+      <details open={live || undefined}>
+        <summary>
+          <Sparkles size={13} />
+          {live ? m.streaming : m.streamReady}
+        </summary>
+        <p>
+          {delta.data.text}
+          {live && <i className="stream-cursor" />}
+        </p>
+      </details>
     </aside>
   );
 }
