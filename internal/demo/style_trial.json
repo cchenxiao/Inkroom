@@ -1,0 +1,66 @@
+{
+  "source": {
+    "version": 1,
+    "digest": "3bfdbfbaad2c62144b8de37b712657c9a8980e34e4dd4bb8144c9762041404e0",
+    "intake": {
+      "premise": "两位修钟人为保住老店合作，逐渐学会接受彼此的帮助。",
+      "genres": "都市 / 人物关系",
+      "targetWords": "24000 字",
+      "narrative": "第三人称限知，过去时",
+      "preferences": "不堆梗，允许人物立场产生轻微幽默",
+      "references": [],
+      "packs": []
+    },
+    "effectivePacks": []
+  },
+  "selection": {
+    "version": 1,
+    "inputVersion": 1,
+    "inputDigest": "3bfdbfbaad2c62144b8de37b712657c9a8980e34e4dd4bb8144c9762041404e0",
+    "jobId": "",
+    "candidateVersion": 0,
+    "candidateIndex": -1,
+    "direction": {
+      "title": "教学方向 · 修钟人的星期天",
+      "logline": "两位修钟人为保住老店合作，逐渐学会接受彼此的帮助。",
+      "coreConflict": "两人需要合作修钟，却都坚持自己的办法。",
+      "characterDilemma": "林舟想独自承担，又需要许宁的帮助。",
+      "readerAppeal": "从具体动作与立场碰撞看见关系变化。",
+      "tone": "克制、温和，可以有处境反差。",
+      "narrative": "第三人称限知，过去时，固定林舟视角。",
+      "tradeoff": "集中一段人物关系，不靠扩大事件规模推动。"
+    },
+    "createdAt": "2026-10-16T00:00:00Z"
+  },
+  "beat": {
+    "summary": "教学临时场景：林舟在钟表店内寻找落地的弹簧，许宁递来手电筒，两人一起寻找。",
+    "facts": [
+      "店里只有林舟和许宁。",
+      "钟表店暂未修好的挂钟不会突然报时。",
+      "林舟只能观察许宁的动作与听到的言语，不能直接知道许宁内心。"
+    ],
+    "outcome": "林舟接过手电筒，两人继续找弹簧；本段不找到弹簧，也不修好钟。",
+    "pov": "第三人称限知，林舟视角",
+    "tense": "过去时"
+  },
+  "variants": [
+    {
+      "id": "restrained",
+      "label": "动作与留白",
+      "instructions": "少解释情绪，用短句、物件和停顿呈现林舟接受帮助的迟疑；对白少而有余地。",
+      "anchorText": "",
+      "bannedPhrases": [
+        "一股难以言喻的情绪涌上心头"
+      ]
+    },
+    {
+      "id": "gentle-humor",
+      "label": "对白与轻微反差",
+      "instructions": "让对白推动动作，允许从两人的做事方法中产生轻微幽默；保留关系中的迟疑，不增加笑话或改变结果。",
+      "anchorText": "",
+      "bannedPhrases": [
+        "嘴角勾起一抹冷笑"
+      ]
+    }
+  ]
+}

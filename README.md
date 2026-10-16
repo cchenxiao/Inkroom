@@ -8,6 +8,14 @@
 
 新作品保存在此浏览器的 Mock 存储中，可手动试写和建立隔离分支；尚未接入 Go 的 Agent、评审、变更传播与合并。原《浊流》的六页和 Go 试运行入口保留。详见 [作品层说明](docs/library-demo.md)。
 
+## M0.2a：同场景试笔核心
+
+```bash
+INKLOOM_MODEL=fake go run ./cmd/inkloom -style-trial internal/demo/style_trial.json
+```
+
+同一份临时场景、两套风格要求，返回试笔候选和未校准的程序统计。Fake 仅回显场景用于验证管线；真实生成使用现有 DeepSeek 配置。CLI 不写正文或知识库；页面已接入准备区的试笔对照与 StyleProfile 采用。详见 [试笔说明](docs/style-trial.md)。
+
 ## Go 后端：当前进度 I0–I7
 
 Go 1.24.1+，Eino 固定为 v0.9.21。在项目根目录运行：
@@ -551,6 +559,8 @@ go run ./cmd/inkloom -knowledge-import /absolute/path/publication.json
 
 ### M0.1a · 作品方向规划
 
-入口：**创作准备 → 立意**。保存一句想法，生成 2–3 个方向，编辑并选定；也可直接填写已有方向。当前独立保存到 Go/PostgreSQL 的 `zhuoliu/main`，原 Mock 设定已折叠显示。参考作品和创作提示模板可选，联网搜索与同场景试笔尚未接入。
+入口：**创作准备 → 立意**。保存一句想法，生成 2–3 个方向，编辑并选定；也可直接填写已有方向。当前独立保存到 Go/PostgreSQL 的 `zhuoliu/main`，原 Mock 设定已折叠显示。参考作品和创作提示模板可选；联网搜索尚未接入，同场景试笔见 M0.2。
 
 本阶段学习重点是 Agent 的结构化输出、异步任务、冻结输入和作者采用事务。修改立意会使旧候选不能采用，旧选择进入待复核；重启不会自动重发模型请求。接口与阅读顺序见 [作品规划接口](docs/backend-planning-api.md)。启动命令不变，已有数据库自动执行迁移 009。
+
+M0.2b 页面入口：**创作准备 → 风格**。先在立意区确认方向，再生成同场景双样本；也可直接提供范文。锚文本和风格规矩一起保存到 PG，旧方向需复核，尚不自动写入章节。详见 [试笔说明](docs/style-trial.md)。

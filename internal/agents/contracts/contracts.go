@@ -32,3 +32,6 @@ var ReviserSchema []byte
 
 //go:embed tone_director.v1.json
 var ToneDirectionSchema []byte
+
+//go:embed trial_writer.v1.json
+var TrialWriterSchema []byte

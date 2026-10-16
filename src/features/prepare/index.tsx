@@ -1,3 +1,6 @@
+import { usePlanning } from './hooks/usePlanning';
+import BackendStyleTrial from './components/BackendStyleTrial';
+import { styleTrialMessages } from '@/shared/lib/messages-style-trial';
 import BackendPlanning from './components/BackendPlanning';
 import { planningMessages } from '@/shared/lib/messages-planning';
 import { editorialPages as e } from '@/shared/lib/messages-editorial-pages';
@@ -27,6 +30,8 @@ import type { ChangeSet, Project } from '@/types/domain';
 import './prepare.css';
 export default function PreparePage() {
   const project = useProject();
+  const planning = usePlanning();
+  const projectId = useUIStore((s) => s.projectId);
   const bible = useBible();
   const tree = useTree();
   const chapter = useChapter();
@@ -55,9 +60,11 @@ export default function PreparePage() {
   const apply = useAction<ChangeSet, unknown>(`/changesets/${preview?.id ?? ''}/apply`);
   const value = { ...project.data, ...form } as Project;
   const version = chapter.data?.chapter.draftVersion ?? 0;
+  const realPlanning = projectId === 'project-zhuoliu' && branchId === 'main';
+  const planningState = planning.data;
   const sectionReady: Record<string, boolean> = {
-    premise: false,
-    style: Boolean(bible.data?.style.anchorText),
+    premise: Boolean(realPlanning && planningState?.selection && planningState.selection.inputVersion === planningState.input.version),
+    style: realPlanning ? Boolean(planningState?.styleSelection && planningState.styleSelection.inputVersion === planningState.input.version && planningState.styleSelection.directionVersion === planningState.directionVersion) : Boolean(bible.data?.style.anchorText),
     world: Boolean(bible.data?.characters.length && bible.data.rules.length),
     outline: Boolean(tree.data?.length && tree.data.every((item) => item.scenes.length)),
   };
@@ -106,7 +113,7 @@ export default function PreparePage() {
             <span className="page-eyebrow">
               {section === 'knowledge' ? e.prepare.sources : e.prepare.preparation}
             </span>
-            {section !== 'knowledge' && section !== 'premise' && (
+            {section !== 'knowledge' && section !== 'premise' && section !== 'style' && (
               <div className="page-actions">
                 <Button variant="ghost" size="sm" onClick={() => setImportOpen(true)}>
                   <Upload size={14} />
@@ -126,6 +133,7 @@ export default function PreparePage() {
           </div>
           {section === 'knowledge' && <BackendKnowledge />}
           {section === 'premise' && <BackendPlanning />}
+          {section === 'style' && <BackendStyleTrial />}
           <AsyncState
             loading={project.isLoading || bible.isLoading || tree.isLoading}
             error={project.error ?? bible.error ?? tree.error}
@@ -251,7 +259,8 @@ export default function PreparePage() {
                   </details>
                 )}
                 {bible.data && ['style', 'world'].includes(section) && (
-                  <section className="page-section">
+                  <details className="planning-mock" open={section === 'world' || undefined}>
+                    <summary>{section === 'style' ? styleTrialMessages.mock : t.prepare.bible}</summary>
                     <div className="section-title">
                       <h2>{section === 'style' ? t.bible.tabs.style : t.prepare.bible}</h2>
                       <small>{t.common.note}</small>
@@ -448,7 +457,7 @@ export default function PreparePage() {
                         </Card>
                       )}
                     </div>
-                  </section>
+                  </details>
                 )}
                 {section === 'outline' && (
                   <section className="page-section">

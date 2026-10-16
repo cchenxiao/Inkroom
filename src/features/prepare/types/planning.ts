@@ -1,3 +1,4 @@
+import type { StyleTrialJob, StyleSelection } from './style-trial';
 export interface PlanningIntake {
   premise: string;
   genres: string;
@@ -60,6 +61,9 @@ export interface DirectionSelection {
   createdAt: string;
 }
 export interface PlanningState {
+  styleVersion: number;
+  styleJobs: StyleTrialJob[];
+  styleSelection: StyleSelection | null;
   input: PlanningInput;
   directionVersion: number;
   selection: DirectionSelection | null;

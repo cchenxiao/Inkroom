@@ -174,14 +174,14 @@ func (s *Store) SelectPlanningDirection(ctx context.Context, scope string, r pla
 
 // 一致性读：头、输入与选择共享同一个数据库快照，避免拼出跨版本页面。
 func (s *Store) GetPlanning(ctx context.Context, scope string) (planning.State, error) {
-	state := planning.State{Jobs: []planning.Job{}, Packs: planning.Catalog()}
+	state := planning.State{StyleJobs: []planning.StyleJob{}, Jobs: []planning.Job{}, Packs: planning.Catalog()}
 	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead, AccessMode: pgx.ReadOnly})
 	if err != nil {
 		return state, err
 	}
 	defer tx.Rollback(context.Background())
 	var iv int
-	err = tx.QueryRow(ctx, "SELECT input_version,direction_version FROM planning_heads WHERE scope=$1", scope).Scan(&iv, &state.DirectionVersion)
+	err = tx.QueryRow(ctx, "SELECT input_version,direction_version,style_version FROM planning_heads WHERE scope=$1", scope).Scan(&iv, &state.DirectionVersion, &state.StyleVersion)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return state, nil
 	}
@@ -229,6 +229,9 @@ func (s *Store) GetPlanning(ctx context.Context, scope string) (planning.State, 
 	err = rows.Err()
 	rows.Close()
 	if err != nil {
+		return state, err
+	}
+	if err = readStylePlanning(ctx, tx, scope, &state); err != nil {
 		return state, err
 	}
 	return state, tx.Commit(ctx)

@@ -65,6 +65,8 @@ func Serve(ctx context.Context) error {
 	mux.HandleFunc("PATCH /api/planning/intake", s.savePlanning)
 	mux.HandleFunc("POST /api/planning/jobs", s.generatePlanning)
 	mux.HandleFunc("POST /api/planning/selection", s.selectPlanning)
+	mux.HandleFunc("POST /api/planning/style-trials", s.generateStyleTrial)
+	mux.HandleFunc("POST /api/planning/style-selection", s.selectStyle)
 	mux.HandleFunc("GET /api/knowledge", s.knowledgeSnapshot)
 	mux.HandleFunc("GET /api/memory/search", s.searchMemory)
 	mux.HandleFunc("POST /api/runs", s.start)

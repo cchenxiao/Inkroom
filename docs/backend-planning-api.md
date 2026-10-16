@@ -1,4 +1,4 @@
-# M0.1a 作品方向规划接口
+# 作品规划接口（M0.1a / M0.2b）
 
 本阶段实现“一句立意 → 候选 → 作者编辑选定 → 持久化”。浏览器入口为 **创作准备 → 立意**。沿用现有 Go 服务配置，`fake` 验证流程，`deepseek` 使用本地配置的模型。与原有 Mock 设定分开；当前只支持 `zhuoliu/main`，未接试写分支，选定方向不会自动写入章节或知识库。
 
@@ -8,7 +8,7 @@ Go 前缀 `/api`；Vite 前端通过 `/go-api` 代理。所有写操作要求 JS
 
 | 方法与路径 | 请求 | 响应 |
 | --- | --- | --- |
-| GET /planning | 无 | 当前 input、directionVersion、selection、最近 20 次 jobs、可选 packs |
+| GET /planning | 无 | 当前 input、directionVersion、selection、最近 20 次 jobs、可选 packs，以及 styleVersion、styleSelection、最近 20 次 styleJobs |
 | PATCH /planning/intake | `{expectedVersion, intake}`，首次版本 0 | 新 InputSnapshot，版本 +1 |
 | POST /planning/jobs | `{requestId, expectedInputVersion}` | 202 Job；相同 ID/版本重试返回原任务，不重复执行 |
 | POST /planning/selection | `{expectedInputVersion, expectedDirectionVersion, jobId, candidateVersion, candidateIndex, direction}` | 作者选定的新 DirectionSelection |
@@ -37,4 +37,21 @@ Go 前缀 `/api`；Vite 前端通过 `/go-api` 代理。所有写操作要求 JS
 4. `internal/server/planning.go`：202 + 后台任务 + 页面轮询，HTTP 请求不等待几十秒的模型生成；断开页面不会直接取消任务。
 5. `internal/storage/postgres/planning.go`：行锁与版本比较保证“读到的版本”和“提交时的版本”一致；模型不决定谁有权覆盖作者选择。
 
-下一步 M0.2：同一临时场景生成两个试笔样本，作者选锚文本，形成独立版本的 StyleProfile；不会提前开始全书正文生成。
+下一步 M0.3：基于已确认方向与风格生成核心人物/世界设定候选，仍需作者确认。
+
+## M0.2b 试笔与风格
+
+| 方法与路径 | 请求 | 响应 |
+| --- | --- | --- |
+| POST /planning/style-trials | `{requestId, expectedInputVersion, expectedDirectionVersion, beat, variants}` | 202 StyleJob，相同 ID 和请求返回原任务 |
+| POST /planning/style-selection | `{expectedInputVersion, expectedDirectionVersion, expectedStyleVersion, sourceStyleVersion?, jobId, candidateVersion, variantId, anchorText, rules}` | 新 StyleSelection，锚文本与风格版本同时 +1 |
+
+- `beat`：summary / facts[] / outcome / pov / tense。`variants` 恰好两项，含 id / label / instructions / anchorText / bannedPhrases[]。正式立意和方向不接受浏览器传入，仓储读取后冻结。
+- `StyleJob`：id / version=1 / request / report / promptVersion / schemaVersion / createdAt。report 保留 input、inputDigest、status、model、samples、calls、usage、message。GET /planning 同快照读取版本和当前采用，分别返回最近 20 次方向/试笔任务。
+- `rules`：pov、tense 为硬叙述约束；tone、sentenceLength `{min,max}`（字/句）、dialogueRatio `{min,max}`（0–1）、bannedPhrases[]、styleArc。数字为作者软目标，不是校准结果。
+- 从试笔采用需任务 completed、样本存在且 input/direction/candidate 版本匹配。直接提供范文使用 jobId=""、candidateVersion=0、variantId=""；仍检查当前方向是否基于当前立意。
+- 编辑/复核已保存风格使用 sourceStyleVersion=当前风格版本，jobId/candidateVersion/variantId 必须与原档案完全一致。新档案保留来源链，允许作者显式将旧方向的范文复核到新方向；原模型样本不变。
+- StyleSelection 保存 version、anchorVersion、inputVersion、directionVersion、sourceStyleVersion、jobId、candidateVersion、variantId、anchorText、rules、createdAt。过期写入返回 409；前端保留作者文字，要求重新核对。
+- 启动去重比较全部临时材料；单作品最多一个试笔任务，最多 4 次模型调用，整体 2 分钟。中断不自动重跑。调用记录按实际 call number 持久化。
+
+原 `docs/frontend-api.md` Mock/章节契约不变；上述接口属于独立 Go 规划区。

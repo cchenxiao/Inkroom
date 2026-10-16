@@ -30,6 +30,9 @@ function initial(): PlanningState {
   };
   return {
     input,
+    styleVersion: 0,
+    styleJobs: [],
+    styleSelection: null,
     directionVersion: 0,
     selection: null,
     packs: [],
