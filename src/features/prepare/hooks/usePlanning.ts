@@ -10,6 +10,7 @@ export function usePlanning() {
     queryFn: ({ signal }) => planningApi.get(signal),
     retry: false,
     refetchInterval: (query) =>
+      query.state.data?.chapterPlanJobs?.some((j) => j.status === 'running') ||
       query.state.data?.outlineJobs?.some((j) => j.status === 'running') ||
       query.state.data?.coreJobs?.some((j) => j.status === 'running') ||
       query.state.data?.jobs.some((j) => j.status === 'running') ||

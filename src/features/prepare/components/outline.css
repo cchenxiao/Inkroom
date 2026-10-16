@@ -77,3 +77,31 @@
   display: grid;
   gap: 8px;
 }
+.chapter-plan-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.chapter-plan-beat {
+  display: grid;
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.chapter-plan-brief {
+  margin-top: 16px;
+}
+.chapter-plan-summary {
+  display: grid;
+  gap: 12px;
+  margin-block: 16px;
+}
+
+.chapter-planning-stack {
+  display: grid;
+  gap: 32px;
+}
+.chapter-planning-stack > section + section {
+  border-top: 1px solid var(--border);
+  padding-top: 24px;
+}

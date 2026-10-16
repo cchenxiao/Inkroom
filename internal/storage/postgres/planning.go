@@ -174,7 +174,7 @@ func (s *Store) SelectPlanningDirection(ctx context.Context, scope string, r pla
 
 // 一致性读：头、输入与选择共享同一个数据库快照，避免拼出跨版本页面。
 func (s *Store) GetPlanning(ctx context.Context, scope string) (planning.State, error) {
-	state := planning.State{OutlineJobs: []planning.OutlineJob{}, CoreJobs: []planning.CoreJob{}, StyleJobs: []planning.StyleJob{}, Jobs: []planning.Job{}, Packs: planning.Catalog()}
+	state := planning.State{ChapterPlans: []planning.ChapterPlanSelection{}, ChapterPlanJobs: []planning.ChapterPlanJob{}, OutlineJobs: []planning.OutlineJob{}, CoreJobs: []planning.CoreJob{}, StyleJobs: []planning.StyleJob{}, Jobs: []planning.Job{}, Packs: planning.Catalog()}
 	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead, AccessMode: pgx.ReadOnly})
 	if err != nil {
 		return state, err
@@ -235,6 +235,9 @@ func (s *Store) GetPlanning(ctx context.Context, scope string) (planning.State, 
 		return state, err
 	}
 	if err = readCorePlanning(ctx, tx, scope, &state); err != nil {
+		return state, err
+	}
+	if err = readChapterPlanPlanning(ctx, tx, scope, &state); err != nil {
 		return state, err
 	}
 	if err = readOutlinePlanning(ctx, tx, scope, &state); err != nil {

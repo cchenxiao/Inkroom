@@ -44,3 +44,6 @@ var CorePlannerSchema []byte
 
 //go:embed story_architect.v1.json
 var StoryArchitectSchema []byte
+
+//go:embed showrunner.v1.json
+var ShowrunnerSchema []byte

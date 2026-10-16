@@ -1,3 +1,4 @@
+import type { ChapterPlanJob, ChapterPlanSelection } from './chapter-plan';
 import type { OutlineJob, OutlineSelection } from './outline';
 import type { CoreJob, CoreSelection } from './core-settings';
 import type { StyleTrialJob, StyleSelection } from './style-trial';
@@ -63,6 +64,8 @@ export interface DirectionSelection {
   createdAt: string;
 }
 export interface PlanningState {
+  chapterPlans?: ChapterPlanSelection[];
+  chapterPlanJobs?: ChapterPlanJob[];
   outlineVersion?: number;
   outlineSelection?: OutlineSelection | null;
   outlineJobs?: OutlineJob[];

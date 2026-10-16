@@ -1,0 +1,143 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "scenes",
+    "brief"
+  ],
+  "properties": {
+    "scenes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "title",
+          "goal",
+          "conflict",
+          "outcome",
+          "povCharacterId",
+          "characterIds",
+          "storyTime",
+          "beats"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 150
+          },
+          "goal": {
+            "type": "string",
+            "maxLength": 600
+          },
+          "conflict": {
+            "type": "string",
+            "maxLength": 600
+          },
+          "outcome": {
+            "type": "string",
+            "maxLength": 600
+          },
+          "povCharacterId": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "characterIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 80
+            },
+            "minItems": 1,
+            "maxItems": 3
+          },
+          "storyTime": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "beats": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "id",
+                "title",
+                "action",
+                "turn"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "maxLength": 80
+                },
+                "title": {
+                  "type": "string",
+                  "maxLength": 150
+                },
+                "action": {
+                  "type": "string",
+                  "maxLength": 600
+                },
+                "turn": {
+                  "type": "string",
+                  "maxLength": 600
+                }
+              }
+            },
+            "minItems": 1,
+            "maxItems": 4
+          }
+        }
+      },
+      "minItems": 1,
+      "maxItems": 4
+    },
+    "brief": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "selectedBeatId",
+        "mustHappen",
+        "cannotChange",
+        "reveal",
+        "withhold",
+        "writingGuidance"
+      ],
+      "properties": {
+        "selectedBeatId": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "mustHappen": {
+          "type": "string",
+          "maxLength": 900
+        },
+        "cannotChange": {
+          "type": "string",
+          "maxLength": 900
+        },
+        "reveal": {
+          "type": "string",
+          "maxLength": 900
+        },
+        "withhold": {
+          "type": "string",
+          "maxLength": 900
+        },
+        "writingGuidance": {
+          "type": "string",
+          "maxLength": 900
+        }
+      }
+    }
+  }
+}

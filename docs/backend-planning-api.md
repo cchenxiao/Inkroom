@@ -70,3 +70,8 @@ M0.3 已接入核心人物/世界设定候选与作者确认，详见下方 M0.3
 ## M0.4a 全书章纲
 
 `GET /planning` 增加 outlineVersion/outlineSelection/outlineJobs。新增 `POST /planning/outline-jobs` 与 `POST /planning/outline-selection`，分别生成与保存章纲；绑定单独版本化并与章纲原子保存。四个上游版本和章纲版本均校验，未确认设定不进入模型材料。完整字段与边界见 [全书章纲](outline.md)。迁移 013 自动执行。
+
+
+## M0.4b 当前章细纲与 Brief
+
+`GET /planning` 增加 chapterPlans/chapterPlanJobs。新增 `POST /planning/chapter-plan-jobs` 与 `POST /planning/chapter-plan-selection`，冻结有效已确认章纲，生成单章场景/Beat/Brief 候选，按稳定章节 ID 递增作者版本。迁移 014 自动执行；候选与确认均不发布正文或正式知识。完整字段和边界见 [细纲说明](chapter-plan.md)。

@@ -54,7 +54,7 @@ func render(in model.Input, candidate string) (model.Input, error) {
 	switch name {
 	case "style_analyst":
 		in.Temperature = 0.2
-	case "core_planner", "story_architect":
+	case "core_planner", "story_architect", "showrunner":
 		in.Temperature = 0.6
 	case "tone_director":
 		in.Temperature = 0.8

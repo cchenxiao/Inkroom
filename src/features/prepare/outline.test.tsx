@@ -158,7 +158,7 @@ it('keeps chapter IDs and bindings through reordering and requires an explicit v
   expect(saves).toBe(0);
   const purpose = screen.getByLabelText('本章目的');
   await user.clear(purpose);
-  await user.type(purpose, '字'.repeat(201));
+  await user.paste('字'.repeat(201));
   expect(screen.getByRole('alert')).toHaveTextContent('本章目的：内容过长');
   expect(screen.getByRole('button', { name: '保存草稿' })).toBeDisabled();
   await user.clear(purpose);

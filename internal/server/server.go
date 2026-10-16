@@ -62,6 +62,8 @@ func Serve(ctx context.Context) error {
 	go func() { defer s.workers.Done(); events.Dispatch(root, repo, s.hub) }()
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /api/planning/outline-jobs", s.generateOutline)
+	mux.HandleFunc("POST /api/planning/chapter-plan-jobs", s.generateChapterPlan)
+	mux.HandleFunc("POST /api/planning/chapter-plan-selection", s.saveChapterPlan)
 	mux.HandleFunc("POST /api/planning/outline-selection", s.saveOutline)
 	mux.HandleFunc("POST /api/planning/core-jobs", s.generateCoreSettings)
 	mux.HandleFunc("POST /api/planning/core-selection", s.saveCoreSettings)

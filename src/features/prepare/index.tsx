@@ -1,3 +1,4 @@
+import BackendChapterPlan from './components/BackendChapterPlan';
 import BackendOutline from './components/BackendOutline';
 import { outlineMessages } from '@/shared/lib/messages-outline';
 import { planningVersions, sameVersions, outlineReady } from './types/outline';
@@ -124,7 +125,12 @@ export default function PreparePage() {
           {section === 'premise' && <BackendPlanning />}
           {section === 'style' && <BackendStyleTrial />}
           {section === 'world' && <BackendCoreSettings />}
-          {section === 'outline' && <BackendOutline />}
+          {section === 'outline' && (
+            <div className="chapter-planning-stack">
+              <BackendOutline />
+              <BackendChapterPlan />
+            </div>
+          )}
           <AsyncState
             loading={project.isLoading || bible.isLoading || tree.isLoading}
             error={project.error ?? bible.error ?? tree.error}
