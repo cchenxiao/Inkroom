@@ -1,8 +1,10 @@
 export const chapterPublicationMessages = {
+  localFacts:
+    '该章稿已定稿。下方保留本窗口的事实文字，可复制或放弃本地修改；不能继续改写此定稿版本。',
   title: '整章定稿',
   note: '冻结本版完整正文、复审与作者确认。后续修改保留为新版本。',
   facts: '本章事实核对',
-  none: '我已核对，没有待同步的新增事实或设定冲突',
+  none: '我已核对，新增事实已逐条决定，没有遗留冲突',
   pending: '有新增事实或设定冲突待处理',
   factsRequired: '请先核对本章事实。',
   factsBlocked:
@@ -21,6 +23,8 @@ export const chapterPublicationMessages = {
   receipt: '定稿回执',
   version: '定稿版本',
   assembly: '章稿版本',
+  reviewedFacts: '已将逐条确认结果保存为章末事实包；未改写本章输入知识。',
+  noKnowers: '未声明角色知情',
   authorFacts: '事实边界：作者确认无待同步事实；未执行自动事实抽取。',
   next: '下一章的前情交接尚未接入。',
 };

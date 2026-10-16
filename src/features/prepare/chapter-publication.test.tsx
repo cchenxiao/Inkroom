@@ -1,4 +1,4 @@
-import { afterAll, afterEach, beforeAll, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, expect, it } from 'vitest';
 import { useState } from 'react';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { PendingWritingProvider, useWritingPending } from '@/shared/lib/pending-writing';
@@ -25,6 +25,13 @@ function OtherEdit() {
 }
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
+beforeEach(() =>
+  server.use(
+    http.get('*/go-api/planning/chapter-reviews/:id/facts', () =>
+      HttpResponse.json({ job: null, selection: null, current: true, published: false, block: '' }),
+    ),
+  ),
+);
 afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 it('requires fact confirmation and preserves the exact request across uncertain delivery and stale response', async () => {

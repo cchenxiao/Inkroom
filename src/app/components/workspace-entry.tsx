@@ -5,7 +5,7 @@ import { isLiveWorkspace, liveWorkspacePath } from '@/shared/lib/writing-mode';
 import { liveWriting as t } from '@/shared/lib/messages-live-writing';
 import { AsyncState } from '@/shared/ui';
 import { BookFeature } from './book-feature';
-const PlannedWorkspace = lazy(() => import('@/features/prepare/PlannedWorkspace'));
+const WritingWorkspace = lazy(() => import('../writing/writing-workspace'));
 const DemoWorkspace = lazy(() => import('@/features/workspace'));
 export default function WorkspaceEntry() {
   const { pathname, search } = useLocation();
@@ -14,7 +14,7 @@ export default function WorkspaceEntry() {
   if (isLiveWorkspace(pathname, search, project, branch))
     return (
       <Suspense fallback={<AsyncState loading />}>
-        <PlannedWorkspace />
+        <WritingWorkspace />
       </Suspense>
     );
   return (

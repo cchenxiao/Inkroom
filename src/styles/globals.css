@@ -13,11 +13,12 @@ body,
   width: 100%;
   font-family: var(--font-ui);
   font-size: 13px;
+  font-variant-numeric: tabular-nums;
   background: var(--bg);
   color: var(--text);
 }
 body {
-  min-width: 1000px;
+  min-width: 360px;
 }
 button,
 input,
@@ -82,7 +83,9 @@ svg {
   flex-shrink: 0;
 }
 .mono {
-  font-family: var(--font-mono);
+  font-family: var(--font-ui);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: normal;
 }
 .muted {
   color: var(--text-dim);
@@ -780,4 +783,92 @@ input[type='checkbox'] {
   background: color-mix(in srgb, var(--success) 6%, transparent);
   color: color-mix(in srgb, var(--text) 75%, var(--success));
   border-left: 2px solid color-mix(in srgb, var(--success) 45%, transparent);
+}
+
+/* Shared reading hierarchy and action states. */
+.stat-number {
+  font-family: var(--font-ui);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: normal;
+  white-space: nowrap;
+}
+.empty-state-compact {
+  min-height: 0;
+  padding: var(--space-4);
+  gap: var(--space-2);
+}
+.empty-state strong {
+  color: var(--text);
+  font-size: var(--type-body);
+  font-weight: 500;
+}
+.button-secondary:not(:disabled):hover {
+  background: var(--panel);
+  border-color: var(--ai);
+}
+.button-human:not(:disabled):hover {
+  background: color-mix(in srgb, var(--human) 18%, var(--panel));
+}
+.button-danger:not(:disabled):hover {
+  background: color-mix(in srgb, var(--p0) 18%, var(--panel));
+  border-color: var(--p0);
+}
+.ui-tabs button:hover {
+  color: var(--ai);
+  background: var(--panel);
+}
+.ui-button:disabled {
+  opacity: 0.48;
+  filter: saturate(0.4);
+}
+summary {
+  cursor: pointer;
+}
+summary:hover {
+  color: var(--ai);
+}
+.page-heading h1 {
+  font-size: var(--type-title);
+  letter-spacing: normal;
+}
+.page-content small,
+.bible-panel small {
+  font-size: 12px;
+}
+@media (max-width: 760px) {
+  .page-content {
+    padding: 16px;
+  }
+  .grid-two,
+  .grid-three {
+    grid-template-columns: 1fr;
+  }
+  .page-heading {
+    flex-wrap: wrap;
+    position: static;
+  }
+}
+
+.technical-details {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.technical-details > summary {
+  cursor: pointer;
+  padding: 6px 0;
+}
+.technical-details dl {
+  display: grid;
+  gap: 8px;
+  margin: 8px 0;
+}
+.technical-details dt {
+  font-weight: 600;
+}
+.technical-details dd {
+  margin: 2px 0 0;
+  overflow-wrap: anywhere;
+  user-select: text;
+  font-variant-numeric: tabular-nums;
 }

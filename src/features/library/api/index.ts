@@ -23,8 +23,8 @@ export const libraryApi = {
   update: (id: string, version: number, action: PlanAction) =>
     api.patch<BookPlan>(`/projects/${id}/planning`, { expectedVersion: version, ...action }),
 };
-export function useLibrary() {
-  return useQuery({ queryKey: libraryKeys.all, queryFn: libraryApi.list });
+export function useLibrary(enabled = true) {
+  return useQuery({ queryKey: libraryKeys.all, queryFn: libraryApi.list, enabled });
 }
 export function useBook(id: string) {
   const branch = useUIStore((s) => (s.projectId === id ? s.branchId : 'main'));

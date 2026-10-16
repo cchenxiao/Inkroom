@@ -1,3 +1,6 @@
+import { textLabel, repairScopeLabels, readableMessage } from '@/shared/lib/business-labels';
+import { TechnicalDetails } from '@/shared/ui/technical-details';
+import type { ManuscriptInspection } from '@/types/domain/manuscript-view';
 import { useWritingPending, useWritingLocked } from '@/shared/lib/pending-writing';
 import { useEffect, useRef, useState } from 'react';
 import ChapterPublication from './ChapterPublication';
@@ -16,9 +19,11 @@ import type { ChapterAssembly } from '../api/chapter-assembly';
 export default function ChapterReview({
   assemblies,
   editing,
+  onRead,
 }: {
   assemblies: ChapterAssembly[];
   editing: boolean;
+  onRead?: (view: ManuscriptInspection) => void;
 }) {
   const [selected, setSelected] = useState('');
   const localEdit = useWritingLocked();
@@ -36,21 +41,32 @@ export default function ChapterReview({
   return (
     <section className="page-stack" aria-label={t.title}>
       <h3>{t.title}</h3>
-      <label>
-        {t.chooseAssembly}
-        <select disabled={localEdit} value={a.id} onChange={(e) => setSelected(e.target.value)}>
-          {assemblies.map((x) => (
-            <option key={x.id} value={x.id}>
-              v{x.version} · {new Date(x.createdAt).toLocaleString('zh-CN')}
-            </option>
-          ))}
-        </select>
-      </label>
-      <ReviewSession key={a.id} assembly={a} editing={editing} />
+      <details open={!onRead}>
+        <summary>章稿版本 · v{a.version}</summary>
+        <label>
+          {t.chooseAssembly}
+          <select disabled={localEdit} value={a.id} onChange={(e) => setSelected(e.target.value)}>
+            {assemblies.map((x) => (
+              <option key={x.id} value={x.id}>
+                v{x.version} · {new Date(x.createdAt).toLocaleString('zh-CN')}
+              </option>
+            ))}
+          </select>
+        </label>
+      </details>
+      <ReviewSession key={a.id} assembly={a} editing={editing} onRead={onRead} />
     </section>
   );
 }
-function ReviewSession({ assembly: a, editing }: { assembly: ChapterAssembly; editing: boolean }) {
+function ReviewSession({
+  assembly: a,
+  editing,
+  onRead,
+}: {
+  assembly: ChapterAssembly;
+  editing: boolean;
+  onRead?: (view: ManuscriptInspection) => void;
+}) {
   const client = useQueryClient();
   const [selected, setSelected] = useState('');
   const localEdit = useWritingLocked();
@@ -99,64 +115,68 @@ function ReviewSession({ assembly: a, editing }: { assembly: ChapterAssembly; ed
           : '';
   return (
     <>
-      <p className="muted">{t.note}</p>
-      <div className="core-heading">
-        <Button
-          disabled={!!blocked || !!pending || localEdit}
-          disabledReason={blocked || t.uncertainSave}
-          loading={start.isPending}
-          onClick={() => {
-            if (query.data?.jobs.length && !window.confirm(t.rerunWarning)) return;
-            const req = {
-              requestId: crypto.randomUUID(),
-              assemblyId: a.id,
-              assemblyVersion: a.version,
-              assemblyDigest: a.digest,
-            };
-            setPending(req);
-            start.mutate(req);
-          }}
-        >
-          {query.data?.jobs.length ? t.again : t.start}
-        </Button>
-        <Button size="sm" onClick={refresh}>
-          {t.refresh}
-        </Button>
-      </div>
-      {query.isPending && <p role="status">{t.loading}</p>}
-      {blocked && <p role={query.isError ? 'alert' : 'status'}>{blocked}</p>}
-      {query.data?.jobs.length === 0 && <p>{t.empty}</p>}
-      {start.isError && (
-        <p role="alert">
-          {start.error instanceof ApiError ? start.error.message : t.uncertainSave}
-        </p>
-      )}
-      {pending && !start.isPending && (
-        <>
-          <p>{t.uncertainSave}</p>
-          <Button onClick={() => start.mutate(pending)}>{t.retry}</Button>
-        </>
-      )}
-      {!!query.data?.jobs.length && (
-        <label>
-          {t.chooseReview}
-          <select
-            disabled={localEdit}
-            value={job?.id ?? ''}
-            onChange={(e) => setSelected(e.target.value)}
+      <details open={!onRead || !job || !!pending || start.isError}>
+        <summary>复审批次与运行设置</summary>
+        <p className="muted">{t.note}</p>
+        <div className="core-heading">
+          <Button
+            disabled={!!blocked || !!pending || localEdit}
+            disabledReason={blocked || t.uncertainSave}
+            loading={start.isPending}
+            onClick={() => {
+              if (query.data?.jobs.length && !window.confirm(t.rerunWarning)) return;
+              const req = {
+                requestId: crypto.randomUUID(),
+                assemblyId: a.id,
+                assemblyVersion: a.version,
+                assemblyDigest: a.digest,
+              };
+              setPending(req);
+              start.mutate(req);
+            }}
           >
-            {query.data.jobs.map((j) => (
-              <option key={j.id} value={j.id}>
-                {new Date(j.createdAt).toLocaleString('zh-CN')} · {t[j.status]}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
+            {query.data?.jobs.length ? t.again : t.start}
+          </Button>
+          <Button size="sm" onClick={refresh}>
+            {t.refresh}
+          </Button>
+        </div>
+        {query.isPending && <p role="status">{t.loading}</p>}
+        {blocked && <p role={query.isError ? 'alert' : 'status'}>{blocked}</p>}
+        {query.data?.jobs.length === 0 && <p>{t.empty}</p>}
+        {start.isError && (
+          <p role="alert">
+            {start.error instanceof ApiError ? start.error.message : t.uncertainSave}
+          </p>
+        )}
+        {pending && !start.isPending && (
+          <>
+            <p>{t.uncertainSave}</p>
+            <Button onClick={() => start.mutate(pending)}>{t.retry}</Button>
+          </>
+        )}
+        {!!query.data?.jobs.length && (
+          <label>
+            {t.chooseReview}
+            <select
+              disabled={localEdit}
+              value={job?.id ?? ''}
+              onChange={(e) => setSelected(e.target.value)}
+            >
+              {query.data.jobs.map((j) => (
+                <option key={j.id} value={j.id}>
+                  {new Date(j.createdAt).toLocaleString('zh-CN')} · {t[j.status]}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+      </details>
       {job && (
         <ReviewResult
           key={job.id}
           job={job}
+          onRead={onRead}
           blocked={
             editing ||
             query.isError ||
@@ -174,10 +194,12 @@ function ReviewResult({
   job,
   blocked,
   onChange,
+  onRead,
 }: {
   job: ChapterReviewJob;
   blocked: boolean;
   onChange: () => void;
+  onRead?: (view: ManuscriptInspection) => void;
 }) {
   const [reason, setReason] = useState(''),
     [confirmed, setConfirmed] = useState('');
@@ -229,124 +251,213 @@ function ReviewResult({
     save.mutate(req);
   };
   const sources = job.input.parts.flatMap((p) => [...p.segments, ...p.facts]);
+  const inspect = (selectedFinding?: string) =>
+    onRead?.({
+      title: `复审章稿 v${job.input.draftVersion}`,
+      parts: job.input.parts.map((p) => ({
+        id: p.beatId,
+        title: p.title,
+        segments: p.segments.map((s) => ({
+          id: s.id,
+          text: s.text,
+          version: job.input.draftVersion,
+        })),
+      })),
+      findings:
+        job.output?.critics.flatMap((c) =>
+          c.findings.map((f) => ({
+            ...f,
+            critic: f.critic,
+            evidenceRefs: f.evidence.map((e) => e.ref),
+            draftVersion: job.input.draftVersion,
+            status: 'open' as const,
+            replacement: '',
+          })),
+        ) ?? [],
+      selectedFinding,
+    });
   return (
     <div className="page-stack">
-      <div>
-        <Badge>{t[job.status]}</Badge> · v{job.input.draftVersion} · {job.provider}/{job.model}
+      <div className="writing-next-step">
+        <strong>
+          章稿 v{job.input.draftVersion} ·{' '}
+          {!job.current
+            ? '来源已更新，需重新复审'
+            : existing?.action === 'approve'
+              ? '复审已通过'
+              : t[job.status]}
+        </strong>
+        <p>
+          {!job.current
+            ? '下一步：审核并采用当前段落，再重新组稿复审。'
+            : existing?.action === 'approve'
+              ? '下一步：整理章末事实，确认后定稿。'
+              : existing
+                ? '下一步：回到正文修改，再保存章稿并复审。'
+                : job.status === 'running'
+                  ? '正在审读整章，完成后等待你的判断。'
+                  : '通读正文与审查意见，然后决定通过或退回修改。'}
+        </p>
       </div>
       {job.provider === 'fake' && <p>{t.fake}</p>}
-      {!job.current && <p role="alert">{t.sourceChanged}</p>}
-      <p role={job.status === 'failed' ? 'alert' : 'status'}>{job.message}</p>
-      {job.output?.critics.map((c) => (
-        <details open key={c.critic}>
+      {!existing && (
+        <p role={job.status === 'failed' ? 'alert' : 'status'}>
+          {readableMessage(
+            job.message,
+            job.status === 'running'
+              ? '正在审读整章…'
+              : '请核对本次审读结果；异常信息可在技术详情中查看。',
+          )}
+        </p>
+      )}
+      {onRead && (
+        <Button size="sm" onClick={() => inspect()}>
+          在正文区查看复审稿
+        </Button>
+      )}
+      <details
+        open={
+          !onRead || job.output?.critics.some((c) => c.status === 'failed' || c.findings.length > 0)
+        }
+      >
+        <summary>
+          审查意见与依据 · {job.output?.critics.reduce((n, c) => n + c.findings.length, 0) ?? 0}{' '}
+          个问题
+        </summary>
+        {job.output?.critics.map((c) => (
+          <details open={!!c.findings.length || c.status === 'failed'} key={c.critic}>
+            <summary>
+              {c.critic === 'hard_consistency' ? t.hard_consistency : t.ai_taste} ·{' '}
+              {c.findings.length}
+            </summary>
+            {c.status === 'failed' ? (
+              <p role="alert">{readableMessage(c.error, t.failed)}</p>
+            ) : !c.findings.length ? (
+              <p>{t.emptyFindings}</p>
+            ) : null}
+            {c.findings.map((f) => (
+              <article className="backend-commit" key={f.id}>
+                <Badge>{f.severity}</Badge> <span>{f.requiresHuman ? t.human : ''}</span>
+                <blockquote>{f.quote}</blockquote>
+                <p>{f.reason}</p>
+                <p>
+                  {t.suggestion}：{f.suggestion}
+                </p>
+                <p>
+                  {t.scope}：{repairScopeLabels[f.repairScope] ?? '请结合意见确认修改范围'}
+                </p>
+                <details>
+                  <summary>{t.evidence}</summary>
+                  {f.evidence.map((e) => (
+                    <p key={e.ref}>
+                      <span>
+                        {sources.find((s) => s.id === e.ref)?.kind === 'fact'
+                          ? '已确认事实'
+                          : '原文证据'}{' '}
+                        · {textLabel(e.quote, '证据内容暂缺')}
+                      </span>
+                      ：{e.quote}
+                    </p>
+                  ))}
+                </details>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    if (onRead) {
+                      inspect(f.id);
+                      return;
+                    }
+                    setSelectedSource(f.segmentId);
+                    if (text.current) text.current.open = true;
+                    sourceNodes.current
+                      .get(f.segmentId)
+                      ?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                  }}
+                >
+                  {t.locate}
+                </Button>
+              </article>
+            ))}
+          </details>
+        ))}
+        <details ref={text} hidden={!!onRead}>
           <summary>
-            {c.critic === 'hard_consistency' ? t.hard_consistency : t.ai_taste} ·{' '}
-            {c.findings.length}
+            {t.text} · v{job.input.draftVersion}
           </summary>
-          {c.status === 'failed' ? (
-            <p role="alert">{c.error || t.failed}</p>
-          ) : !c.findings.length ? (
-            <p>{t.emptyFindings}</p>
-          ) : null}
-          {c.findings.map((f) => (
-            <article className="backend-commit" key={f.id}>
-              <Badge>{f.severity}</Badge> <span>{f.requiresHuman ? t.human : ''}</span>
-              <blockquote>{f.quote}</blockquote>
-              <p>{f.reason}</p>
-              <p>
-                {t.suggestion}：{f.suggestion}
-              </p>
-              <p>
-                {t.scope}：{f.repairScope}
-              </p>
-              <details>
-                <summary>{t.evidence}</summary>
-                {f.evidence.map((e) => (
-                  <p key={e.ref}>
-                    <span>
-                      {sources.find((s) => s.id === e.ref)?.kind === 'fact' ? 'fact' : 'passage'} ·{' '}
-                      {e.ref}
-                    </span>
-                    ：{e.quote}
+          <div className="backend-candidate">
+            {job.input.parts.map((p) => (
+              <section key={p.beatId}>
+                <h4>{p.title}</h4>
+                {p.segments.map((s) => (
+                  <p
+                    key={s.id}
+                    ref={(node) => {
+                      if (node) sourceNodes.current.set(s.id, node);
+                      else sourceNodes.current.delete(s.id);
+                    }}
+                    className={selectedSource === s.id ? 'border-l-2 border-ai pl-2' : ''}
+                  >
+                    {s.text}
                   </p>
                 ))}
-              </details>
-              <Button
-                size="sm"
-                onClick={() => {
-                  setSelectedSource(f.segmentId);
-                  if (text.current) text.current.open = true;
-                  sourceNodes.current
-                    .get(f.segmentId)
-                    ?.scrollIntoView({ block: 'center', behavior: 'smooth' });
-                }}
-              >
-                {t.locate}
-              </Button>
-            </article>
-          ))}
-        </details>
-      ))}
-      <details ref={text}>
-        <summary>
-          {t.text} · v{job.input.draftVersion}
-        </summary>
-        <div className="backend-candidate">
-          {job.input.parts.map((p) => (
-            <section key={p.beatId}>
-              <h4>{p.title}</h4>
-              {p.segments.map((s) => (
-                <p
-                  key={s.id}
-                  ref={(node) => {
-                    if (node) sourceNodes.current.set(s.id, node);
-                    else sourceNodes.current.delete(s.id);
-                  }}
-                  className={selectedSource === s.id ? 'border-l-2 border-ai pl-2' : ''}
-                >
-                  {s.text}
-                </p>
-              ))}
-            </section>
-          ))}
-        </div>
-      </details>
-      <details>
-        <summary>{t.facts}</summary>
-        {job.input.parts.map((p) => (
-          <div key={p.beatId}>
-            <h4>
-              {p.title} · {p.pov} · {p.storyTime}
-            </h4>
-            {p.facts.map((f) => (
-              <p key={f.id}>
-                {f.id} · {f.sourceId} v{f.sourceVersion}：{f.text}
-              </p>
+              </section>
             ))}
           </div>
-        ))}
-      </details>
-      <details>
-        <summary>
-          {t.calls} · {job.calls.length}
-        </summary>
-        {job.calls.map((c) => (
-          <p key={c.number} className="mono">
-            #{c.number} · {c.role} · {c.phase} · {c.elapsedMs} ms · {c.promptVersion} ·{' '}
-            {c.usage?.known
-              ? `${c.usage.inputTokens + c.usage.outputTokens} tokens`
-              : 'usage unknown'}
+        </details>
+        <details>
+          <summary>{t.facts}</summary>
+          {job.input.parts.map((p) => (
+            <div key={p.beatId}>
+              <h4>
+                {p.title} · {p.pov} · {p.storyTime}
+              </h4>
+              {p.facts.map((f) => (
+                <p key={f.id}>
+                  来源版本 v{f.sourceVersion}：{f.text}
+                </p>
+              ))}
+            </div>
+          ))}
+        </details>
+        <TechnicalDetails
+          items={{
+            复审批次编号: job.id,
+            状态说明原文:
+              readableMessage(job.message, '') === job.message ? undefined : job.message,
+            评审错误原文: job.output?.critics
+              .map((c) => c.error)
+              .filter(Boolean)
+              .join('；'),
+          }}
+        />
+        <details>
+          <summary>
+            {t.calls} · {job.calls.length}
+          </summary>
+          <p>
+            {job.provider} / {job.model}
           </p>
-        ))}
+          {job.calls.map((c) => (
+            <p key={c.number} className="mono">
+              #{c.number} · {c.role} · {c.phase} · {c.elapsedMs} ms · {c.promptVersion} ·{' '}
+              {c.usage?.known
+                ? `${c.usage.inputTokens + c.usage.outputTokens} tokens`
+                : 'usage unknown'}
+            </p>
+          ))}
+        </details>
       </details>
-      {!existing && <p className="muted">{t.notFinal}</p>}
+      {!existing && job.current && <p className="muted">{t.notFinal}</p>}
       {existing ? (
-        <p role="status">
-          {existing.action === 'approve' ? t.approved : t.requested}：{existing.reason}
-          {!job.current ? ` · ${t.sourceChanged}` : ''}
-        </p>
+        <details>
+          <summary>{existing.action === 'approve' ? t.approved : t.requested}</summary>
+          <p role="status">
+            {existing.reason}
+            {!job.current ? ` · ${t.sourceChanged}` : ''}
+          </p>
+        </details>
       ) : (
-        <>
+        <div hidden={!!onRead && !job.current && !pending && !reason}>
           <label>
             {t.reason}
             <textarea
@@ -368,7 +479,7 @@ function ReviewResult({
           {job.approvalBlock && <p>{job.approvalBlock}</p>}
           <div className="core-heading">
             <Button
-              variant="human"
+              variant="default"
               disabled={!!decisionBlock || !!job.approvalBlock || !!pending}
               disabledReason={decisionBlock || job.approvalBlock || t.uncertainSave}
               loading={save.isPending}
@@ -384,13 +495,16 @@ function ReviewResult({
               {t.revise}
             </Button>
           </div>
-        </>
+        </div>
       )}
       {existing?.action === 'approve' && (
-        <ChapterPublication
-          job={{ ...job, decision: existing }}
-          blocked={blocked || stale || !!pending || save.isPending}
-        />
+        <details open={!onRead || job.current}>
+          <summary>{job.current ? '章末事实与定稿' : '历史定稿信息（来源已更新）'}</summary>
+          <ChapterPublication
+            job={{ ...job, decision: existing }}
+            blocked={blocked || stale || !!pending || save.isPending}
+          />
+        </details>
       )}
       {save.isError && (
         <p role="alert">{save.error instanceof ApiError ? save.error.message : t.uncertainSave}</p>

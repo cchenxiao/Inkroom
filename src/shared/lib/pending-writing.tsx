@@ -42,7 +42,7 @@ export function PendingWritingProvider({ children }: { children: ReactNode }) {
     return (
       currentLocation.pathname.replace(/\/+$/, '').toLowerCase() !==
         nextLocation.pathname.replace(/\/+$/, '').toLowerCase() ||
-      ['source', 'projectId', 'branchId', 'planningChapterId'].some(
+      ['source', 'projectId', 'branchId', 'planningChapterId', 'beatId'].some(
         (key) => (current.get(key) ?? defaults[key]) !== (next.get(key) ?? defaults[key]),
       )
     );

@@ -32,6 +32,9 @@ func TestChapterPlanFrozenInputAndAuthorVersion(t *testing.T) {
 		if _, e := s.pool.Exec(ctx, "DELETE FROM chapter_publications WHERE scope=$1", scope); e != nil {
 			t.Error(e)
 		}
+		if _, e := s.pool.Exec(ctx, "DELETE FROM chapter_fact_jobs WHERE scope=$1", scope); e != nil {
+			t.Error(e)
+		}
 		if _, e := s.pool.Exec(ctx, "DELETE FROM chapter_review_jobs WHERE scope=$1", scope); e != nil {
 			t.Error(e)
 		}
@@ -337,5 +340,6 @@ func TestChapterPlanFrozenInputAndAuthorVersion(t *testing.T) {
 	}
 
 	exerciseChapterAssembly(t, s, scope, selected, cfg, commit)
+	exerciseWritingScopes(t, s, scope, selected, cfg)
 
 }

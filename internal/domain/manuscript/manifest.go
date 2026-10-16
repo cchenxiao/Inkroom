@@ -75,6 +75,21 @@ func ContextRefs(b ContextBundle) ([]VersionRef, error) {
 	if err := add("outline", b.Beat.ID, b.Beat.Version, b.Beat); err != nil {
 		return nil, err
 	}
+	for _, target := range b.Targets {
+		if err := add("chapter_target", target.Beat.ID, target.Beat.Version, target); err != nil {
+			return nil, err
+		}
+	}
+	for _, passage := range b.Neighbors {
+		if err := add("neighbor_passage", passage.BeatID, passage.Version, passage); err != nil {
+			return nil, err
+		}
+	}
+	if b.Rewrite != nil {
+		if err := add("author_rewrite", b.Rewrite.SegmentID, b.Beat.Version, b.Rewrite); err != nil {
+			return nil, err
+		}
+	}
 	if b.WritingTask != nil {
 		if err := add("writing_task", b.WritingTask.ChapterID, b.WritingTask.PlanVersion, b.WritingTask); err != nil {
 			return nil, err

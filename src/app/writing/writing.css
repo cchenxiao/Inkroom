@@ -1,0 +1,606 @@
+/* Same workspace surfaces and tokens as the original editor; only real-flow additions. */
+.writing-shell .workspace-body {
+  position: relative;
+}
+.writing-shell .route-content {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.writing-shell .top-bar {
+  gap: 16px;
+}
+.writing-shell .book-identity {
+  flex-shrink: 0;
+}
+.writing-shell .top-actions {
+  margin-left: auto;
+}
+.writing-shell .workspace-center {
+  flex: 1;
+  min-height: 0;
+  height: auto;
+  padding: 0 12px 12px;
+}
+.writing-beat {
+  position: relative;
+}
+.writing-beat-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  font-size: 11px;
+  color: var(--paper-dim);
+}
+.writing-beat-heading button {
+  background: none;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+}
+.writing-beat.is-active .writing-beat-heading button {
+  color: var(--ai);
+}
+.writing-empty {
+  padding: 16px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-lg);
+  color: var(--paper-dim);
+  margin: 8px 0 16px;
+  text-align: center;
+}
+.writing-empty h3 {
+  font-size: 15px;
+  margin: 12px 0 8px;
+}
+.writing-empty p {
+  font-size: 12px;
+  margin-bottom: 16px;
+}
+.writing-shell .chapter-row {
+  padding: 10px 12px;
+  cursor: pointer;
+}
+.writing-shell .chapter-row.active {
+  background: var(--overlay);
+  color: var(--text);
+}
+.writing-tree-scene {
+  font-size: 12px;
+  color: var(--text-dim);
+  padding: 12px 8px 4px 24px;
+}
+.writing-tree-beat {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  text-align: left;
+  width: 100%;
+  padding: 10px 12px 10px 32px;
+  color: var(--text-dim);
+  background: none;
+  border: none;
+  font-size: 12px;
+  cursor: pointer;
+}
+.writing-tree-beat[aria-current='true'] {
+  background: color-mix(in srgb, var(--ai) 9%, transparent);
+  color: var(--ai);
+  box-shadow: inset 2px 0 var(--ai);
+}
+.writing-tree-beat small {
+  margin-left: auto;
+}
+.writing-sidebar-footer {
+  padding: 16px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  display: grid;
+  gap: 8px;
+}
+.writing-panel-scroll {
+  min-height: 0;
+  overflow: auto;
+  flex: 1;
+  padding: 16px;
+}
+.writing-panel-scroll label {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+}
+.writing-panel-scroll select,
+.writing-panel-scroll textarea,
+.writing-panel-scroll input:not([type='checkbox']):not([type='radio']) {
+  width: 100%;
+  padding: 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+}
+.writing-panel-scroll textarea {
+  min-height: 96px;
+  resize: vertical;
+}
+.writing-panel-scroll .outline-check,
+.writing-check {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.writing-panel-scroll details {
+  border-bottom: 1px solid var(--border);
+  padding: 12px 0;
+}
+.writing-panel-scroll summary {
+  cursor: pointer;
+}
+.writing-review-actions {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border-top: 1px solid var(--border);
+  background: var(--panel);
+  flex: none;
+}
+.writing-review-actions .page-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.writing-panel-tabs {
+  display: flex;
+  gap: 16px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.writing-panel-tabs button {
+  border: 0;
+  padding: 6px 0;
+  background: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 12px;
+}
+.writing-panel-tabs [aria-selected='true'],
+.writing-panel-tabs [aria-current='page'] {
+  color: var(--ai);
+  box-shadow: 0 2px var(--ai);
+}
+.writing-bible .writing-panel-tabs {
+  padding: 0 0 12px;
+  gap: 12px;
+}
+.writing-bible article {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  line-height: 1.7;
+}
+.writing-bible dl {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  gap: 10px;
+  font-size: 13px;
+  margin: 16px 0;
+}
+.writing-bible dt,
+.writing-bible small {
+  color: var(--text-dim);
+}
+.writing-bible dd {
+  margin: 0;
+}
+.writing-bible p {
+  font-size: 13px;
+  line-height: 1.7;
+}
+.writing-edit-link {
+  display: block;
+  color: var(--human);
+  margin-top: 16px;
+  font-size: 12px;
+}
+.writing-run-drawer {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+.writing-run-drawer.is-full {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+}
+.writing-run-content {
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+  padding: 12px 20px;
+}
+.writing-findings button {
+  display: flex;
+  gap: 16px;
+  width: 100%;
+  padding: 12px 0;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  background: none;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.writing-findings button span:nth-child(2) {
+  flex: 1;
+}
+.writing-shell .core-workbench {
+  padding: 0;
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+}
+.writing-shell .core-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: space-between;
+}
+.writing-shell .page-stack {
+  display: grid;
+  gap: 12px;
+}
+.writing-shell .backend-candidate {
+  font-family: 'Noto Serif SC', 'Songti SC', serif;
+  line-height: 1.85;
+  white-space: pre-wrap;
+}
+.writing-shell .core-field {
+  margin: 12px 0;
+}
+.writing-shell .mono {
+  overflow-wrap: anywhere;
+}
+.writing-review-actions small {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.writing-shell .finding-popover {
+  font-family: inherit;
+  margin: 12px 0;
+  padding: 16px;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.writing-shell .finding-popover header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.writing-shell .finding-popover header button {
+  margin-left: auto;
+}
+.writing-shell .finding-popover blockquote {
+  margin: 12px 0;
+  border-left: 2px solid var(--p0);
+  padding-left: 12px;
+}
+.writing-shell .workspace-review {
+  width: 380px;
+  flex-basis: 380px;
+}
+@media (max-width: 1279px) {
+  .writing-shell .workspace-review {
+    width: 340px;
+    flex-basis: 340px;
+  }
+}
+
+.writing-shell [hidden] {
+  display: none !important;
+}
+
+.writing-shell .inspection-banner {
+  background: var(--panel);
+  color: var(--text-dim);
+  border-bottom-color: var(--border);
+  flex-shrink: 0;
+}
+.writing-shell .inspection-banner button {
+  flex-shrink: 0;
+}
+.writing-shell .manuscript-alert {
+  flex-shrink: 0;
+}
+.writing-shell .writing-panel-scroll > button {
+  margin-block: 8px;
+}
+
+.writing-panel-scroll .outline-check,
+.writing-panel-scroll .writing-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.writing-panel-scroll input[type='radio'],
+.writing-panel-scroll input[type='checkbox'] {
+  width: auto;
+  flex: none;
+  margin-top: 3px;
+}
+
+/* Structure remains an in-layout pane, including while the review pane is open. */
+.writing-shell .has-review .structure-rail {
+  display: flex;
+}
+@media (max-width: 1279px) {
+  .writing-shell .chapter-sidebar {
+    width: 224px;
+  }
+}
+
+.writing-panel-scroll .core-workbench {
+  gap: 12px;
+}
+.writing-panel-scroll .core-field {
+  margin: 0;
+}
+.writing-panel-scroll .core-workbench > p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.7;
+}
+.writing-panel-scroll .core-heading h3 {
+  font-size: 14px;
+}
+/* The manuscript owns the widest column at desktop sizes. */
+.writing-shell .chapter-sidebar {
+  width: 200px;
+  flex-basis: 200px;
+}
+.writing-shell .workspace-review {
+  width: 320px;
+  flex-basis: 320px;
+  min-width: 0;
+}
+.writing-shell .manuscript-status {
+  min-height: 30px;
+}
+.writing-shell .workspace-center {
+  padding: 0 8px 4px;
+}
+.writing-next-step {
+  padding: 0 0 16px;
+  display: grid;
+  gap: 8px;
+}
+.writing-next-step strong {
+  font-size: 14px;
+}
+.writing-next-step p {
+  color: var(--text-dim);
+  line-height: 1.7;
+  font-size: 13px;
+}
+.writing-panel-scroll > label {
+  margin-top: 12px;
+}
+.writing-review-actions {
+  padding: 12px;
+  gap: 8px;
+}
+.writing-review-actions p {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.writing-tree-beat:hover:not(:disabled),
+.writing-shell .chapter-row:hover {
+  background: var(--overlay);
+  color: var(--ai);
+}
+.writing-tree-beat:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.beat-actions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.writing-beat-heading {
+  padding-block: 4px;
+}
+.writing-beat-heading > button {
+  font-weight: 600;
+}
+.writing-beat-heading > button:hover {
+  text-decoration: underline;
+}
+.writing-beat-heading > button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+.writing-review-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 69;
+  background: rgb(10 25 20 / 0.25);
+}
+.writing-shell .manuscript-alert {
+  font-size: 12px;
+  line-height: 1.6;
+  padding: 8px 12px;
+}
+/* Review never changes the author's navigation or structure collapse preference. */
+@media (max-width: 1199px) {
+  .writing-shell .workspace-review {
+    position: fixed;
+    inset: 0 0 0 auto;
+    width: min(380px, 90vw);
+    z-index: 70;
+    border-left: 1px solid var(--border);
+    box-shadow: var(--shadow);
+  }
+  .writing-shell .chapter-sidebar {
+    width: 180px;
+    flex-basis: 180px;
+  }
+  .writing-shell .chapter-breadcrumb {
+    min-width: 0;
+  }
+}
+@media (max-width: 760px) {
+  .writing-shell .nav-rail {
+    display: none;
+  }
+  .writing-shell .chapter-sidebar {
+    width: 140px;
+    flex-basis: 140px;
+  }
+  .writing-shell .top-bar {
+    gap: 8px;
+    padding-inline: 8px;
+  }
+  .writing-shell .book-identity > :not(.book-name),
+  .writing-shell .chapter-breadcrumb .badge,
+  .writing-shell .top-actions kbd {
+    display: none;
+  }
+  .writing-shell .top-actions {
+    gap: 4px;
+  }
+  .writing-beat-heading {
+    align-items: flex-start;
+  }
+  .writing-shell .run-drawer-header > span:not(.run-status) {
+    display: none;
+  }
+}
+
+.writing-shell .route-content {
+  padding: 4px;
+}
+
+/* A selected beat stays legible without tinting the entire manuscript. */
+.writing-beat {
+  border-left: 2px solid transparent;
+  padding-left: 12px;
+  margin-left: -14px;
+  transition: border-color var(--ease);
+}
+.writing-beat:hover {
+  border-left-color: var(--border);
+}
+.writing-beat.is-active {
+  border-left-color: var(--ai);
+}
+.writing-beat.is-active .writing-beat-heading {
+  background: color-mix(in srgb, var(--ai) 7%, var(--paper));
+  border-radius: 4px;
+}
+.beat-selection-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--ai);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.writing-beat-heading > button:focus-visible {
+  outline: 2px solid var(--ai);
+  outline-offset: 3px;
+}
+.chapter-workflow {
+  font-size: 13px;
+  line-height: 1.6;
+}
+.chapter-workflow-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: var(--overlay);
+  border-radius: 8px;
+}
+.chapter-workflow-tabs button {
+  flex: 1;
+  padding: 7px 4px;
+  font-size: 12px;
+  color: var(--text-dim);
+  border-radius: 5px;
+}
+.chapter-workflow-tabs button:hover {
+  color: var(--ai);
+  background: var(--panel);
+}
+.chapter-workflow-tabs button[aria-current='step'] {
+  background: var(--paper);
+  color: var(--ai);
+  font-weight: 600;
+}
+.chapter-workflow-step,
+.chapter-save-actions {
+  display: grid;
+  gap: 14px;
+}
+.chapter-workflow-summary {
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--paper);
+}
+.chapter-workflow-summary strong {
+  font-size: 14px;
+}
+.chapter-workflow p {
+  margin: 4px 0;
+  line-height: 1.65;
+}
+.chapter-workflow :is(select, textarea) {
+  font-size: 13px;
+  padding: 8px 10px;
+}
+.chapter-workflow summary {
+  font-size: 12px;
+  color: var(--text-dim);
+  cursor: pointer;
+  padding: 8px 0;
+}
+.chapter-workflow details > :not(summary) {
+  margin-block: 10px;
+}
+.chapter-missing-parts {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 12px;
+}
+.chapter-missing-parts li {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 12px;
+}
+.chapter-missing-parts p {
+  color: var(--text-dim);
+  margin: 6px 0 10px;
+}
+
+.selected-beat-status {
+  max-width: 230px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ai);
+}

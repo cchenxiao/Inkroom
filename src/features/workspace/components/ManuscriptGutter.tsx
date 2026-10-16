@@ -20,6 +20,7 @@ export function ManuscriptGutter({
   onSelect: (id: string) => void;
   revision: string;
 }) {
+  const [lines, setLines] = useState<{ number: number; top: number }[]>([]);
   const [markers, setMarkers] = useState<Marker[]>([]);
   useEffect(() => {
     const scroller = scrollRef.current;
@@ -41,13 +42,33 @@ export function ManuscriptGutter({
           }))
           .filter((row) => row.top > -40 && row.top < box.height);
         setMarkers(next);
+        let lineNumber = 0;
+        const measured: { number: number; top: number }[] = [];
+        scroller.querySelectorAll('.tiptap p').forEach((paragraph) => {
+          const range = document.createRange();
+          range.selectNodeContents(paragraph);
+          const tops: number[] = [];
+          const tolerance = parseFloat(getComputedStyle(paragraph).lineHeight) / 2 || 8;
+          const rects = Array.from(range.getClientRects?.() ?? [])
+            .filter((r) => r.width > 0)
+            .sort((a, b) => a.top - b.top);
+          for (const rect of rects) {
+            if (!tops.length || rect.top - tops[tops.length - 1] > tolerance) tops.push(rect.top);
+          }
+          for (const top of tops) {
+            lineNumber++;
+            if (top >= box.top - 30 && top <= box.bottom)
+              measured.push({ number: lineNumber, top: top - box.top });
+          }
+        });
+        setLines(measured);
       });
     };
     scroller.addEventListener('scroll', sync, { passive: true });
     const resize = new ResizeObserver(sync);
     resize.observe(scroller);
     const mutation = new MutationObserver(sync);
-    mutation.observe(scroller, { childList: true, subtree: true });
+    mutation.observe(scroller, { childList: true, subtree: true, characterData: true });
     sync();
     return () => {
       cancelAnimationFrame(frame);
@@ -58,6 +79,16 @@ export function ManuscriptGutter({
   }, [scrollRef, findings, revision]);
   return (
     <div className="manuscript-gutter" aria-label={m.annotations}>
+      {lines.map((line) => (
+        <span
+          key={line.number}
+          className="manuscript-line-number"
+          aria-hidden="true"
+          style={{ top: line.top }}
+        >
+          {line.number}
+        </span>
+      ))}
       {markers.map((marker) => (
         <div
           key={marker.id}

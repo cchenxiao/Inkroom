@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, GitBranch, PencilLine } from 'lucide-react';
 import { useBook } from './api';
+import LiveBookPage from './LiveBookPage';
 import OverviewChapters from './components/OverviewChapters';
 import OverviewContext from './components/OverviewContext';
 import OverviewQuality from './components/OverviewQuality';
@@ -24,6 +25,17 @@ import type { Branch } from '@/types/domain';
 import './library.css';
 
 export default function BookPage() {
+  const { projectId } = useParams();
+  const [params] = useSearchParams();
+  return projectId === 'project-zhuoliu' &&
+    (params.get('branchId') ?? 'main') === 'main' &&
+    params.get('source') !== 'demo' ? (
+    <LiveBookPage />
+  ) : (
+    <DemoBookPage />
+  );
+}
+function DemoBookPage() {
   const { projectId = '' } = useParams();
   const overview = useBook(projectId);
   const navigate = useNavigate();

@@ -1,3 +1,5 @@
+import { TechnicalDetails } from '@/shared/ui/technical-details';
+import { sourceLabel } from './source-label';
 import type { BackendRun } from '../types/backend';
 import { backendMessages as t } from '@/shared/lib/messages-backend';
 
@@ -18,16 +20,21 @@ export default function BackendLookupTrace({ run }: { run: BackendRun }) {
             {index + 1}. {step.query || t.lookupRejected}
           </strong>
           <p>
-            {t.lookupStates[step.status] ?? step.status} · {t.lookupNew} {step.newSources}
+            {t.lookupStates[step.status] ?? '查询状态待确认'} · {t.lookupNew} {step.newSources}
           </p>
           {step.refs.map((ref) => (
-            <small className="mono" key={ref.id}>
-              {ref.id} · v{ref.version} · {ref.digest.slice(0, 12)}{' '}
-            </small>
+            <div key={ref.id}>
+              <p>
+                {sourceLabel(run, ref.id, '查询材料')} · v{ref.version}
+              </p>
+              <TechnicalDetails items={{ 材料编号: ref.id, 校验值: ref.digest }} />
+            </div>
           ))}
         </div>
       ))}
-      {run.lookup?.stop && <p role="status">{t.lookupStops[run.lookup.stop] ?? run.lookup.stop}</p>}
+      {run.lookup?.stop && (
+        <p role="status">{t.lookupStops[run.lookup.stop] ?? '查询已停止，请核对记录'}</p>
+      )}
     </details>
   );
 }

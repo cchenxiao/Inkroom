@@ -1,4 +1,4 @@
-import { LiveWritingLayout } from './components/live-writing-layout';
+import { LibraryLayout } from './components/library-layout';
 import { isLiveWorkspace } from '@/shared/lib/writing-mode';
 import { useChapter } from '@/shared/api/hooks';
 import { lazy, Suspense, useEffect, useState } from 'react';
@@ -23,11 +23,21 @@ export function Layout() {
   const { pathname, search } = useLocation();
   const project = useUIStore((s) => s.projectId),
     branch = useUIStore((s) => s.branchId);
-  return isLiveWorkspace(pathname, search, project, branch) ? (
-    <LiveWritingLayout />
-  ) : (
-    <DemoLayout />
-  );
+  const query = new URLSearchParams(search);
+  const realPrepare =
+    pathname === '/prepare' &&
+    (query.get('projectId') ?? project) === 'project-zhuoliu' &&
+    (query.get('branchId') ?? branch) === 'main' &&
+    query.get('source') !== 'demo';
+  if (
+    realPrepare ||
+    pathname.startsWith('/library') ||
+    (pathname === '/book/project-zhuoliu' &&
+      (query.get('branchId') ?? 'main') === 'main' &&
+      query.get('source') !== 'demo')
+  )
+    return <LibraryLayout />;
+  return isLiveWorkspace(pathname, search, project, branch) ? <Outlet /> : <DemoLayout />;
 }
 function DemoLayout() {
   const chapter = useChapter();

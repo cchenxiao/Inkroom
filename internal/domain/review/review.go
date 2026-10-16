@@ -135,6 +135,11 @@ func validate(f Finding, segments map[string]manuscript.Segment, version int, fa
 			return fmt.Errorf("possible dialogue lie needs human judgement, not a hard violation")
 		}
 		source := facts[f.RuleRef]
+		if source == "" {
+			if passage, ok := segments[f.RuleRef]; ok {
+				source = passage.Text
+			}
+		}
 		if source == "" || strings.TrimSpace(f.RuleQuote) == "" || !strings.Contains(source, f.RuleQuote) {
 			return fmt.Errorf("rule quote must exist in frozen facts")
 		}

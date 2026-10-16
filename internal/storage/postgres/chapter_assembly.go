@@ -118,31 +118,25 @@ func assemblyPreview(ctx context.Context, tx pgx.Tx, scope string, req app.Assem
 
 func assemblySlot(ctx context.Context, tx pgx.Tx, scope string, p planning.ChapterPlanSelection, scene planning.PlannedScene, beat planning.PlannedBeat, k *memory.KnowledgeRef, choices map[string]string) (app.AssemblySlot, error) {
 	slot := app.AssemblySlot{Part: app.AssemblyPart{SceneID: scene.ID, SceneTitle: scene.Title, BeatID: beat.ID, BeatTitle: beat.Title, Segments: []manuscript.Segment{}}, Choices: []app.AssemblyChoice{}, Reason: "尚无本 Beat 的审核提交"}
-	draftID := app.PlannedDraftID(scope, p.ChapterID, beat.ID)
-	var version int
-	err := tx.QueryRow(ctx, "SELECT draft_version FROM chapters WHERE id=$1 AND branch_id='main' FOR SHARE", draftID).Scan(&version)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return slot, nil
-	}
-	if err != nil {
-		return slot, err
-	}
-	var running bool
-	if err = tx.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM runs WHERE chapter_id=$1 AND branch_id='main' AND status='running')", draftID).Scan(&running); err != nil {
-		return slot, err
-	}
-	rows, err := tx.Query(ctx, `SELECT c.payload,r.payload FROM manuscript_commits c JOIN runs r ON r.id=c.run_id JOIN planning_run_inputs b ON b.run_id=r.id WHERE b.scope=$1 AND b.chapter_id=$2 AND c.chapter_id=$3 AND c.branch_id='main' ORDER BY c.created_at DESC,c.id DESC`, scope, p.ChapterID, draftID)
+	rows, err := tx.Query(ctx, `SELECT c.payload,r.payload,d.draft_version,
+ EXISTS(SELECT 1 FROM runs active WHERE active.chapter_id=c.chapter_id AND active.branch_id=c.branch_id AND active.status='running')
+ FROM manuscript_commits c JOIN runs r ON r.id=c.run_id JOIN chapters d ON d.id=c.chapter_id AND d.branch_id=c.branch_id
+ JOIN planning_run_inputs b ON b.run_id=r.id WHERE b.scope=$1 AND b.chapter_id=$2 AND c.branch_id='main'
+ AND EXISTS(SELECT 1 FROM jsonb_array_elements(c.payload->'segments') seg WHERE seg->>'beatId'=$3)
+ ORDER BY c.created_at DESC,c.id DESC`, scope, p.ChapterID, beat.ID)
 	if err != nil {
 		return slot, err
 	}
 	type source struct {
-		commit app.FinalCommit
-		run    app.Run
+		commit  app.FinalCommit
+		run     app.Run
+		version int
+		running bool
 	}
 	sources, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (source, error) {
 		var x source
 		var c, r []byte
-		e := row.Scan(&c, &r)
+		e := row.Scan(&c, &r, &x.version, &x.running)
 		if e == nil {
 			e = json.Unmarshal(c, &x.commit)
 		}
@@ -158,11 +152,13 @@ func assemblySlot(ctx context.Context, tx pgx.Tx, scope string, p planning.Chapt
 	for _, x := range sources {
 		reason := ""
 		source := x.run.Planning
-		if source == nil || source.Scope != scope || source.ChapterID != p.ChapterID || source.BeatID != beat.ID || source.PlanVersion != p.Version || source.Expected != p.Versions || !reflect.DeepEqual(source.Knowledge, k) {
+		if source == nil || source.Scope != scope || source.ChapterID != p.ChapterID || (source.BeatID != beat.ID && source.Mode != "chapter") || source.PlanVersion != p.Version || source.Expected != p.Versions || !reflect.DeepEqual(source.Knowledge, k) {
 			reason = "规划或知识版本已变化"
-		} else if running {
+		} else if x.commit.ID != sources[0].commit.ID {
+			reason = "本段已有新的采用稿，请重新核对组稿来源"
+		} else if x.running {
 			reason = "本 Beat 正在生成新稿"
-		} else if x.commit.DraftVersion != version {
+		} else if x.commit.DraftVersion != x.version {
 			reason = "正文已有更新，需重新审核提交"
 		}
 		option := app.AssemblyChoice{CommitID: x.commit.ID, DraftVersion: x.commit.DraftVersion, CreatedAt: x.commit.CreatedAt, Eligible: reason == "", Reason: reason}
@@ -174,13 +170,16 @@ func assemblySlot(ctx context.Context, tx pgx.Tx, scope string, p planning.Chapt
 			}
 			slot.Part.CommitID = x.commit.ID
 			slot.Part.DraftVersion = x.commit.DraftVersion
-			slot.Part.Segments = x.commit.Segments
+			slot.Part.Segments = nil
+			for _, segment := range x.commit.Segments {
+				if segment.BeatID == beat.ID {
+					slot.Part.Segments = append(slot.Part.Segments, segment)
+				}
+			}
 			slot.Reason = ""
 		}
 	}
-	if running {
-		slot.Reason = "本 Beat 正在生成新稿"
-	} else if slot.Part.CommitID == "" && len(sources) > 0 {
+	if slot.Part.CommitID == "" && len(sources) > 0 {
 		slot.Reason = "所选提交不存在或已过期，请先审核当前稿本"
 	}
 	return slot, nil

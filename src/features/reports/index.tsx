@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Download,
-  Sparkles,
+  PenLine,
   ArrowUpRight,
   BarChart3,
   FlaskConical,
@@ -85,7 +85,7 @@ export default function ReportsPage() {
                 setPolishOpen(true);
               }}
             >
-              <Sparkles size={15} />
+              <PenLine size={15} />
               {t.reports.polish}
             </Button>
           </>

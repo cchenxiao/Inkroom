@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Sparkles } from 'lucide-react';
+import { PenLine } from 'lucide-react';
 import { Button, Modal, Field, Select } from '@/shared/ui';
 import { useAction } from '@/shared/api/hooks';
 import { pages as t } from '@/shared/lib/messages-pages';
@@ -40,7 +40,7 @@ export default function SuggestionDialog({
               .catch(() => undefined)
           }
         >
-          <Sparkles size={14} />
+          <PenLine size={14} />
           {t.common.suggestion}
         </Button>
       }

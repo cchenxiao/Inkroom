@@ -25,15 +25,16 @@ func BuildChapterReviewInput(a ChapterAssembly, contexts map[string]manuscript.F
 	}
 	for i, p := range a.Parts {
 		frozen, ok := contexts[p.CommitID]
-		task := frozen.Bundle.WritingTask
-		if !ok || task == nil || frozen.Bundle.Beat.ID != p.BeatID || task.PlanVersion != a.PlanVersion {
+		context, found := frozen.Bundle.ForBeat(p.BeatID)
+		task := context.WritingTask
+		if !ok || !found || task == nil || task.PlanVersion != a.PlanVersion {
 			return in, ErrContextMismatch
 		}
-		part := ChapterReviewPart{BeatID: p.BeatID, SceneID: p.SceneID, Title: p.SceneTitle + " · " + p.BeatTitle, CommitID: p.CommitID, POV: frozen.Bundle.POV, StoryTime: task.StoryTime, Segments: []ChapterReviewSource{}, Facts: []ChapterReviewSource{}}
+		part := ChapterReviewPart{BeatID: p.BeatID, SceneID: p.SceneID, Title: p.SceneTitle + " · " + p.BeatTitle, CommitID: p.CommitID, POV: context.POV, StoryTime: task.StoryTime, Segments: []ChapterReviewSource{}, Facts: []ChapterReviewSource{}}
 		for n, s := range p.Segments {
 			part.Segments = append(part.Segments, ChapterReviewSource{ID: fmt.Sprintf("s-%d-%d", i+1, n+1), Kind: "passage", Text: s.Text, SourceID: s.ID, SourceVersion: p.DraftVersion})
 		}
-		for n, f := range frozen.Bundle.FactSources() {
+		for n, f := range context.FactSources() {
 			part.Facts = append(part.Facts, ChapterReviewSource{ID: fmt.Sprintf("f-%d-%d", i+1, n+1), Kind: "fact", Text: f.Text, SourceID: f.ID, SourceVersion: f.Version})
 		}
 		in.Parts = append(in.Parts, part)

@@ -52,8 +52,8 @@ func snapshot(ctx context.Context, q queryRow, id string) (app.Run, error) {
 	}
 	if current, e := planningRunCurrent(ctx, q, stored.Planning); e != nil {
 		return stored, e
-	} else if !current {
-		stored.ApprovalBlock = "规划材料已更新，旧审核失效；请使用当前确认版本重新生成"
+	} else if !current && stored.Status != "committed" {
+		stored.ApprovalBlock = "规划或前后文已更新，旧审核失效；请按最新上下文重新复检"
 		stored.InstructionBlock = stored.ApprovalBlock
 		stored.CanResume = false
 		if stored.Status != "running" && stored.Status != "committed" {

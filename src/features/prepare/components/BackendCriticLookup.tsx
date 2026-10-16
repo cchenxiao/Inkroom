@@ -1,3 +1,5 @@
+import { TechnicalDetails } from '@/shared/ui/technical-details';
+import { sourceLabel } from './source-label';
 import type { BackendRun } from '../types/backend';
 import { backendMessages as t } from '@/shared/lib/messages-backend';
 
@@ -27,13 +29,16 @@ export default function BackendCriticLookup({ run }: { run: BackendRun }) {
               <p>
                 {step.status === 'started' && run.status !== 'running'
                   ? t.lookupStopped
-                  : (t.lookupStates[step.status] ?? step.status)}{' '}
+                  : (t.lookupStates[step.status] ?? '查询状态待确认')}{' '}
                 · {t.lookupNew} {step.newSources}
               </p>
               {step.refs.map((ref) => (
-                <small className="mono" key={ref.id}>
-                  {ref.id} · v{ref.version} · {ref.digest.slice(0, 12)}{' '}
-                </small>
+                <div key={ref.id}>
+                  <p>
+                    {sourceLabel(run, ref.id, '查询材料')} · v{ref.version}
+                  </p>
+                  <TechnicalDetails items={{ 材料编号: ref.id, 校验值: ref.digest }} />
+                </div>
               ))}
             </div>
           ))}
@@ -44,16 +49,17 @@ export default function BackendCriticLookup({ run }: { run: BackendRun }) {
             <p role="status">
               {t.criticLookupStops[check.review.lookup.stop] ??
                 t.lookupStops[check.review.lookup.stop] ??
-                check.review.lookup.stop}
+                '查询已停止，请核对记录'}
             </p>
           )}
           {check.review.evidence?.hits.map((hit) => (
             <details key={hit.record.id}>
               <summary>
-                {hit.record.id} · v{hit.record.version} ·{' '}
+                {sourceLabel(run, hit.record.id, '查证材料')} · v{hit.record.version} ·{' '}
                 {hit.record.kind === 'fact' ? t.criticFact : t.criticPassage}
               </summary>
               <p>{hit.record.text}</p>
+              <TechnicalDetails items={{ 证据编号: hit.record.id, 校验值: hit.digest }} />
             </details>
           ))}
         </details>

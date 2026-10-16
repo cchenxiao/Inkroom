@@ -84,9 +84,9 @@
   scroll-behavior: auto;
 }
 .manuscript-page {
-  max-width: 780px;
+  max-width: calc(32 * var(--prose-size) + 68px);
   margin: 0 auto;
-  padding: 24px 28px 32px 40px;
+  padding: 16px 28px 28px 40px;
   box-sizing: border-box;
 }
 .chapter-heading {
@@ -164,11 +164,11 @@
   opacity: 0.65;
 }
 .manuscript-segment .tiptap {
-  font-family: 'Noto Serif SC', 'Songti SC', 'STSong', Georgia, serif;
-  font-size: 17px;
+  font-family: var(--font-manuscript);
+  font-size: var(--prose-size);
   font-weight: 400;
-  line-height: 1.85;
-  letter-spacing: 0.25px;
+  line-height: var(--prose-leading);
+  letter-spacing: 0;
   outline: none;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -176,7 +176,11 @@
   min-height: 35px;
 }
 .manuscript-segment .tiptap p {
-  margin: 0;
+  margin: 0 0 0.25em;
+  text-indent: 2em;
+}
+.manuscript-segment .tiptap p:last-child {
+  margin-bottom: 0;
 }
 .manuscript-segment .tiptap:focus {
   outline: none;
@@ -225,7 +229,7 @@
 }
 .manuscript-gutter {
   position: absolute;
-  left: max(4px, calc((100% - 780px) / 2 + 4px));
+  left: max(4px, calc((100% - (32 * var(--prose-size) + 68px)) / 2 + 4px));
   top: 0;
   bottom: 0;
   width: 28px;
@@ -403,7 +407,7 @@
 .sentence-text {
   font-family: 'Songti SC', Georgia, serif;
   font-size: 15px;
-  line-height: 1.85;
+  line-height: var(--prose-leading);
 }
 .sentence-text ins {
   text-decoration: none;
@@ -642,7 +646,7 @@
   }
 }
 .gutter-number {
-  font: 9px var(--font-mono);
+  font: 9px var(--font-ui);
   color: var(--paper-dim);
   text-align: center;
 }
@@ -797,4 +801,72 @@
 }
 .manuscript-segment {
   scroll-margin-top: 16px;
+}
+
+.manuscript-context-menu {
+  position: fixed;
+  z-index: 150;
+  width: 224px;
+  padding: 8px;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  font-family: var(--font-ui);
+}
+.manuscript-context-menu small {
+  display: block;
+  padding: 6px 8px;
+  color: var(--text-dim);
+}
+.manuscript-context-menu button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 8px;
+  border: 0;
+  background: transparent;
+  border-radius: 4px;
+  text-align: left;
+}
+.manuscript-context-menu button:not(:disabled):hover {
+  background: var(--overlay);
+  color: var(--ai);
+}
+.manuscript-context-menu button:disabled {
+  opacity: 0.4;
+}
+.manuscript-line-number {
+  position: absolute;
+  left: 0;
+  font: 10px var(--font-ui);
+  font-variant-numeric: tabular-nums;
+  color: var(--paper-dim);
+  opacity: 0.7;
+}
+.manuscript-gutter .gutter-number {
+  display: none;
+}
+.manuscript-tools button:hover,
+.manuscript-tabs button:hover {
+  color: var(--ai);
+}
+@media (max-width: 760px) {
+  .manuscript-page {
+    padding-inline: 32px 16px;
+  }
+  .manuscript-tools {
+    gap: 8px;
+  }
+  .manuscript-toolbar {
+    padding-inline: 8px;
+  }
+}
+
+/* Preserve source blank lines while keeping reading rhythm compact. */
+.manuscript-segment .tiptap p:has(> br.ProseMirror-trailingBreak:only-child) {
+  line-height: 0.45;
+  margin-bottom: 0;
 }

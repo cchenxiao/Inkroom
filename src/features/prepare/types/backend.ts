@@ -3,6 +3,15 @@ import type { Finding, RunState } from '@/types/domain';
 /** I3 结果是隔离的单段候选，不是工作台正式稿本。 */
 export interface BackendRun extends Omit<RunState, 'status' | 'currentNode'> {
   planning?: {
+    mode?: 'beat' | 'chapter';
+    neighborPolicy?: string;
+    neighbors?: {
+      beatId: string;
+      title: string;
+      position: 'before' | 'after';
+      version: number;
+      state?: 'candidate' | 'adopted';
+    }[];
     knowledge?: { version: number; digest: string };
     scope: string;
     chapterId: string;
@@ -109,7 +118,7 @@ export interface BackendRun extends Omit<RunState, 'status' | 'currentNode'> {
       sentenceLengths: number[];
       hits: { phrase: string; count: number }[];
     }[];
-    segments: { id: string; text: string; version: number }[];
+    segments: { id: string; text: string; version: number; beatId?: string }[];
     report: {
       draftVersion: number;
       findings: BackendFinding[];
@@ -145,7 +154,7 @@ export interface StoredDraft {
   chapterId: string;
   branchId: string;
   draftVersion: number;
-  segments: { id: string; text: string; version: number }[];
+  segments: { id: string; text: string; version: number; beatId?: string }[];
   findings: BackendFinding[];
   reviewed: boolean;
   origin: string;
@@ -169,7 +178,8 @@ export interface ModelCall {
 
 export interface HumanAction {
   id: string;
-  type: 'approve' | 'instruct' | 'inline_edit';
+  type: 'approve' | 'instruct' | 'inline_edit' | 'rewrite';
+  rewrite?: AuthorRewrite;
   draftVersion: number;
   instruction?: string;
   segmentId?: string;
@@ -230,7 +240,7 @@ export interface BackendCommit {
     noPendingFacts: boolean;
   };
   manifest: BackendManifest;
-  segments: { id: string; text: string; version: number }[];
+  segments: { id: string; text: string; version: number; beatId?: string }[];
   refs: { kind: string; id: string; version: number; digest: string; payload: unknown }[];
 }
 
@@ -243,4 +253,12 @@ export interface LookupTrace {
     refs: { id: string; version: number; digest: string }[];
   }[];
   stop?: string;
+}
+
+export interface AuthorRewrite {
+  segmentId: string;
+  original: string;
+  start: number;
+  end: number;
+  instruction: string;
 }

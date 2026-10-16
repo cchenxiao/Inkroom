@@ -61,16 +61,16 @@ func Load() (Config, error) {
 	if cfg.EmbeddingDimensions, err = positive("INKLOOM_EMBEDDING_DIMENSIONS", 1024); err != nil {
 		return Config{}, err
 	}
-	if cfg.ContextTokens, err = positive("INKLOOM_CONTEXT_TOKENS", 8000); err != nil {
+	if cfg.ContextTokens, err = positive("INKLOOM_CONTEXT_TOKENS", 32768); err != nil {
 		return Config{}, err
 	}
 	if cfg.MaxCalls, err = positive("INKLOOM_MAX_CALLS", 14); err != nil {
 		return Config{}, err
 	}
-	if cfg.MaxTokens, err = positive("INKLOOM_MAX_TOKENS", 24000); err != nil {
+	if cfg.MaxTokens, err = positive("INKLOOM_MAX_TOKENS", 128000); err != nil {
 		return Config{}, err
 	}
-	if cfg.MaxOutputTokens, err = positive("INKLOOM_MAX_OUTPUT_TOKENS", 2048); err != nil {
+	if cfg.MaxOutputTokens, err = positive("INKLOOM_MAX_OUTPUT_TOKENS", 8192); err != nil {
 		return Config{}, err
 	}
 	if raw := os.Getenv("INKLOOM_CALL_TIMEOUT"); raw != "" {

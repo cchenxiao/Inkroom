@@ -56,7 +56,7 @@ func (s *service) plannedRuns(w http.ResponseWriter, r *http.Request) {
 		fail(w, 503, "planning_unavailable", "规划写作存储不可用")
 		return
 	}
-	result, err := repo.PlannedRunReadiness(r.Context(), planningScope, id, s.cfg, r.URL.Query().Get("beatId"))
+	result, err := repo.PlannedRunReadiness(r.Context(), planningScope, id, s.cfg, r.URL.Query().Get("beatId"), r.URL.Query().Get("mode"))
 	if err != nil {
 		storageError(w, err)
 		return

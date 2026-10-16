@@ -1,3 +1,4 @@
+import { TechnicalDetails } from '@/shared/ui/technical-details';
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ApiError } from '@/shared/api/client';
@@ -5,6 +6,8 @@ import { useWritingPending } from '@/shared/lib/pending-writing';
 import { chapterPublicationMessages as t } from '@/shared/lib/messages-chapter-publication';
 import { Button, Badge } from '@/shared/ui';
 import { chapterPublicationApi, type ChapterPublicationRequest } from '../api/chapter-publication';
+import ChapterFacts from './ChapterFacts';
+import { chapterFactsApi } from '../api/chapter-facts';
 import type { ChapterReviewJob } from '../api/chapter-review';
 
 export default function ChapterPublication({
@@ -25,7 +28,21 @@ export default function ChapterPublication({
     retry: false,
     refetchInterval: 2500,
   });
-  const refresh = () => void client.invalidateQueries({ queryKey: key });
+  const factsQuery = useQuery({
+    queryKey: ['chapter-facts', job.id],
+    queryFn: ({ signal }) => chapterFactsApi.read(job.id, signal),
+    retry: false,
+    refetchInterval: 2500,
+  });
+  const refresh = () => {
+    void client.invalidateQueries({ queryKey: key });
+    void client.invalidateQueries({ queryKey: ['chapter-facts', job.id] });
+  };
+  const factToken = `${factsQuery.data?.job?.id ?? ''}:${factsQuery.data?.job?.status ?? ''}:${factsQuery.data?.selection?.version ?? 0}`;
+  useEffect(() => {
+    setChoice('');
+  }, [factToken]);
+
   const save = useMutation({
     mutationFn: chapterPublicationApi.publish,
     retry: false,
@@ -45,7 +62,7 @@ export default function ChapterPublication({
     },
   });
   const receipt = query.data?.publication;
-  const otherEdits = useWritingPending(Boolean(pending || save.isPending || (!receipt && choice)));
+  const otherEdits = useWritingPending(Boolean(pending || save.isPending));
   // Reading a receipt can recover a write whose response was lost without resending it.
   useEffect(() => {
     if (receipt && pending?.requestId === receipt.request.requestId) {
@@ -65,17 +82,27 @@ export default function ChapterPublication({
         ? t.otherEdits
         : blocked || job.approvalBlock || job.status !== 'completed' || !approval
           ? job.approvalBlock || t.gate
-          : query.isError
+          : query.isError || factsQuery.isError
             ? t.error
-            : query.isPending
+            : query.isPending || factsQuery.isPending
               ? t.loading
-              : '';
+              : factsQuery.data?.block || '';
   const reason =
     gate || (choice === 'pending' ? t.factsBlocked : choice !== 'none' ? t.factsRequired : '');
   const current = query.data?.current && job.current;
   return (
     <section className="page-stack" aria-label={t.title}>
       <h3>{t.title}</h3>
+      {!receipt && <p className="muted">{t.note}</p>}
+      {receipt && <p role="status">{t.localFacts}</p>}
+      {factsQuery.isError && <p role="alert">{t.error}</p>}
+      {/* Keep local decisions and uncertain retries mounted if another window publishes. */}
+      <ChapterFacts
+        review={job}
+        state={factsQuery.data}
+        blocked={blocked || stale || factsQuery.isError || !!pending || save.isPending || !!receipt}
+        onChange={refresh}
+      />
       {receipt ? (
         <>
           <Badge tone={current ? 'success' : 'muted'}>{current ? t.saved : t.historical}</Badge>
@@ -87,14 +114,18 @@ export default function ChapterPublication({
           </p>
           <details>
             <summary>{t.receipt}</summary>
-            <p className="mono">{receipt.id}</p>
-            <p>{t.authorFacts}</p>
+            <TechnicalDetails items={{ 定稿记录编号: receipt.id }} />
+            <p>{receipt.factSelection ? t.reviewedFacts : t.authorFacts}</p>
+            {receipt.factSelection?.package.facts.map((f) => (
+              <p key={f.id}>
+                {f.text} · {f.knownBy.join('、') || t.noKnowers}
+              </p>
+            ))}
           </details>
           <p className="muted">{t.next}</p>
         </>
       ) : (
         <>
-          <p className="muted">{t.note}</p>
           {query.isPending ? (
             <p role="status">{t.loading}</p>
           ) : (
@@ -134,6 +165,12 @@ export default function ChapterPublication({
                 inputDigest: job.inputDigest,
                 approvalId: approval,
                 noPendingFacts: true,
+                ...(factsQuery.data?.job
+                  ? {
+                      factJobId: factsQuery.data.job.id,
+                      factVersion: factsQuery.data.selection?.version ?? 0,
+                    }
+                  : {}),
               };
               setPending(req);
               save.mutate(req);

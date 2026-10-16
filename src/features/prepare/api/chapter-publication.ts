@@ -1,5 +1,6 @@
 import { backendApi } from '@/shared/api/client';
 import type { ChapterReviewJob } from './chapter-review';
+import type { FactsSelection } from './chapter-facts';
 import type { ChapterAssembly } from './chapter-assembly';
 
 export interface ChapterPublicationRequest {
@@ -9,6 +10,8 @@ export interface ChapterPublicationRequest {
   inputDigest: string;
   approvalId: string;
   noPendingFacts: boolean;
+  factJobId?: string;
+  factVersion?: number;
 }
 export interface ChapterPublication {
   id: string;
@@ -19,9 +22,10 @@ export interface ChapterPublication {
   request: ChapterPublicationRequest;
   assembly: ChapterAssembly;
   review: ChapterReviewJob;
+  factSelection?: FactsSelection;
   factConfirmation: {
     draftVersion: number;
-    method: 'author_no_pending_facts';
+    method: 'author_no_pending_facts' | 'author_reviewed_fact_candidates';
     noPendingFacts: boolean;
   };
   createdAt: string;

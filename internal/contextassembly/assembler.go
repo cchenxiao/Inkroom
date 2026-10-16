@@ -82,6 +82,33 @@ func Assemble(b manuscript.ContextBundle, previous PreviousChapter, opts Options
 			title = frozen.Beat.Title
 			excerpt = frozen.Beat.Description
 		}
+		if ref.Kind == "chapter_target" {
+			var target manuscript.ContextBundle
+			if json.Unmarshal(ref.Payload, &target) == nil {
+				title = "情节任务 · " + target.Beat.Title
+				excerpt = target.Beat.Description
+			}
+		}
+		if ref.Kind == "neighbor_passage" {
+			var passage manuscript.Passage
+			if json.Unmarshal(ref.Payload, &passage) == nil {
+				title = "前段 · " + passage.Title
+				if passage.Position == "after" {
+					title = "后段 · " + passage.Title
+				}
+				excerpt = "尚无已保存正文，不推测其内容"
+				if len(passage.Segments) > 0 {
+					excerpt = passage.Segments[0].Text
+					if passage.State == "candidate" {
+						title += "（未采用工作稿，仅作叙事参照）"
+					}
+				}
+			}
+		}
+		if ref.Kind == "author_rewrite" {
+			title = "作者修改范围"
+			excerpt = "仅修改作者指定范围，其他正文保持不变"
+		}
 		var source manuscript.SourceRef
 		if ref.Kind == "bible_fact" || ref.Kind == "context_source" || ref.Kind == "previous_ending" {
 			_ = json.Unmarshal(ref.Payload, &source)

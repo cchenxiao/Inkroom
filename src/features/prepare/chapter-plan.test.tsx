@@ -211,7 +211,7 @@ it('requires explicit chapter plan confirmation and retains edits on version con
   expect(saves).toBe(0);
   expect(screen.getByLabelText('展开章节')).toBeDisabled();
   expect(screen.getByRole('button', { name: '确认规划' })).toBeDisabled();
-  await user.selectOptions(screen.getByLabelText('后续单段写作先用哪个 Beat'), 'b2');
+  await user.selectOptions(screen.getByLabelText('后续单段写作先用哪个情节段'), 'b2');
   await user.click(screen.getByLabelText('我已核对本章细纲与 Brief'));
   await user.type(screen.getByLabelText('本场目标'), '，试着合作');
   expect(screen.getByLabelText('我已核对本章细纲与 Brief')).not.toBeChecked();

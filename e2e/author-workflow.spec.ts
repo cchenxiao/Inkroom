@@ -9,17 +9,17 @@ test('author keeps control of a suggestion and resolves a conflict with an expli
   page.on('request', (request) => {
     if (request.method() !== 'GET') writes.push(request.url());
   });
-  await page.goto('/workspace');
+  await page.goto('/workspace?projectId=project-zhuoliu&branchId=main&chapterId=ch7&source=demo');
   const originalSegment = page.getByTestId('editor-ch7-s3');
   await expect(originalSegment).toContainText('一股难以言喻的情绪涌上心头');
   await expect(page.getByText('所有修改已保存', { exact: true })).toBeVisible();
   expect(writes).toEqual([]);
-  await expect(page.getByRole('button', { name: '提交定稿', exact: true })).toBeDisabled();
 
   // Visit the review surface and return through real navigation.
   await page.getByRole('link', { name: '人工审核', exact: true }).click();
-  await expect(page.getByRole('heading', { name: '把最后的决定，留给作者' })).toBeVisible();
-  await page.getByRole('link', { name: '章节工作台', exact: true }).click();
+  await expect(page.getByRole('heading', { name: '人工审核', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: '批准定稿', exact: true })).toBeDisabled();
+  await page.getByRole('link', { name: '章节写作', exact: true }).click();
   const before = await originalSegment.innerText();
   await page.locator('[data-finding-id="f-p2-emotion"]').first().click();
   await page.getByRole('button', { name: '查看修改建议', exact: true }).click();
@@ -31,7 +31,7 @@ test('author keeps control of a suggestion and resolves a conflict with an expli
   await expect(page.getByTestId('editor-ch7-s4')).toContainText('嘴角勾起一抹冷笑');
 
   // A lie is an author interpretation; it must not rewrite Bible facts.
-  await page.getByRole('link', { name: '变更与冲突', exact: true }).click();
+  await page.getByRole('link', { name: '变更冲突', exact: true }).click();
   const confirm = page.getByRole('button', { name: '确认裁决', exact: true });
   await expect(confirm).toBeDisabled();
   await page.getByRole('button', { name: '以正文为准', exact: true }).click();
@@ -42,7 +42,7 @@ test('author keeps control of a suggestion and resolves a conflict with an expli
     .fill('角色故意隐瞒左手旧伤，保留已确认的人物设定。');
   await confirm.click();
   await expect(page.getByText('没有待裁决的事实冲突', { exact: true })).toBeVisible();
-  await page.getByRole('link', { name: '章节工作台', exact: true }).click();
+  await page.getByRole('link', { name: '章节写作', exact: true }).click();
   await expect(page.getByTestId('editor-ch7-s5')).toContainText('用右手攥紧了刀');
   await page.screenshot({
     path: testInfo.outputPath('author-reviewed-manuscript.png'),
@@ -56,7 +56,7 @@ test('text selection creates an attached comment without overwriting the manuscr
 }) => {
   const pageErrors: string[] = [];
   page.on('pageerror', (error) => pageErrors.push(error.message));
-  await page.goto('/workspace');
+  await page.goto('/workspace?projectId=project-zhuoliu&branchId=main&chapterId=ch7&source=demo');
   const editor = page.getByTestId('editor-ch7-s1');
   await expect(editor).toBeVisible();
   const original = await editor.innerText();

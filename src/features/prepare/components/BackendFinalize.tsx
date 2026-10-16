@@ -1,3 +1,4 @@
+import { TechnicalDetails } from '@/shared/ui/technical-details';
 import { useWritingPending } from '@/shared/lib/pending-writing';
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -67,7 +68,7 @@ export default function BackendFinalize({
       <p>{run.planning ? plannedText.finalizeNote : t.finalizeNote}</p>
       {run.commitId ? (
         <p role="status">
-          {t.committed} · <span className="mono">{run.commitId}</span>
+          {t.committed} · 候选 v{run.draftVersion}
         </p>
       ) : (
         <>
@@ -119,7 +120,7 @@ export default function BackendFinalize({
           <details className="backend-commit" key={commit.id}>
             <summary>
               <Badge tone="human">v{commit.draftVersion}</Badge>{' '}
-              {new Date(commit.createdAt).toLocaleString('zh-CN')} · {commit.id.slice(0, 12)}
+              {new Date(commit.createdAt).toLocaleString('zh-CN')}
             </summary>
             <div className="backend-candidate">
               {commit.segments.map((segment) => (
@@ -129,15 +130,19 @@ export default function BackendFinalize({
             <p>
               {t.frozenRefs} {commit.refs.length} · {t.authorFactsConfirmed}
             </p>
-            <p className="mono">
-              {t.parentCommit}：{commit.parentCommit || t.firstCommit}
-            </p>
-            {commit.refs.map((ref) => (
+            <p>{commit.parentCommit ? '延续上一份已保存版本' : t.firstCommit}</p>
+            {commit.refs.map((ref, index) => (
               <p key={`${ref.kind}:${ref.id}`}>
-                <Badge>{t.sourceKinds[ref.kind] ?? ref.kind}</Badge> {ref.id} · v{ref.version} ·{' '}
-                <span title={ref.digest}>{ref.digest.slice(0, 12)}</span>
+                <Badge>{t.sourceKinds[ref.kind] ?? '创作材料'}</Badge> {index + 1} · v{ref.version}
               </p>
             ))}
+            <TechnicalDetails
+              items={{
+                提交编号: commit.id,
+                上一提交编号: commit.parentCommit,
+                来源记录: commit.refs.map((ref) => `${ref.id} · ${ref.digest}`).join('；'),
+              }}
+            />
           </details>
         ))}
       </details>

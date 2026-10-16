@@ -174,14 +174,18 @@ func (s *Store) SelectPlanningDirection(ctx context.Context, scope string, r pla
 
 // 一致性读：头、输入与选择共享同一个数据库快照，避免拼出跨版本页面。
 func (s *Store) GetPlanning(ctx context.Context, scope string) (planning.State, error) {
-	state := planning.State{ChapterPlans: []planning.ChapterPlanSelection{}, ChapterPlanJobs: []planning.ChapterPlanJob{}, OutlineJobs: []planning.OutlineJob{}, CoreJobs: []planning.CoreJob{}, StyleJobs: []planning.StyleJob{}, Jobs: []planning.Job{}, Packs: planning.Catalog()}
 	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead, AccessMode: pgx.ReadOnly})
 	if err != nil {
-		return state, err
+		return planning.State{}, err
 	}
 	defer tx.Rollback(context.Background())
+	return readPlanning(ctx, tx, scope)
+}
+
+func readPlanning(ctx context.Context, tx pgx.Tx, scope string) (planning.State, error) {
+	state := planning.State{ChapterPlans: []planning.ChapterPlanSelection{}, ChapterPlanJobs: []planning.ChapterPlanJob{}, OutlineJobs: []planning.OutlineJob{}, CoreJobs: []planning.CoreJob{}, StyleJobs: []planning.StyleJob{}, Jobs: []planning.Job{}, Packs: planning.Catalog()}
 	var iv int
-	err = tx.QueryRow(ctx, "SELECT input_version,direction_version,style_version,core_version,outline_version FROM planning_heads WHERE scope=$1", scope).Scan(&iv, &state.DirectionVersion, &state.StyleVersion, &state.CoreVersion, &state.OutlineVersion)
+	err := tx.QueryRow(ctx, "SELECT input_version,direction_version,style_version,core_version,outline_version FROM planning_heads WHERE scope=$1", scope).Scan(&iv, &state.DirectionVersion, &state.StyleVersion, &state.CoreVersion, &state.OutlineVersion)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return state, nil
 	}
@@ -243,5 +247,5 @@ func (s *Store) GetPlanning(ctx context.Context, scope string) (planning.State, 
 	if err = readOutlinePlanning(ctx, tx, scope, &state); err != nil {
 		return state, err
 	}
-	return state, tx.Commit(ctx)
+	return state, nil
 }

@@ -70,6 +70,9 @@ func (s *Store) EditSegment(ctx context.Context, chapter, branch, id string, exp
 		return app.Draft{}, err
 	}
 	defer tx.Rollback(context.Background())
+	if err = lockDraftPlanning(ctx, tx, chapter, branch); err != nil {
+		return app.Draft{}, err
+	}
 	var current int
 	err = tx.QueryRow(ctx, "SELECT draft_version FROM chapters WHERE id=$1 AND branch_id=$2 FOR UPDATE", chapter, branch).Scan(&current)
 	if errors.Is(err, pgx.ErrNoRows) {

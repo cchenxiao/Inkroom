@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, ArrowRight, Check, LockKeyhole, Sparkles, UnlockKeyhole } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, LockKeyhole, PenLine, UnlockKeyhole } from 'lucide-react';
 import { ApiError } from '@/shared/api/client';
 import { bookPath, enterBook } from '@/shared/lib/book-context';
 import { wizardMessages as m } from '@/shared/lib/messages-wizard';
@@ -185,7 +185,7 @@ export default function WizardPage() {
             </p>
           )}
           <Button type="submit" variant="default" loading={busy}>
-            <Sparkles size={16} />
+            <PenLine size={16} />
             {m.create}
           </Button>
         </form>
@@ -434,7 +434,7 @@ function ExistingWizard({ plan }: { plan: BookPlan }) {
               })
             }
           >
-            <Sparkles size={15} />
+            <PenLine size={15} />
             {current.candidates.length ? m.regenerate : m.generate}
           </Button>
         </div>

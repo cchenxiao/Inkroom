@@ -1,3 +1,4 @@
+import { TechnicalDetails } from '@/shared/ui/technical-details';
 import { useState } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
@@ -98,9 +99,10 @@ export default function PlanningKnowledgePublish() {
                 {t.excluded} · {p.excluded.length}
               </summary>
               <ul>
-                {p.excluded.map((e) => (
+                {p.excluded.map((e, index) => (
                   <li key={e.id}>
-                    {e.id}：{e.reason}
+                    未纳入材料 {index + 1}：{e.reason}
+                    <TechnicalDetails items={{ 材料编号: e.id }} />
                   </li>
                 ))}
               </ul>

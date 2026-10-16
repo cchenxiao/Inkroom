@@ -7,13 +7,13 @@ type Snapshot = StoredKnowledge['snapshot'];
 function Location({ value }: { value: KnowledgeLocation }) {
   if (value.initial)
     return (
-      <span className="text-dim" title={value.initial.id}>
+      <span className="text-dim" title="来自已确认的人物世界设定">
         {publicationMessages.initial(value.initial.coreVersion, value.at.storyTime)}
       </span>
     );
   return (
-    <span className="text-dim" title={value.chapterId}>
-      {t.location(value.at.chapter, value.segmentId, value.at.storyTime)}
+    <span className="text-dim" title="来源章节原文">
+      {t.location(value.at.chapter, '章节原文', value.at.storyTime)}
     </span>
   );
 }
@@ -89,12 +89,14 @@ export function KnowledgeTimeline({ snapshot }: { snapshot: Snapshot }) {
           </p>
           {!!event.factIds?.length && (
             <p>
-              {t.eventFacts}：{event.factIds.map((id) => facts.get(id) ?? id).join('；')}
+              {t.eventFacts}：
+              {event.factIds.map((id) => facts.get(id) ?? '关联事实暂缺').join('；')}
             </p>
           )}
           {!!event.causalBefore?.length && (
             <p>
-              {t.before}：{event.causalBefore.map((id) => names.get(id) ?? id).join('；')}
+              {t.before}：
+              {event.causalBefore.map((id) => names.get(id) ?? '关联事件暂缺').join('；')}
             </p>
           )}
         </article>

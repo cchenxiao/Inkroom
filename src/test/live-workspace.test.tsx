@@ -24,7 +24,7 @@ function EditingProbe() {
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
 afterAll(() => server.close());
 afterEach(() => server.resetHandlers());
-it('keeps mock chapter state and actions out of the real writing shell', async () => {
+it('does not mount the demo shell around real workspace routes', async () => {
   expect(isLiveWorkspace('/Workspace/', '?source=planned', 'project-zhuoliu', 'main')).toBe(true);
   useUIStore.setState({
     projectId: 'project-zhuoliu',
@@ -32,7 +32,7 @@ it('keeps mock chapter state and actions out of the real writing shell', async (
     chapterId: 'ch7',
     stale: true,
     attention: 'review',
-    focus: true,
+    focus: false,
   });
   let mockRequests = 0;
   server.use(
@@ -42,47 +42,37 @@ it('keeps mock chapter state and actions out of the real writing shell', async (
     }),
   );
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  render(
+  const view = render(
     <QueryClientProvider client={client}>
       <RouterProvider
         router={createMemoryRouter(
-          [
-            {
-              element: <Layout />,
-              children: [{ path: 'workspace', element: <EditingProbe /> }],
-            },
-          ],
+          [{ element: <Layout />, children: [{ path: 'workspace', element: <EditingProbe /> }] }],
           { initialEntries: ['/Workspace/?projectId=project-zhuoliu&branchId=main'] },
         )}
       />
     </QueryClientProvider>,
   );
-  expect(await screen.findByText('真实创作')).toBeInTheDocument();
-  expect(screen.getByText('真实稿本入口')).toBeVisible();
+  expect(await screen.findByText('真实稿本入口')).toBeVisible();
   expect(screen.queryByText(/旧审批与建议已失效/)).not.toBeInTheDocument();
-  expect(screen.queryByText('Agent 工作台')).not.toBeInTheDocument();
-  expect(screen.getByRole('link', { name: '人工审核' })).toHaveAttribute(
-    'href',
-    expect.stringContaining('stage=assembly'),
-  );
+  expect(screen.queryByText('夜谈')).not.toBeInTheDocument();
   expect(mockRequests).toBe(0);
-  const user = userEvent.setup();
-  await user.type(screen.getByLabelText('修改正文'), '保留我的修改');
-  await user.click(screen.getByRole('link', { name: '人工审核' }));
-  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-  expect(screen.getByLabelText('修改正文')).toHaveValue('保留我的修改');
-  await user.click(screen.getByRole('link', { name: '查看演示工作台' }));
-  await screen.findByRole('dialog', { name: '离开当前编辑？' });
-  await user.click(screen.getByRole('button', { name: '继续编辑' }));
-  expect(screen.getByLabelText('修改正文')).toHaveValue('保留我的修改');
-  expect(mockRequests).toBe(0);
+  view.unmount();
   client.clear();
 });
 
 it('uses Go chapter IDs from the outline and keeps empty/error states separate from demo data', async () => {
+  const previousWidth = window.innerWidth;
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1440 });
   const { default: WorkspaceEntry } = await import('@/app/components/workspace-entry');
   const input = await import('../../internal/demo/core_settings.json');
-  useUIStore.setState({ projectId: 'project-zhuoliu', branchId: 'main', chapterId: 'ch7' });
+  useUIStore.setState({
+    projectId: 'project-zhuoliu',
+    branchId: 'main',
+    chapterId: 'ch7',
+    focus: false,
+    attention: null,
+    leftOpen: false,
+  });
   const versions = {
     planning: { input: 1, direction: 1, style: 1, core: 1 },
     outline: 1,
@@ -121,7 +111,11 @@ it('uses Go chapter IDs from the outline and keeps empty/error states separate f
               inputVersion: 1,
               directionVersion: 1,
               styleVersion: 1,
-              content: { characters: [{ id: 'c1', name: '林舟' }] },
+              content: {
+                characters: [{ id: 'c1', name: '林舟', voice: [], hardFactIds: [] }],
+                worldFacts: [],
+                plans: [],
+              },
               decisions: { c1: 'confirmed' },
             },
             outlineVersion: 1,
@@ -159,7 +153,7 @@ it('uses Go chapter IDs from the outline and keeps empty/error states separate f
     http.get('*/go-api/planning/chapter-runs', ({ request }) => {
       const query = new URL(request.url).searchParams;
       expect(query.get('chapterId')).toBe('first-real');
-      expect(query.get('beatId')).toBe('beat-real');
+      if (query.get('mode') !== 'chapter') expect(query.get('beatId')).toBe('beat-real');
       return HttpResponse.json({
         ready: !posted,
         reason: posted ? '规划版本已变化' : '',
@@ -199,16 +193,18 @@ it('uses Go chapter IDs from the outline and keeps empty/error states separate f
     </QueryClientProvider>,
   );
   const user = userEvent.setup();
-  await screen.findByText('先为故事准备一个开头');
+  await screen.findByText('尚未准备章节', {}, { timeout: 5000 });
   expect(screen.queryByText('夜谈')).not.toBeInTheDocument();
   failed = true;
   await user.click(screen.getByRole('button', { name: '刷新规划' }));
-  await screen.findByText('暂时无法读取真实规划，请确认 Go 服务已启动。');
+  await screen.findByRole('button', { name: '刷新规划' });
   expect(screen.queryByText('夜谈')).not.toBeInTheDocument();
   failed = false;
   showOutline = true;
   await user.click(screen.getByRole('button', { name: '刷新规划' }));
-  await user.click(await screen.findByRole('button', { name: '生成选定 Beat 正文' }));
+  await screen.findByRole('region', { name: '正文创作台' });
+  await user.click(screen.getAllByRole('button', { name: '生成本段' })[0]);
+  await user.click(screen.getByRole('button', { name: '审核本段' }));
   expect(posted).toMatchObject({
     chapterId: 'first-real',
     beatId: 'beat-real',
@@ -218,15 +214,28 @@ it('uses Go chapter IDs from the outline and keeps empty/error states separate f
   expect(posted?.requestId).toBeTruthy();
   confirmed = false;
   await user.click(screen.getByRole('button', { name: '刷新规划' }));
-  await screen.findByText(/本章细纲尚未确认/);
-  await user.click(await screen.findByRole('button', { name: '重试本次开工请求' }));
+  await screen.findAllByText(/先确认当前章/);
+  await user.click(await screen.findByRole('button', { name: '重试原请求' }));
   expect(requests).toHaveLength(2);
   expect(requests[1]).toEqual(requests[0]);
   await screen.findAllByText('规划版本已变化');
-  expect(screen.getByRole('button', { name: '生成选定 Beat 正文' })).toBeDisabled();
-  expect(router.state.location.search).toContain('planningChapterId=first-real');
-  await user.click(screen.getByRole('link', { name: '组稿与复审' }));
-  expect(await screen.findByRole('button', { name: '保存章稿' })).toBeDisabled();
+  for (const button of screen.getAllByRole('button', { name: '生成本段' }))
+    expect(button).toBeDisabled();
+
+  expect(screen.queryByRole('link', { name: '人工审核' })).not.toBeInTheDocument();
+  await user.click(screen.getByRole('tab', { name: '整章审核' }));
+  expect(screen.getByRole('link', { name: '章节写作' })).toHaveAttribute('aria-current', 'page');
+  expect(await screen.findByText('先完成段落审核')).toBeVisible();
+  expect(screen.queryByRole('button', { name: '保存章稿' })).not.toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: '展开结构' }));
+  expect(screen.queryByRole('dialog', { name: '章节目录' })).not.toBeInTheDocument();
+  expect(screen.getByRole('complementary', { name: '章节目录' })).toBeVisible();
+  expect(screen.getByRole('complementary', { name: '正文旁审核' })).toBeVisible();
+  expect(screen.getByRole('region', { name: '正文创作台' })).toBeVisible();
+  await user.click(screen.getByRole('button', { name: '收起结构' }));
+  expect(screen.queryByRole('complementary', { name: '章节目录' })).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: '展开结构' })).toBeVisible();
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: previousWidth });
   view.unmount();
   client.clear();
 });

@@ -6,8 +6,9 @@ export function liveWorkspacePath(chapterId?: string, stage: 'write' | 'assembly
     projectId: ORIGINAL_PROJECT,
     branchId: 'main',
     source: 'planned',
-    stage,
+    stage: 'write',
   });
+  if (stage === 'assembly') query.set('panel', 'assembly');
   if (chapterId) query.set('planningChapterId', chapterId);
   return `/workspace?${query}`;
 }
@@ -21,10 +22,15 @@ export function isLiveWorkspace(
   return (
     Boolean(matchPath({ path: '/workspace', end: true }, pathname)) &&
     params.get('source') !== 'demo' &&
-    (params.get('source') === 'planned' ||
-      ((params.get('projectId') ?? projectId) === ORIGINAL_PROJECT &&
-        (params.get('branchId') ?? branchId) === 'main'))
+    (params.get('projectId') ?? projectId) === ORIGINAL_PROJECT &&
+    (params.get('branchId') ?? branchId) === 'main'
   );
 }
 export const demoWorkspacePath =
   '/workspace?projectId=project-zhuoliu&branchId=main&chapterId=ch7&source=demo';
+
+export function livePreparePath(section = 'premise', chapterId?: string) {
+  const q = new URLSearchParams({ projectId: 'project-zhuoliu', branchId: 'main', section });
+  if (chapterId) q.set('planningChapterId', chapterId);
+  return `/prepare?${q}`;
+}

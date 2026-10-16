@@ -1,3 +1,4 @@
+import { ReadingRoute } from './components/reading-route';
 import { BookFeature } from './components/book-feature';
 import { BookContext } from './components/book-context';
 import { lazy, Suspense } from 'react';
@@ -23,9 +24,11 @@ const wrap = (Page: typeof Workspace) => (
 export const router = createBrowserRouter([
   {
     element: (
-      <BookContext>
-        <Layout />
-      </BookContext>
+      <ReadingRoute>
+        <BookContext>
+          <Layout />
+        </BookContext>
+      </ReadingRoute>
     ),
     errorElement: <ErrorPage />,
     children: [

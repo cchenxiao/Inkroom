@@ -7,13 +7,12 @@ import {
   Pause,
   Play,
   FastForward,
-  X,
   GitBranch,
   AlertTriangle,
 } from 'lucide-react';
 import { useAction, useChapter, useResource } from '@/shared/api/hooks';
 import { useUIStore } from '@/shared/lib/ui-store';
-import { Badge, Button, Tabs, Select } from '@/shared/ui';
+import { Badge, Button, Tabs, Select, DangerButton } from '@/shared/ui';
 import { shellText as t } from '@/shared/lib/messages-shell';
 import { zh } from '@/shared/lib/messages';
 import type { RunNode, RunState } from '@/types/domain';
@@ -135,15 +134,18 @@ export default function RunDrawer() {
             >
               <Maximize2 size={14} />
             </Button>
-            <Button
-              size="icon"
-              variant="ghost"
+            <DangerButton
+              size="sm"
               aria-label={t.cancelRun}
-              disabled={['completed', 'canceled'].includes(run.status)}
-              onClick={() => act('cancel')}
+              title="取消当前运行？"
+              description="停止本次运行，已保存正文仍保留。若之后继续，需要重新发起运行。"
+              disabled={['completed', 'canceled'].includes(run.status) || action.isPending}
+              onConfirm={() =>
+                action.mutateAsync({ action: 'cancel', draftVersion: data.chapter.draftVersion })
+              }
             >
-              <X size={14} />
-            </Button>
+              {t.cancelRun}
+            </DangerButton>
           </div>
           <div className="run-content">
             {ui.drawerTab === 'flow' ? (

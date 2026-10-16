@@ -5,7 +5,22 @@ import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { http, HttpResponse } from 'msw';
 import { server } from '@/mocks/node';
-import PlannedBeatWriting from './components/PlannedBeatWriting';
+import { usePlannedWriting } from './hooks/usePlannedWriting';
+function Probe() {
+  const w = usePlannedWriting('first', '', false);
+  return (
+    <>
+      <button
+        disabled={!!w.block || !w.gate.data?.ready || !!w.pendingStart}
+        onClick={() => w.begin()}
+      >
+        生成选定 Beat 正文
+      </button>
+      <button onClick={w.refresh}>刷新写作状态</button>
+      {w.pendingStart && <button onClick={w.retryStart}>重试本次开工请求</button>}
+    </>
+  );
+}
 import type { PlannedRunRequest } from './api/planned-run';
 const { planning } = vi.hoisted(() => ({
   planning: {
@@ -53,7 +68,7 @@ it('sends planning and draft versions, preserves retry identity, and blocks an o
   const view = render(
     <QueryClientProvider client={client}>
       <MemoryRouter>
-        <PlannedBeatWriting chapterId="first" editing={false} />
+        <Probe />
       </MemoryRouter>
     </QueryClientProvider>,
   );
@@ -80,3 +95,102 @@ it('sends planning and draft versions, preserves retry identity, and blocks an o
   view.unmount();
   client.clear();
 });
+
+function ScopeProbe() {
+  const w = usePlannedWriting('first', 'middle', false);
+  return (
+    <>
+      <button disabled={!w.chapterGate.data?.ready || !!w.pendingStart} onClick={w.beginChapter}>
+        生成整章候选
+      </button>
+      <button
+        disabled={!w.run || !w.current || !!w.pendingStart}
+        onClick={() =>
+          void w.revise({
+            segmentId: 's2',
+            original: '中间正文',
+            start: 0,
+            end: 2,
+            instruction: '重写开头',
+          })
+        }
+      >
+        修改已采用选区
+      </button>
+      {w.pendingStart && <button onClick={w.retryStart}>重试范围请求</button>}
+    </>
+  );
+}
+vi.mock('./hooks/useBackendEvents', () => ({ useBackendEvents: () => undefined }));
+it.each(['chapter', 'rewrite'] as const)(
+  'preserves %s scope and source versions across a failed start',
+  async (scope) => {
+    const expected = {
+      planning: { input: 1, direction: 1, style: 1, core: 1 },
+      outline: 2,
+      bindings: 2,
+    };
+    const source = {
+      id: 'adopted',
+      chapterId: 'draft-chapter',
+      status: 'committed',
+      draftVersion: 7,
+      eventSequence: 1,
+    };
+    const requests: PlannedRunRequest[] = [];
+    server.use(
+      http.get('*/go-api/planning/chapter-runs', ({ request }) =>
+        HttpResponse.json({
+          ready: true,
+          reason: '',
+          beatId:
+            new URL(request.url).searchParams.get('mode') === 'chapter' ? '__chapter__' : 'middle',
+          draftVersion: new URL(request.url).searchParams.get('mode') === 'chapter' ? 0 : 3,
+          planVersion: 2,
+          expected,
+          runs: [source],
+        }),
+      ),
+      http.get('*/go-api/runs/adopted', () => HttpResponse.json(source)),
+      http.get('*/go-api/chapters/draft-chapter', () =>
+        HttpResponse.json({ draftVersion: 7, segments: [] }),
+      ),
+      http.post('*/go-api/planning/chapter-runs', async ({ request }) => {
+        requests.push((await request.json()) as PlannedRunRequest);
+        return HttpResponse.json({ message: '连接中断' }, { status: 503 });
+      }),
+    );
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const view = render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter>
+          <ScopeProbe />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    const user = userEvent.setup();
+    const button = screen.getByRole('button', {
+      name: scope === 'chapter' ? '生成整章候选' : '修改已采用选区',
+    });
+    await waitFor(() => expect(button).toBeEnabled());
+    await user.click(button);
+    await waitFor(() => expect(requests).toHaveLength(1));
+    await user.click(screen.getByRole('button', { name: '重试范围请求' }));
+    await waitFor(() => expect(requests).toHaveLength(2));
+    expect(requests[1]).toEqual(requests[0]);
+    if (scope === 'chapter')
+      expect(requests[0]).toMatchObject({ mode: 'chapter', draftVersion: 0, expected });
+    else
+      expect(requests[0]).toMatchObject({
+        mode: 'beat',
+        beatId: 'middle',
+        draftVersion: 3,
+        fromRunId: 'adopted',
+        sourceVersion: 7,
+        autoRevise: false,
+        rewrite: { segmentId: 's2', original: '中间正文', start: 0, end: 2 },
+      });
+    view.unmount();
+    client.clear();
+  },
+);

@@ -58,7 +58,7 @@
 .report-metrics strong {
   font-size: 25px;
   font-weight: 400;
-  font-family: var(--font-mono);
+  font-family: var(--font-ui);
 }
 .report-metrics strong span {
   font-size: 10px;
@@ -85,7 +85,7 @@
 .ai-heat-cell strong {
   font-size: 22px;
   font-weight: 400;
-  font-family: var(--font-mono);
+  font-family: var(--font-ui);
 }
 .ai-heat-cell meter {
   width: 100%;

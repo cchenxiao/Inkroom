@@ -1,6 +1,8 @@
+import { readableMessage } from '@/shared/lib/business-labels';
 import {
   forwardRef,
   useId,
+  useState,
   type ButtonHTMLAttributes,
   type HTMLAttributes,
   type InputHTMLAttributes,
@@ -80,7 +82,7 @@ export function Card({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
 }
 export function Tooltip({ content, children }: { content: ReactNode; children: ReactNode }) {
   return (
-    <TooltipPrimitive.Provider delayDuration={250}>
+    <TooltipPrimitive.Provider delayDuration={120}>
       <TooltipPrimitive.Root>
         <TooltipPrimitive.Trigger asChild>{children}</TooltipPrimitive.Trigger>
         <TooltipPrimitive.Portal>
@@ -204,19 +206,94 @@ export function PageHeader({
 export function Skeleton({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
   return <div {...props} className={cn('skeleton', className)} aria-busy="true" />;
 }
-export function Empty({
+export function StatNumber({ className, ...props }: HTMLAttributes<HTMLSpanElement>) {
+  return <span {...props} className={cn('stat-number', className)} />;
+}
+export function EmptyState({
   title = zh.common.empty,
   description,
+  action,
+  compact = false,
 }: {
   title?: string;
   description?: string;
+  action?: ReactNode;
+  compact?: boolean;
 }) {
   return (
-    <div className="empty-state">
-      <Inbox size={28} />
+    <div className={cn('empty-state', compact && 'empty-state-compact')}>
+      {!compact && <Inbox size={22} aria-hidden="true" />}
       <strong>{title}</strong>
       {description && <p>{description}</p>}
+      {action}
     </div>
+  );
+}
+export const Empty = EmptyState;
+/** Confirmation is tied to the current trigger; opening a dialog never sends a mutation. */
+export function DangerButton({
+  title,
+  description,
+  onConfirm,
+  children,
+  ...props
+}: Omit<ButtonProps, 'onClick' | 'title' | 'variant'> & {
+  title: string;
+  description: string;
+  onConfirm: () => void | Promise<unknown>;
+}) {
+  const [open, setOpen] = useState(false);
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState('');
+  return (
+    <>
+      <Button
+        {...props}
+        variant="danger"
+        onClick={() => {
+          setError('');
+          setOpen(true);
+        }}
+      >
+        {children}
+      </Button>
+      <Modal
+        open={open}
+        onOpenChange={(next) => {
+          if (!pending) setOpen(next);
+        }}
+        title={title}
+        description={description}
+        footer={
+          <>
+            <Button disabled={pending} onClick={() => setOpen(false)}>
+              返回
+            </Button>
+            <Button
+              variant="danger"
+              disabled={props.disabled}
+              loading={pending}
+              onClick={async () => {
+                setPending(true);
+                setError('');
+                try {
+                  await onConfirm();
+                  setOpen(false);
+                } catch (cause) {
+                  setError(cause instanceof Error ? cause.message : '操作未完成，请重试');
+                } finally {
+                  setPending(false);
+                }
+              }}
+            >
+              确认{children}
+            </Button>
+          </>
+        }
+      >
+        {error ? <p role="alert">{error}</p> : <p>确认后执行；返回可保留当前状态。</p>}
+      </Modal>
+    </>
   );
 }
 export function AsyncState({
@@ -245,7 +322,12 @@ export function AsyncState({
       <div className="empty-state" role="alert">
         <AlertCircle size={24} />
         <strong>{zh.common.error}</strong>
-        <p>{error instanceof Error ? error.message : ''}</p>
+        <p>
+          {readableMessage(
+            error instanceof Error ? error.message : '',
+            '内容暂时无法加载，请检查服务连接后重试。',
+          )}
+        </p>
         {onRetry && <Button onClick={onRetry}>{zh.common.retry}</Button>}
       </div>
     );

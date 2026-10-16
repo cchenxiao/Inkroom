@@ -12,6 +12,7 @@ import (
 	"inkloom/internal/domain/memory"
 	"inkloom/internal/orchestration"
 	"os"
+	"sync"
 	"testing"
 	"time"
 )
@@ -76,8 +77,11 @@ func TestPreparationLifecycle(t *testing.T) {
 	}
 	cfg := config.Config{Model: "fake", MaxCalls: 14, MaxTokens: 24000, MaxOutputTokens: 2048, CallTimeout: time.Second}
 	calls := []int{}
+	var callsMu sync.Mutex
 	state, err := app.ExecuteChapter(ctx, cfg, "no-findings", orchestration.Options{FrozenInput: &in, CallHistory: history, OnModelCall: func(ctx context.Context, c model.CallRecord) error {
+		callsMu.Lock()
 		calls = append(calls, c.Number)
+		callsMu.Unlock()
 		return s.RecordCall(ctx, id, c)
 	}})
 	if err != nil || len(calls) == 0 || calls[0] != 2 || state.Usage.InputTokens != 100 {

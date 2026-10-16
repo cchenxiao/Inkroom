@@ -26,7 +26,7 @@ func Write(ctx context.Context, chat model.ChatModel, bundle manuscript.ContextB
 		role = "planned_writer"
 	}
 	draft, usage, err := parse.Generate[contracts.WriterOutput](ctx, chat, model.Input{
-		Role: role, Task: `按材料写一个正文段，返回 {"text":"正文"}，不修改设定。`,
+		Role: role, Task: `按材料完成本次 Beat 的正文片段，可按叙事需要自然分段，返回 {"text":"正文"}，不修改设定。`,
 		Material: material, OutputSchema: contracts.WriterSchema,
 	}, nil)
 	if err != nil {

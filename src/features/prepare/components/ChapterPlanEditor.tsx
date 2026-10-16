@@ -246,7 +246,7 @@ export default function ChapterPlanEditor({
                         })
                       }
                     />
-                    {chars.find((c) => c.id === id)?.name ?? id}
+                    {chars.find((c) => c.id === id)?.name ?? '人物名称暂缺，请检查人物设定'}
                   </label>
                 ))}
               </div>

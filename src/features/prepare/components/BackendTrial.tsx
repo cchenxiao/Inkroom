@@ -1,3 +1,5 @@
+import { readableMessage } from '@/shared/lib/business-labels';
+import { TechnicalDetails } from '@/shared/ui/technical-details';
 import { lazy, Suspense, useState, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import BackendTrialResult from './BackendTrialResult';
@@ -248,16 +250,20 @@ export default function BackendTrial() {
               {run.status !== 'running' && run.usage?.known === false && <p>{t.usageUnknown}</p>}
               {run.error && (
                 <p role="alert" className="page-error">
-                  {run.error}
+                  {readableMessage(
+                    run.error,
+                    '本次创作未完成，已保存内容保留；请检查运行记录后重试。',
+                  )}
                 </p>
               )}
               <p>
-                {t.nodes[run.currentNode] ?? run.currentNode} · {t.progress} {run.reviseRound}/
+                {t.nodes[run.currentNode] ?? '状态待更新'} · {t.progress} {run.reviseRound}/
                 {run.maxRounds} · {t.version} v{run.draftVersion}
               </p>
-              <p role="status">
-                {t.streamStates[streamStatus]} · {t.eventSequence} {run.eventSequence ?? 0}
-              </p>
+              <p role="status">{t.streamStates[streamStatus]}</p>
+              <TechnicalDetails
+                items={{ 运行编号: run.id, 错误原文: run.error, 最新事件序号: run.eventSequence }}
+              />
               {expanded && (
                 <Suspense fallback={<p>{t.loadGraph}</p>}>
                   <BackendRunFlow run={run} />

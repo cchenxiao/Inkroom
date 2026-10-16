@@ -25,7 +25,7 @@
   font-size: 13px;
 }
 .prepare-nav button span {
-  font-family: var(--font-mono);
+  font-family: var(--font-ui);
   font-size: 10px;
   color: var(--text-dim);
 }
@@ -244,57 +244,6 @@
   border-radius: 8px;
 }
 
-.backend-flow-panel {
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 16px;
-}
-.backend-flow {
-  height: 400px;
-  margin-top: 12px;
-}
-.backend-flow .react-flow__node {
-  background: var(--panel);
-  color: var(--text-dim);
-  border-color: var(--border);
-  border-radius: 8px;
-  font-size: 12px;
-}
-.backend-flow .react-flow__node.backend-flow-current {
-  border-color: var(--human);
-  color: var(--text);
-}
-.backend-flow .react-flow__node.backend-flow-active {
-  border-color: var(--ai);
-  color: var(--text);
-  animation: backend-pulse 1.5s ease-in-out infinite;
-}
-.backend-flow .react-flow__edge-path {
-  stroke: var(--text-dim);
-}
-.backend-flow .react-flow__controls-button {
-  background: var(--panel);
-  color: var(--text);
-  border-color: var(--border);
-  fill: currentColor;
-}
-.backend-node-inspector {
-  border-top: 1px solid var(--border);
-  padding-top: 12px;
-}
-@keyframes backend-pulse {
-  50% {
-    box-shadow: 0 0 0 4px color-mix(in srgb, var(--ai) 15%, transparent);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .backend-flow .react-flow__node.backend-flow-active {
-    animation: none;
-  }
-  .backend-flow .react-flow__edge.animated path {
-    animation: none;
-  }
-}
 
 .backend-manifest,
 .backend-finalize {
@@ -333,4 +282,37 @@
   .prepare-cast {
     grid-template-columns: 1fr;
   }
+}
+
+/* Section navigation and content start on the same baseline. */
+.prepare-section > .planning-panel,
+.prepare-section > .core-workbench,
+.prepare-section > .chapter-planning-stack > :first-child {
+  margin-top: 0;
+}
+.prepare-section .planning-heading,
+.prepare-section .core-heading {
+  min-height: 40px;
+  gap: 12px;
+}
+.prepare-section .planning-heading h2,
+.prepare-section .core-heading h2 {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.5;
+}
+.prepare-section .planning-panel > .text-dim {
+  margin: 0;
+  font-size: 12px;
+}
+.prepare-section .planning-selected {
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--human);
+}
+.prepare-section .planning-workbench {
+  gap: 24px;
+}
+.prepare-section .planning-candidate {
+  line-height: 1.7;
 }

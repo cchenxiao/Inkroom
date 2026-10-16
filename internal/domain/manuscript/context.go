@@ -91,6 +91,38 @@ func (b ContextBundle) Freeze() (ContextBundle, error) {
 			return frozen, fmt.Errorf("invalid planned writing task")
 		}
 	}
+	for _, target := range b.Targets {
+		if len(target.Targets) > 0 || target.ProjectID != b.ProjectID || target.BranchID != b.BranchID {
+			return frozen, fmt.Errorf("invalid chapter target")
+		}
+		if _, err := target.Freeze(); err != nil {
+			return frozen, err
+		}
+	}
+	targetIDs := map[string]bool{}
+	for _, target := range b.Targets {
+		if targetIDs[target.Beat.ID] {
+			return frozen, fmt.Errorf("duplicate chapter target")
+		}
+		targetIDs[target.Beat.ID] = true
+	}
+	for _, p := range b.Neighbors {
+		if p.BeatID == "" || (p.Position != "before" && p.Position != "after") {
+			return frozen, fmt.Errorf("invalid neighboring passage identity")
+		}
+		if p.Version == 0 && p.RunID == "" && len(p.Segments) == 0 {
+			continue
+		}
+		digest, err := ContentDigest(p.Segments)
+		if err != nil || p.BeatID == "" || p.RunID == "" || p.DraftID == "" || p.Version < 1 || p.Digest != digest || (p.Position != "before" && p.Position != "after") {
+			return frozen, fmt.Errorf("invalid neighboring passage")
+		}
+	}
+	if b.Rewrite != nil {
+		if err := b.Rewrite.Validate(b.Original); err != nil {
+			return frozen, err
+		}
+	}
 	seen := map[string]bool{b.Beat.ID: true}
 	for _, c := range b.Characters {
 		if c.ID == "" || c.Name == "" || c.Version < 1 || seen[c.ID] {

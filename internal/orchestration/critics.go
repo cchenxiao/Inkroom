@@ -53,7 +53,7 @@ func reviewTogether(ctx context.Context, chat model.ChatModel, state ChapterStat
 				}
 				fs, usages[i], errs[i] = agents.CheckConsistency(ctx, chat, state.Segments, state.DraftVersion, state.Context)
 			} else {
-				fs, usages[i], errs[i] = agents.Critique(ctx, chat, state.Segments, state.DraftVersion, state.Metrics)
+				fs, usages[i], errs[i] = agents.Critique(ctx, chat, state.Segments, state.DraftVersion, state.Metrics, state.Context)
 				if errs[i] == nil {
 					fs = style.AddFindings(fs, state.Metrics, state.DraftVersion)
 				}

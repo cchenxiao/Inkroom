@@ -120,22 +120,35 @@ export const ManuscriptAnnotations = Extension.create<AnnotationOptions>({
         props: {
           decorations(state) {
             const decorations: Decoration[] = [];
+            const blocks: { from: number; text: string; offset: number }[] = [];
+            let text = '';
             state.doc.descendants((node, pos) => {
-              if (!node.isTextblock || !node.textContent) return;
-              const contentStart = pos + 1;
-              if (options.heatmap && options.heat > 0.3)
+              if (!node.isTextblock) return;
+              if (blocks.length) text += '\n';
+              // Hard breaks occupy one document position, just like their newline.
+              const value = node.textBetween(0, node.content.size, '', '\n');
+              blocks.push({ from: pos + 1, text: value, offset: text.length });
+              text += value;
+              if (value && options.heatmap && options.heat > 0.3)
                 decorations.push(
-                  Decoration.inline(contentStart, contentStart + node.content.size, {
+                  Decoration.inline(pos + 1, pos + 1 + node.content.size, {
                     class: `ai-heat ${options.heat > 0.6 ? 'heat-high' : 'heat-low'}`,
                   }),
                 );
-              for (const finding of options.findings) {
-                const start = node.textContent.indexOf(finding.quote);
-                if (start >= 0 && finding.quote)
+            });
+            for (const finding of options.findings) {
+              if (!finding.quote) continue;
+              const start = text.indexOf(finding.quote);
+              if (start < 0) continue;
+              const end = start + finding.quote.length;
+              for (const block of blocks) {
+                const from = Math.max(start, block.offset);
+                const to = Math.min(end, block.offset + block.text.length);
+                if (to > from)
                   decorations.push(
                     Decoration.inline(
-                      contentStart + start,
-                      contentStart + start + finding.quote.length,
+                      block.from + from - block.offset,
+                      block.from + to - block.offset,
                       {
                         'data-finding-id': finding.id,
                         class: `finding-mark finding-${finding.severity.toLowerCase()}`,
@@ -143,7 +156,7 @@ export const ManuscriptAnnotations = Extension.create<AnnotationOptions>({
                     ),
                   );
               }
-            });
+            }
             return DecorationSet.create(state.doc, decorations);
           },
         },

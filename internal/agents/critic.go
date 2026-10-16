@@ -14,12 +14,17 @@ import (
 )
 
 // Critique 冷读正文，不接收 Writer 的消息历史或自我解释。
-func Critique(ctx context.Context, chat model.ChatModel, segments []manuscript.Segment, version int, metrics []style.Stats) ([]review.Finding, model.Usage, error) {
+func Critique(ctx context.Context, chat model.ChatModel, segments []manuscript.Segment, version int, metrics []style.Stats, contexts ...manuscript.ContextBundle) ([]review.Finding, model.Usage, error) {
+	var context manuscript.ContextBundle
+	if len(contexts) > 0 {
+		context = contexts[0]
+	}
 	material, err := json.Marshal(struct {
+		Neighbors    []manuscript.Passage `json:"neighbors,omitempty"`
 		Metrics      []style.Stats        `json:"metrics"`
 		DraftVersion int                  `json:"draftVersion"`
 		Segments     []manuscript.Segment `json:"segments"`
-	}{metrics, version, segments})
+	}{context.Neighbors, metrics, version, segments})
 	if err != nil {
 		return nil, model.Usage{}, err
 	}
@@ -28,7 +33,7 @@ func Critique(ctx context.Context, chat model.ChatModel, segments []manuscript.S
 		Material: material, OutputSchema: contracts.CriticSchema,
 	}, func(out contracts.CriticOutput) error {
 		// Schema 负责字段与枚举；领域规则负责“这句证据是否真的在本稿里”。
-		_, err := review.Aggregate(out.Findings, segments, version)
+		_, err := review.Aggregate(out.Findings, segments, version, context.ReadingSources()...)
 		return err
 	})
 	if err != nil {

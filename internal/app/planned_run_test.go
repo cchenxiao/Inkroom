@@ -37,6 +37,15 @@ func TestPlannedContextProjectionAndFirstBeatExecution(t *testing.T) {
 	if err = frozen.Validate(); err != nil {
 		t.Fatal(err)
 	}
+	chapter, _ := p.Input.Chapter()
+	beatCount := 0
+	for _, scene := range p.Content.Scenes {
+		beatCount += len(scene.Beats)
+	}
+	task := frozen.Bundle.WritingTask
+	if task.ChapterTargetWords != chapter.TargetWords || task.BeatTargetWords != (chapter.TargetWords+beatCount-1)/beatCount {
+		t.Fatal("writer length guidance must come from the confirmed outline")
+	}
 	raw, _ := json.Marshal(frozen.Bundle)
 	for _, bad := range []string{base.Style.AnchorText, future.Text, "ch7", "沈砚"} {
 		if strings.Contains(string(raw), bad) {

@@ -61,12 +61,30 @@ func (s *Store) PublishChapter(ctx context.Context, scope string, req app.Chapte
 	if j.Decision.RequestID != req.ApprovalID {
 		return out, app.ErrVersionMismatch
 	}
+	facts, err := chapterFactsState(ctx, tx, scope, j.ID)
+	if err != nil {
+		return out, err
+	}
+	if facts.Block != "" {
+		return out, app.ErrFactsUnconfirmed
+	}
+	if facts.Job != nil {
+		if facts.Selection == nil || req.FactJobID != facts.Job.ID || req.FactVersion != facts.Selection.Version {
+			return out, app.ErrVersionMismatch
+		}
+	} else if req.FactJobID != "" || req.FactVersion != 0 {
+		return out, app.ErrVersionMismatch
+	}
 	a, err := readAssembly(ctx, tx, scope, j.Input.AssemblyID)
 	if err != nil {
 		return out, err
 	}
 	p := app.ChapterPublication{ID: req.RequestID, Scope: scope, ChapterID: a.ChapterID, Version: 1, Request: req, Assembly: a, Review: j,
 		FactConfirmation: app.FactConfirmation{DraftVersion: a.Version, Method: "author_no_pending_facts", NoPendingFacts: true}, CreatedAt: time.Now().UTC()}
+	p.FactReview, p.FactSelection = facts.Job, facts.Selection
+	if facts.Selection != nil {
+		p.FactConfirmation.Method = "author_reviewed_fact_candidates"
+	}
 	var parentVersion int
 	err = tx.QueryRow(ctx, "SELECT id,version FROM chapter_publications WHERE scope=$1 AND chapter_id=$2 ORDER BY version DESC LIMIT 1", scope, a.ChapterID).Scan(&p.ParentPublicationID, &parentVersion)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {

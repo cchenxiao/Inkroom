@@ -64,7 +64,11 @@ func (s *Store) StartPlannedRun(ctx context.Context, scope string, req app.Plann
 	if _, err = currentChapterPlanInput(ctx, tx, scope, versions, req.ChapterID, "冻结当前 Beat 写作材料"); err != nil {
 		return r, false, err
 	}
-	frozen, err := app.PreparePlannedContext(cfg, scope, req.RequestID, req.DraftVersion, p, req.BeatID)
+	target := req.BeatID
+	if req.Mode == "chapter" {
+		target = p.Content.Brief.SelectedBeatID
+	}
+	frozen, err := app.PreparePlannedContext(cfg, scope, req.RequestID, req.DraftVersion, p, target)
 	if err != nil {
 		return r, false, fmt.Errorf("%w: %v", app.ErrPlanningNotReady, err)
 	}
@@ -79,7 +83,70 @@ func (s *Store) StartPlannedRun(ctx context.Context, scope string, req app.Plann
 	if err != nil {
 		return r, false, fmt.Errorf("%w: %v", app.ErrPlanningNotReady, err)
 	}
-	source := &app.PlannedRunSource{Knowledge: frozen.Bundle.WritingTask.Knowledge, Scope: scope, ChapterID: p.ChapterID, BeatID: frozen.Bundle.Beat.ID, Expected: versions, PlanVersion: p.Version}
+	if req.Mode == "chapter" {
+		frozen, err = app.PrepareChapterWriting(cfg, scope, req.RequestID, req.DraftVersion, p, current.Snapshot)
+	} else {
+		frozen.Bundle.Neighbors, err = freezeNeighbors(ctx, tx, scope, p, frozen.Bundle.Beat.ID)
+		if err == nil && req.FromRunID != "" {
+			var raw []byte
+			err = tx.QueryRow(ctx, "SELECT payload FROM runs WHERE id=$1", req.FromRunID).Scan(&raw)
+			var origin app.Run
+			if err == nil {
+				err = json.Unmarshal(raw, &origin)
+			}
+			if err == nil && (origin.Planning == nil || origin.Planning.Scope != scope || origin.Planning.ChapterID != p.ChapterID || origin.Result == nil || origin.DraftVersion != req.SourceVersion || origin.Status == "running") {
+				err = app.ErrVersionMismatch
+			}
+			if err == nil {
+				for _, s := range origin.Result.Segments {
+					if s.BeatID == frozen.Bundle.Beat.ID {
+						s.ChapterID = frozen.Bundle.ChapterID
+						frozen.Bundle.Original = append(frozen.Bundle.Original, s)
+					}
+				}
+				if len(frozen.Bundle.Original) == 0 {
+					err = app.ErrVersionMismatch
+				}
+				if req.Rewrite != nil {
+					if e := req.Rewrite.Validate(frozen.Bundle.Original); e != nil {
+						err = fmt.Errorf("%w: %v", app.ErrInvalidWrite, e)
+					}
+				}
+				frozen.Bundle.Rewrite = req.Rewrite
+			}
+		}
+		if err == nil {
+			frozen, err = app.ReassemblePlanned(frozen)
+			if err != nil {
+				err = fmt.Errorf("%w: 正文与前后文超过材料限制或无法校验，请调整上下文预算后重试：%v", app.ErrPlanningNotReady, err)
+			}
+		}
+	}
+	if err != nil {
+		return r, false, err
+	}
+	source := &app.PlannedRunSource{NeighborPolicy: "working-v1", Mode: req.Mode, Neighbors: frozen.Bundle.Neighbors, Knowledge: frozen.Bundle.WritingTask.Knowledge, Scope: scope, ChapterID: p.ChapterID, BeatID: frozen.Bundle.Beat.ID, Expected: versions, PlanVersion: p.Version}
+	source.FromRunID, source.SourceVersion = req.FromRunID, req.SourceVersion
+	baselineTargets := []string{frozen.Bundle.Beat.ID}
+	if req.Mode == "chapter" {
+		baselineTargets = nil
+		for _, t := range frozen.Bundle.Targets {
+			baselineTargets = append(baselineTargets, t.Beat.ID)
+		}
+	}
+	for _, beat := range baselineTargets {
+		prior, e := adoptedPassage(ctx, tx, scope, p.ChapterID, beat)
+		if e != nil {
+			return r, false, e
+		}
+		prior.BeatID = beat
+		// Concurrency guard needs identity and digest, not a second copy of prose.
+		prior.Segments = nil
+		source.Baseline = append(source.Baseline, prior)
+	}
+	if req.Mode == "chapter" {
+		source.BeatID = app.ChapterBeatID
+	}
 	r = app.Run{Planning: source, ID: req.RequestID, ChapterID: frozen.Bundle.ChapterID, BranchID: "main", BaseDraftVersion: req.DraftVersion, DraftVersion: req.DraftVersion, Status: "running", CurrentNode: "draft", Scenario: "normal", InputDigest: frozen.Manifest.Digest, AutoRevise: req.AutoRevise, MaxRounds: 2, MaxCalls: cfg.MaxCalls, MaxTokens: cfg.MaxTokens, Provider: cfg.Model, Model: cfg.ModelName, Nodes: []any{}, ActiveRoles: []string{}}
 	if err = createRunTx(ctx, tx, r, &frozen, nil); err != nil {
 		return r, false, err
@@ -133,7 +200,11 @@ func planningRunCurrent(ctx context.Context, q queryRow, p *app.PlannedRunSource
 			return false, nil
 		}
 	}
-	return confirmed && pv == p.PlanVersion && p.Expected == (planning.ChapterPlanVersions{Planning: planning.PlanningVersions{Input: iv, Direction: dv, Style: sv, Core: cv}, Outline: ov, Bindings: bv}), nil
+	neighborsOK, err := neighborsCurrent(ctx, q, p)
+	if err != nil {
+		return false, err
+	}
+	return neighborsOK && confirmed && pv == p.PlanVersion && p.Expected == (planning.ChapterPlanVersions{Planning: planning.PlanningVersions{Input: iv, Direction: dv, Style: sv, Core: cv}, Outline: ov, Bindings: bv}), nil
 }
 
 // 锁顺序：规划头 → 候选章 → run，避免启动与审批形成锁环。
@@ -150,7 +221,7 @@ func lockPlanningRun(ctx context.Context, tx pgx.Tx, id string) error {
 		return nil
 	}
 	var scope string
-	if err := tx.QueryRow(ctx, "SELECT scope FROM planning_heads WHERE scope=$1 FOR SHARE", r.Planning.Scope).Scan(&scope); err != nil {
+	if err := tx.QueryRow(ctx, "SELECT scope FROM planning_heads WHERE scope=$1 FOR UPDATE", r.Planning.Scope).Scan(&scope); err != nil {
 		return err
 	}
 	if r.Planning.Knowledge != nil {
@@ -186,6 +257,9 @@ func (s *Store) PlannedRunReadiness(ctx context.Context, scope, chapter string, 
 		if len(target) > 0 && target[0] != "" {
 			out.BeatID = target[0]
 		}
+		if len(target) > 1 && target[1] == "chapter" {
+			out.BeatID = app.ChapterBeatID
+		}
 		out.DraftID = app.PlannedDraftID(scope, chapter, out.BeatID)
 		draft, e := s.Draft(ctx, out.DraftID, "main", 0)
 		if e != nil {
@@ -196,7 +270,11 @@ func (s *Store) PlannedRunReadiness(ctx context.Context, scope, chapter string, 
 		if !current {
 			out.Reason = "规划输入已变化，请先复核细纲"
 		} else {
-			_, e = app.PreparePlannedContext(cfg, scope, "preview", out.DraftVersion, *p, out.BeatID)
+			previewBeat := out.BeatID
+			if previewBeat == app.ChapterBeatID {
+				previewBeat = p.Content.Brief.SelectedBeatID
+			}
+			_, e = app.PreparePlannedContext(cfg, scope, "preview", out.DraftVersion, *p, previewBeat)
 			if e != nil {
 				out.Reason = e.Error()
 			} else {
@@ -208,9 +286,12 @@ func (s *Store) PlannedRunReadiness(ctx context.Context, scope, chapter string, 
 				if !publishedForPlan(current, *p) {
 					out.Reason = "请先在知识快照页发布当前已确认设定"
 				} else {
-					prepared, prepErr := app.PreparePlannedContext(cfg, scope, "preview", out.DraftVersion, *p, out.BeatID)
+					prepared, prepErr := app.PreparePlannedContext(cfg, scope, "preview", out.DraftVersion, *p, previewBeat)
 					if prepErr == nil {
 						_, prepErr = app.FreezePublishedKnowledge(prepared, current.Snapshot)
+					}
+					if prepErr == nil && out.BeatID == app.ChapterBeatID {
+						_, prepErr = app.PrepareChapterWriting(cfg, scope, "preview", out.DraftVersion, *p, current.Snapshot)
 					}
 					if prepErr != nil {
 						out.Reason = prepErr.Error()
@@ -222,7 +303,16 @@ func (s *Store) PlannedRunReadiness(ctx context.Context, scope, chapter string, 
 			}
 		}
 	}
-	rows, err := s.pool.Query(ctx, "SELECT r.id FROM runs r JOIN planning_run_inputs p ON p.run_id=r.id WHERE p.scope=$1 AND p.chapter_id=$2 AND r.payload->'planning'->>'beatId'=$3 ORDER BY r.created_at DESC,r.id DESC LIMIT 10", scope, chapter, out.BeatID)
+	if out.BeatID != "" && out.BeatID != app.ChapterBeatID {
+		working, e := workingPassage(ctx, s.pool, scope, chapter, out.BeatID)
+		if e != nil {
+			return out, e
+		}
+		if working.Version > 0 {
+			out.Working = &working
+		}
+	}
+	rows, err := s.pool.Query(ctx, "SELECT r.id FROM runs r JOIN planning_run_inputs p ON p.run_id=r.id WHERE p.scope=$1 AND p.chapter_id=$2 AND (r.payload->'planning'->>'beatId'=$3 OR r.payload->'planning'->>'mode'='chapter') ORDER BY r.created_at DESC,r.id DESC LIMIT 10", scope, chapter, out.BeatID)
 	if err != nil {
 		return out, err
 	}

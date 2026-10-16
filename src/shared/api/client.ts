@@ -1,3 +1,4 @@
+import { readableMessage } from '@/shared/lib/business-labels';
 import { useUIStore } from '@/shared/lib/ui-store';
 import type { ApiErrorBody } from '@/types/domain';
 export const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) || '/api';
@@ -6,7 +7,20 @@ export class ApiError extends Error {
     public status: number,
     public body: ApiErrorBody,
   ) {
-    super(body.message);
+    super(
+      readableMessage(
+        body.message,
+        status === 409
+          ? '内容版本已更新，请刷新后核对。本地输入仍保留。'
+          : status === 401 || status === 403
+            ? '当前没有访问权限，请检查登录状态或联系管理员。'
+            : status === 404
+              ? '这份内容已不存在或暂时不可用，请刷新后重新选择。'
+              : status >= 500
+                ? '服务暂时无法完成操作，请稍后重试。'
+                : '操作未完成，请检查填写内容后重试。',
+      ),
+    );
     this.name = 'ApiError';
   }
 }

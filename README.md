@@ -1,5 +1,7 @@
 # 墨枢 Inkloom
 
+学习与维护入口：[Agent 全流程、输入输出与作者决策](docs/agent-flow-input-output.md)（包含整章/逐段/选区写作差异、当前实现边界与更新检查表）。
+
 面向作者的多智能体中短篇小说协作工作台。稿件是主界面，AI 提交候选，作者决定方向与定稿。当前仓库已包含可运行的前端工程；Go 后端仍按原设计分模块开发。
 
 **当前真实入口**：《浊流》main 的 `/workspace` 已接 Go 规划写作，支持第一章逐 Beat 生成、原地人审/修改/提交、整章组稿与复审。准备页保留立意、风格、设定、细纲与知识发布。暂无真实章纲时显示准备引导；`/workspace?source=demo` 查看原演示。作品库、新建向导与其他作品仍是 Mock，多章节连续创作尚未完成。见 [真实写作页说明](docs/live-workspace.md)。
@@ -88,7 +90,7 @@ pnpm dev
 
 1. [模板渲染](internal/agents/prompts/prompts.go)：`prompts.Bind(guard)` 用同一模型接口包住护栏，每次生成和格式修复都重新渲染。角色边界与 Schema 放 system，任务与转义后的材料放 user；Schema 直接复用契约文件。
 2. [DeepSeek 适配器](internal/agents/adapters/deepseek.go)：通过 Eino 调供应商，把响应转换成自己的 Output / Usage。
-3. [调用护栏](internal/agents/model/guard.go)：单次 60 秒、整次运行 2 分钟；默认 10 次调用与 24000 token 预算，格式修复和重试均计入。
+3. [调用护栏](internal/agents/model/guard.go)：单次 60 秒、整次运行 2 分钟；默认 14 次调用与 128000 token 预算上限，格式修复和重试均计入。
 4. [应用用例](internal/app/chapter.go) 与 [HTTP 外壳](internal/server/server.go)：CLI / 网页调用同一张图；HTTP 立即返回 run_id，执行不依赖浏览器请求一直挂着。
 
 调用前用 UTF-8 字节数加最大输出作保守预算估算，收到 usage 后回填实际值；未知用量保留预留量并标记 `known=false`，不能认为没有费用。仅明确的 HTTP 429/503 最多重试一次，超时不自动重发。`llm_call` 日志记录版本、耗时、用量与结果，不记录密钥、原始请求或隐藏推理。
@@ -159,7 +161,7 @@ go test -race ./internal/domain/... ./internal/orchestration/...
 
 `POST /api/runs` 新增 `allowLocalRewrite`（默认 false）与 `scenario`（默认 normal，其他场景仅 Fake）。`GET /api/health` 返回可用场景。准备页展开「单段试运行」可选择 Fake 场景、分别授权微改与局部重写，查看双 Critic、路由、证据版本与 diff。返回的 `result.criticReviews` 为本轮独立结果，`reviews` 仅保存收齐并校验后的聚合历史。
 
-I5 使用内置单段，I6 已将候选稿与运行记录落库；双 Critic 是 Eino 的一个并行评审节点，内部 fan-out/barrier，不伪装为四角色全部落地。`needs_human` 是停止态，恢复留到 I7。冻结输入固定本次模型材料，I6 数据库乐观锁另行保护落库版本。局部重写只是候选，模型语义检查仍可能漏报，章末必须人工审核。默认模型调用上限升至 14，覆盖三轮双评审及少量格式修复；token 预算仍为 24000。
+I5 使用内置单段，I6 已将候选稿与运行记录落库；双 Critic 是 Eino 的一个并行评审节点，内部 fan-out/barrier，不伪装为四角色全部落地。`needs_human` 是停止态，恢复留到 I7。冻结输入固定本次模型材料，I6 数据库乐观锁另行保护落库版本。局部重写只是候选，模型语义检查仍可能漏报，章末必须人工审核。默认模型调用上限升至 14，覆盖三轮双评审及少量格式修复；整章与邻段上下文接入后，默认 token 预算上限为 128000。
 
 ### I6：持久化候选稿与乐观并发
 
@@ -353,7 +355,7 @@ curl -N -H 'Last-Event-ID: RUN_ID:12' http://127.0.0.1:8080/api/runs/RUN_ID/even
 
 当前范围仍为 `ch7/main` 的单段学习切片，未将 Mock 工作台整章切到真实后端。前章结尾是明确标注的已确认教学种子；M2 再从指定 commit 检索。事实自动抽取与 Bible 同步尚未实现，必须由作者确认没有待处理的新事实；已有待裁定 Finding 仍阻断，不能用勾选绕过。旧 run 需重新启动并审核后才可定稿。
 
-`INKLOOM_CONTEXT_TOKENS` 默认 8000；采用输入 JSON 的 UTF-8 字节数保守估计，只计材料，不是供应商精确 token。模型输出另预留，调用护栏仍检查提示词、材料和输出的整体预算。
+`INKLOOM_CONTEXT_TOKENS` 默认 32768；采用输入 JSON 的 UTF-8 字节数保守估计，只计材料，不是供应商精确 token。模型输出另预留，调用护栏仍检查提示词、材料和输出的整体预算。
 
 ### I10a：先决定哪些旧材料能给角色看
 
@@ -586,5 +588,9 @@ M0.4c1：在准备页用确认规划启动真实单段 Writer/双 Critic/人审/
 M0.4c2：在“创作准备 → 知识快照”预览并发布已确认初始设定；新规划写作绑定发布版本与 POV/时间投影。见 [初始知识发布](docs/planning-knowledge.md)。
 
 - M0.4c3 [整章组稿](docs/chapter-assembly.md)：选择 Beat、逐段审核提交、预览与保存待全章审核稿。
-- M0.4c5a [整章定稿](docs/chapter-publication.md)：作者确认无待同步事实后冻结整章与审查，支持版本校验、原请求重试及历史回执。事实抽取/同步和下一章交接待下一段。
+- [真实书架与总览](docs/live-book-overview.md)：入口改读 Go/PostgreSQL 当前有效进度，空库无演示填充，其他演示作品单独收起。
+- M0.4c5b [章末事实整理](docs/chapter-facts.md)：模型候选/人工补充、逐条决定、事实与知情证据校验，定稿冻结章末事实包；下一章消费后续接入。
+- M0.4c5a [整章定稿](docs/chapter-publication.md)：作者确认无遗留事实问题后冻结整章与审查，支持版本校验、原请求重试及历史回执；事实候选与确认由 M0.4c5b 接续，下一章交接待开发。
 - M0.4c4 [整章复审](docs/chapter-review.md)：双 Critic 完整审读、证据校验、作者决定与旧版本失效；不自动改稿或最终定稿。
+
+整章生成、局部重写、前后文冻结与版本门禁见 [设计与验收说明](docs/chapter-writing-scope.md)。

@@ -1,3 +1,5 @@
+import { textLabel, repairScopeLabels, readableMessage } from '@/shared/lib/business-labels';
+import { TechnicalDetails } from '@/shared/ui/technical-details';
 import { Badge } from '@/shared/ui';
 import { backendMessages as t } from '@/shared/lib/messages-backend';
 import type { BackendFinding, BackendRun } from '../types/backend';
@@ -23,14 +25,15 @@ export default function BackendTrialResult({
     <div key={f.id} className="page-stack">
       <div>
         <Badge tone={f.severity === 'P0' ? 'danger' : 'info'}>{f.severity}</Badge> ·{' '}
-        {t.criticNames[f.critic] ?? f.critic} · {f.repairScope}
+        {t.criticNames[f.critic] ?? '其他审查'} ·{' '}
+        {repairScopeLabels[f.repairScope] ?? '需作者确认范围'}
       </div>
       <blockquote>{f.quote}</blockquote>
       <p>{f.reason}</p>
       <p>{f.suggestion}</p>
       {f.ruleQuote && (
         <p>
-          {t.evidence}：{f.ruleQuote}（{f.ruleRef} · v
+          {t.evidence}：{f.ruleQuote}（来源 v
           {sources.find((s) => s.id === f.ruleRef)?.version ?? '—'}）
         </p>
       )}
@@ -40,24 +43,44 @@ export default function BackendTrialResult({
   return (
     <>
       {stale && <p role="alert">{t.staleResult}</p>}
+      <TechnicalDetails
+        items={{
+          情节段编号: result.context?.beat.id,
+          评审错误原文: result.criticReviews
+            ?.map((c) => c.error)
+            .filter(Boolean)
+            .join('；'),
+          引用材料编号: sources.map((s) => s.id).join('、'),
+        }}
+      />
       <h3>{t.critics}</h3>
       {(result.criticReviews ?? []).map((c) => (
         <p key={c.critic}>
-          {t.criticNames[c.critic] ?? c.critic} · v{c.draftVersion} ·{' '}
+          {t.criticNames[c.critic] ?? '其他审查'} · v{c.draftVersion} ·{' '}
           {c.status === 'completed' ? t.completed : t.failed} · {c.findings.length} {t.issues}
-          {c.error && <span role="alert"> · {c.error}</span>}
+          {c.error && (
+            <span role="alert">
+              {' '}
+              · {readableMessage(c.error, '本项审查未完成，请重试或查看技术详情。')}
+            </span>
+          )}
         </p>
       ))}
       {result.route?.kind && (
         <section>
           <h3>
-            {t.route} · {t.routes[result.route.kind] ?? result.route.kind}
+            {t.route} · {t.routes[result.route.kind] ?? '等待确认处理方式'}
           </h3>
           <p>{result.route.reason}</p>
           {result.route.needsHuman && <Badge tone="human">{t.humanRequired}</Badge>}
           {result.route.targetIds.length > 0 && (
             <p>
-              {t.targets}：{result.route.targetIds.join('、')}
+              {t.targets}：
+              {result.route.targetIds
+                .map((id) =>
+                  textLabel(result.segments.find((s) => s.id === id)?.text, '待修改段落'),
+                )
+                .join('、')}
             </p>
           )}
         </section>
@@ -111,20 +134,17 @@ export default function BackendTrialResult({
         <details>
           <summary>{t.facts}</summary>
           <p>
-            {t.lockedBeat}：{result.context.beat.id} · v{result.context.beat.version}
+            {t.lockedBeat} · v{result.context.beat.version}
           </p>
           {sources.map((s) => (
             <p key={s.id}>
-              <strong>
-                {s.id} · v{s.version}
-              </strong>{' '}
-              — {s.text}
+              <strong>来源版本 v{s.version}</strong> — {s.text}
             </p>
           ))}
           <h4>{t.sources}</h4>
           {result.context.sources.map((s) => (
             <p key={s.id}>
-              {s.id} · v{s.version} — {s.text}
+              来源版本 v{s.version} — {s.text}
             </p>
           ))}
         </details>

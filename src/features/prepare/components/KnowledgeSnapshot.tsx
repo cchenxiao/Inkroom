@@ -1,3 +1,4 @@
+import { TechnicalDetails } from '@/shared/ui/technical-details';
 import { useState } from 'react';
 import { Badge, Tabs } from '@/shared/ui';
 import { knowledgeMessages as t } from '@/shared/lib/messages-knowledge';
@@ -28,9 +29,7 @@ export default function KnowledgeSnapshot({
           <dt>
             {t.project} / {t.branch}
           </dt>
-          <dd>
-            {snapshot.projectId} / {snapshot.branchId}
-          </dd>
+          <dd>本作品 / {snapshot.branchId === 'main' ? '主线' : '试写分支'}</dd>
         </div>
         <div>
           <dt>{t.published}</dt>
@@ -44,13 +43,14 @@ export default function KnowledgeSnapshot({
           <dt>{t.reason}</dt>
           <dd>{value.reason}</dd>
         </div>
-        <div>
-          <dt>{t.digest}</dt>
-          <dd className="mono" title={value.digest}>
-            {value.digest.slice(0, 16)}
-          </dd>
-        </div>
       </dl>
+      <TechnicalDetails
+        items={{
+          作品编号: snapshot.projectId,
+          分支编号: snapshot.branchId,
+          快照校验值: value.digest,
+        }}
+      />
       <p className="text-dim">{t.authorNote}</p>
       {historical && <p className="text-dim">{t.historyNote}</p>}
       <Tabs

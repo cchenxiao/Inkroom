@@ -34,11 +34,13 @@ export function BookContext({ children }: { children: ReactNode }) {
       (same && (id === ORIGINAL_PROJECT || data.data?.chapters.some((c) => c.id === ui.chapterId))
         ? ui.chapterId
         : (data.data?.project.currentChapterId ?? 'ch7'));
-    const branchId = branchParam ?? (same ? ui.branchId : 'main');
+    const branchId =
+      branchParam ??
+      (location.pathname === '/book/project-zhuoliu' ? 'main' : same ? ui.branchId : 'main');
     if (ui.projectId !== id || ui.chapterId !== chapterId || ui.branchId !== branchId)
       ui.setProject(id, chapterId, branchId);
     if (segment) ui.selectSegment(segment);
-  }, [id, chapterParam, branchParam, segment, shelf, location.key, data.data]);
+  }, [id, chapterParam, branchParam, segment, shelf, location.key, location.pathname, data.data]);
   if (shelf) return children;
   if (data.isError)
     return (

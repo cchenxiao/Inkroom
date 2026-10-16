@@ -1,10 +1,10 @@
-import { liveWorkspacePath } from '@/shared/lib/writing-mode';
+import { liveWorkspacePath, livePreparePath } from '@/shared/lib/writing-mode';
 import { liveWriting as liveText } from '@/shared/lib/messages-live-writing';
 import { workPath, bookPath } from '@/shared/lib/book-context';
-import { Link, NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { useEffect, useLayoutEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { useEffect, useLayoutEffect, useCallback } from 'react';
 import {
-  Library,
+  ArrowLeft,
   Sun,
   Moon,
   Feather,
@@ -42,6 +42,17 @@ export function NavRail({ realWriting = false }: { realWriting?: boolean }) {
   const navigate = useNavigate();
   const { pathname, search } = useLocation();
   const plannedChapter = new URLSearchParams(search).get('planningChapterId') ?? undefined;
+  const realPath = useCallback(
+    (panel?: 'assembly') => {
+      // Re-entering the current workspace keeps the selected beat and open panel.
+      const query = new URLSearchParams(
+        pathname === '/workspace' ? search : liveWorkspacePath(plannedChapter).split('?')[1],
+      );
+      if (panel) query.set('panel', panel);
+      return `/workspace?${query}`;
+    },
+    [pathname, search, plannedChapter],
+  );
   const projectId = useUIStore((s) => s.projectId);
   const chapterId = useUIStore((s) => s.chapterId);
   const globalPage = pathname.startsWith('/library');
@@ -53,17 +64,16 @@ export function NavRail({ realWriting = false }: { realWriting?: boolean }) {
         event.preventDefault();
         navigate(
           realWriting && navigation[index][0] !== 'prepare'
-            ? liveWorkspacePath(
-                plannedChapter,
-                navigation[index][0] === 'review' ? 'assembly' : 'write',
-              )
-            : workPath(navigation[index][0], projectId, chapterId),
+            ? realPath(navigation[index][0] === 'review' ? 'assembly' : undefined)
+            : realWriting
+              ? livePreparePath('premise', plannedChapter)
+              : workPath(navigation[index][0], projectId, chapterId),
         );
       }
     };
     window.addEventListener('keydown', key);
     return () => window.removeEventListener('keydown', key);
-  }, [navigate, projectId, chapterId, realWriting, plannedChapter]);
+  }, [navigate, projectId, chapterId, realWriting, plannedChapter, realPath]);
   return (
     <nav className={`nav-rail ${collapsed ? 'is-collapsed' : ''}`} aria-label={zh.brand}>
       <Link className="rail-logo" to="/library" aria-label="墨枢 · 返回作品库">
@@ -73,14 +83,14 @@ export function NavRail({ realWriting = false }: { realWriting?: boolean }) {
           <small>{zh.brandEn}</small>
         </span>
       </Link>
+      <Tooltip content="返回书架首页">
+        <Link to="/library" className="rail-home-link" aria-label="返回书架首页">
+          <ArrowLeft size={16} />
+          <span className="rail-label">返回书架</span>
+        </Link>
+      </Tooltip>
       {!collapsed && <div className="rail-caption">{studio.space}</div>}
       <div className="rail-links">
-        <Tooltip content="作品库">
-          <NavLink to="/library" className={`rail-link ${globalPage ? 'active' : ''}`}>
-            <Library size={18} />
-            <span className="rail-label">作品库</span>
-          </NavLink>
-        </Tooltip>
         {!globalPage && (
           <Tooltip content="作品总览">
             <Link
@@ -94,6 +104,8 @@ export function NavRail({ realWriting = false }: { realWriting?: boolean }) {
         )}
         {!globalPage &&
           navigation.map(([key, Icon], index) => {
+            // Live review is a panel within writing, not a second workspace.
+            if (realWriting && key === 'review') return null;
             const count =
               key === 'changes'
                 ? (data?.conflicts.filter((c) => c.status === 'open').length ?? 0)
@@ -105,7 +117,7 @@ export function NavRail({ realWriting = false }: { realWriting?: boolean }) {
             if (realWriting && index > 2)
               return (
                 <Tooltip key={key} content={liveText.unavailable}>
-                  <span className="rail-link" aria-disabled="true" title={liveText.unavailable}>
+                  <span className="rail-link" role="link" aria-disabled="true" tabIndex={0}>
                     <Icon size={18} />
                     <span className="rail-label">{zh.nav[key]}</span>
                   </span>
@@ -116,10 +128,22 @@ export function NavRail({ realWriting = false }: { realWriting?: boolean }) {
                 <Link
                   to={
                     realWriting && key !== 'prepare'
-                      ? liveWorkspacePath(plannedChapter, key === 'review' ? 'assembly' : 'write')
-                      : workPath(key, projectId, chapterId)
+                      ? realPath()
+                      : realWriting
+                        ? livePreparePath('premise', plannedChapter)
+                        : workPath(key, projectId, chapterId)
                   }
-                  className={`rail-link ${(realWriting ? key === (new URLSearchParams(search).get('stage') === 'assembly' ? 'review' : 'workspace') : pathname === `/${key}`) ? 'active' : ''}`}
+                  className={`rail-link ${(realWriting ? (key === 'prepare' && pathname === '/prepare') || (pathname === '/workspace' && key === 'workspace') : pathname === `/${key}`) ? 'active' : ''}`}
+                  aria-current={
+                    (
+                      realWriting
+                        ? (key === 'workspace' && pathname === '/workspace') ||
+                          (key === 'prepare' && pathname === '/prepare')
+                        : pathname === `/${key}`
+                    )
+                      ? 'page'
+                      : undefined
+                  }
                   aria-label={zh.nav[key]}
                 >
                   <Icon size={18} />

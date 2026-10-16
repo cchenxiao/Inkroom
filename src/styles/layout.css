@@ -82,7 +82,7 @@
   visibility: hidden;
   margin-left: auto;
   color: var(--text-dim);
-  font: 10px var(--font-mono);
+  font: 10px var(--font-ui);
 }
 .rail-link:hover kbd,
 .rail-link:focus-visible kbd {
@@ -93,7 +93,7 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  font: 10px var(--font-mono);
+  font: 10px var(--font-ui);
   color: var(--p0);
 }
 .nav-count i {
@@ -325,7 +325,7 @@
   display: grid;
   place-items: center;
   border-radius: 4px;
-  font: 10px var(--font-mono);
+  font: 10px var(--font-ui);
   background: color-mix(in srgb, var(--p0) 12%, transparent);
   color: var(--p0);
 }
@@ -365,7 +365,7 @@
   flex: 1;
 }
 .beat-row small {
-  font: 9px var(--font-mono);
+  font: 9px var(--font-ui);
   opacity: 0.4;
 }
 .beat-dot {
@@ -408,7 +408,7 @@
 }
 .chapter-summary strong {
   color: var(--text);
-  font: 12px var(--font-mono);
+  font: 12px var(--font-ui);
 }
 .chapter-summary small {
   font-size: 10px;
@@ -482,7 +482,7 @@
   color: var(--text-dim);
 }
 .rework-counter b {
-  font: 10px var(--font-mono);
+  font: 10px var(--font-ui);
   color: var(--p1);
   margin-left: 7px;
 }
@@ -587,7 +587,7 @@
 .trace-metrics b {
   display: block;
   color: var(--text);
-  font: 11px var(--font-mono);
+  font: 11px var(--font-ui);
   margin-top: 5px;
 }
 .manifest-panel h3 {
@@ -985,7 +985,7 @@
 }
 .quality-metric summary > strong {
   margin-left: auto;
-  font: 11px var(--font-mono);
+  font: 11px var(--font-ui);
 }
 .quality-metric summary .badge {
   font-size: 9px;
@@ -1105,31 +1105,135 @@
   .has-review .structure-rail {
     display: none;
   }
-  .app-shell:has(.workspace-review) .nav-rail {
+  .app-shell:not(.writing-shell):has(.workspace-review:not([hidden])) .nav-rail {
     width: 64px;
     flex-basis: 64px;
   }
-  .app-shell:has(.workspace-review) .rail-label,
-  .app-shell:has(.workspace-review) .rail-caption,
-  .app-shell:has(.workspace-review) .rail-link kbd,
-  .app-shell:has(.workspace-review) .rail-logo span,
-  .app-shell:has(.workspace-review) .rail-author > span,
-  .app-shell:has(.workspace-review) .rail-fold span {
+  .app-shell:not(.writing-shell):has(.workspace-review:not([hidden])) .rail-label,
+  .app-shell:not(.writing-shell):has(.workspace-review:not([hidden])) .rail-caption,
+  .app-shell:not(.writing-shell):has(.workspace-review:not([hidden])) .rail-link kbd,
+  .app-shell:not(.writing-shell):has(.workspace-review:not([hidden])) .rail-logo span,
+  .app-shell:not(.writing-shell):has(.workspace-review:not([hidden])) .rail-author > span,
+  .app-shell:not(.writing-shell):has(.workspace-review:not([hidden])) .rail-fold span {
     display: none;
   }
-  .app-shell:has(.workspace-review) .rail-link,
-  .app-shell:has(.workspace-review) .rail-fold {
+  .app-shell:not(.writing-shell):has(.workspace-review:not([hidden])) .rail-link,
+  .app-shell:not(.writing-shell):has(.workspace-review:not([hidden])) .rail-fold {
     justify-content: center;
     padding-inline: 8px;
   }
-  .app-shell:has(.workspace-review) .rail-logo {
+  .app-shell:not(.writing-shell):has(.workspace-review:not([hidden])) .rail-logo {
     padding-inline: 20px;
   }
-  .app-shell:has(.workspace-review) .rail-author {
+  .app-shell:not(.writing-shell):has(.workspace-review:not([hidden])) .rail-author {
     justify-content: center;
     padding-inline: 0;
   }
 }
 
-.book-demo-strip { padding: 8px 16px; background: var(--panel); border-bottom: 1px solid var(--border); color: var(--text-dim); font-size: 12px; }
-.rail-logo { text-decoration: none; color: var(--text); }
+.book-demo-strip {
+  padding: 8px 16px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  color: var(--text-dim);
+  font-size: 12px;
+}
+.rail-logo {
+  text-decoration: none;
+  color: var(--text);
+}
+
+/* Shelf is a separate home, not a partially empty project navigation. */
+.library-home {
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+.library-home-header {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 0 40px;
+  height: 56px;
+  flex: none;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+}
+.library-home-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--text);
+}
+.library-home-brand strong {
+  font-family: var(--font-manuscript);
+  font-size: 23px;
+  font-weight: 500;
+}
+.library-home-brand span {
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: var(--text-dim);
+}
+.library-home-account {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-left: auto;
+}
+.library-home-content {
+  overflow: auto;
+  flex: 1;
+  min-height: 0;
+}
+.library-home-back {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.rail-home-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 12px 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-dim);
+  font-size: 12px;
+}
+.rail-home-link:hover {
+  color: var(--ai);
+}
+.nav-rail.is-collapsed .rail-home-link {
+  justify-content: center;
+  padding: 10px 0;
+}
+
+.library-home-header {
+  padding-inline: 24px;
+}
+.book-demo-strip {
+  padding-block: 5px;
+  font-size: 11px;
+}
+/* Hide decorative English labels; keep the one small shelf wordmark. */
+.eyebrow,
+.page-eyebrow {
+  display: none;
+}
+.run-trace-footer,
+.run-drawer-header,
+.metric-pair,
+.quality-gate-card,
+.report-table {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: normal;
+}
+@media (max-width: 760px) {
+  .library-home-header {
+    padding-inline: 16px;
+  }
+}

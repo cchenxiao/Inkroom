@@ -3,7 +3,7 @@ package app
 import "time"
 
 // ChapterPublicationRequest binds the author's fact confirmation to one approved review.
-// This increment does not extract facts or write story events into the knowledge base.
+// Reviewed chapter facts are frozen with the receipt without mutating its input knowledge.
 type ChapterPublicationRequest struct {
 	RequestID       string `json:"requestId"`
 	ReviewID        string `json:"reviewId"`
@@ -11,6 +11,8 @@ type ChapterPublicationRequest struct {
 	InputDigest     string `json:"inputDigest"`
 	ApprovalID      string `json:"approvalId"`
 	NoPendingFacts  bool   `json:"noPendingFacts"`
+	FactJobID       string `json:"factJobId,omitempty"`
+	FactVersion     int    `json:"factVersion,omitempty"`
 }
 
 // ChapterPublication is an immutable whole-chapter receipt, separate from a Beat commit.
@@ -24,6 +26,8 @@ type ChapterPublication struct {
 	Request             ChapterPublicationRequest `json:"request"`
 	Assembly            ChapterAssembly           `json:"assembly"`
 	Review              ChapterReviewJob          `json:"review"`
+	FactReview          *ChapterFactsJob          `json:"factReview,omitempty"`
+	FactSelection       *ChapterFactsSelection    `json:"factSelection,omitempty"`
 	FactConfirmation    FactConfirmation          `json:"factConfirmation"`
 	CreatedAt           time.Time                 `json:"createdAt"`
 }

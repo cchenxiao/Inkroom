@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"text/template"
 
+	"inkloom/internal/agents/contracts"
 	"inkloom/internal/agents/model"
 )
 
@@ -62,7 +63,7 @@ func render(in model.Input, candidate string) (model.Input, error) {
 		in.Temperature = 0.8
 	case "context_assembler":
 		in.Temperature = 0.1
-	case "chapter_consistency", "chapter_language":
+	case "chapter_consistency", "chapter_language", "chapter_facts":
 		in.Temperature = 0.1
 	case "ai_taste":
 	case "hard_consistency":
@@ -84,6 +85,9 @@ func render(in model.Input, candidate string) (model.Input, error) {
 	promptVersion := name + ".v1"
 	if name == "hard_consistency" {
 		promptVersion = "hard_consistency.v2"
+	}
+	if name == "planned_writer" {
+		promptVersion = "planned_writer.v3"
 	}
 	if name == "writer" {
 		promptVersion = "writer.v2"
@@ -125,6 +129,9 @@ func render(in model.Input, candidate string) (model.Input, error) {
 	}
 	if in.Role == "planned_writer" {
 		in.SchemaVersion = "writer.v1"
+		if bytes.Equal(in.OutputSchema, contracts.ChapterWriterSchema) {
+			in.SchemaVersion = "chapter_writer.v1"
+		}
 	}
 	if in.Role == "ai_taste" {
 		in.SchemaVersion = "critic.v1"

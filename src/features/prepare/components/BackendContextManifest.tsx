@@ -1,3 +1,5 @@
+import { TechnicalDetails } from '@/shared/ui/technical-details';
+import { textLabel } from '@/shared/lib/business-labels';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Badge, Button } from '@/shared/ui';
@@ -37,33 +39,35 @@ export default function BackendContextManifest({ run }: { run: BackendRun }) {
             <div className="page-stack">
               <p>{t.contextNote}</p>
               <p>
-                {query.data.assemblerVersion} · {t.contextBudget} {query.data.tokenEstimate} /{' '}
-                {query.data.budget} · {t.outputReserve} {query.data.reservedOutputTokens}
+                {t.contextBudget} {query.data.tokenEstimate} / {query.data.budget} ·{' '}
+                {t.outputReserve} {query.data.reservedOutputTokens}
               </p>
               <p>
-                {t.contextBase} v{query.data.baseDraftVersion} ·{' '}
-                <span className="mono" title={query.data.digest}>
-                  {query.data.digest.slice(0, 16)}
-                </span>
+                {t.contextBase} v{query.data.baseDraftVersion}
               </p>
+              <TechnicalDetails
+                items={{
+                  材料校验值: query.data.digest,
+                  材料整理器版本: query.data.assemblerVersion,
+                }}
+              />
               {query.data.sources.map((source) => (
                 <details key={`${source.kind}:${source.id}`}>
                   <summary>
-                    {t.sourceKinds[source.kind] ?? source.kind} · {source.title}{' '}
+                    {t.sourceKinds[source.kind] ?? '创作材料'} ·{' '}
+                    {textLabel(source.title, '未命名材料')}{' '}
                     <Badge>
-                      v{source.version} · {t.retrievalMethods[source.method] ?? source.method}
+                      v{source.version} · {t.retrievalMethods[source.method] ?? '其他检索方式'}
                     </Badge>
                   </summary>
                   <p className="backend-source-text">{source.excerpt}</p>
-                  <small className="mono">
-                    {source.id} · {source.digest.slice(0, 16)}
-                  </small>
+                  <TechnicalDetails items={{ 材料编号: source.id, 校验值: source.digest }} />
                 </details>
               ))}
               <h4>{t.contextExcluded}</h4>
               {query.data.excluded.map((source) => (
-                <p key={source.title}>
-                  {source.title}：{source.reason}
+                <p key={textLabel(source.title, '未命名材料')}>
+                  {textLabel(source.title, '未命名材料')}：{source.reason}
                 </p>
               ))}
             </div>

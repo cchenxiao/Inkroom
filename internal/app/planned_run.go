@@ -16,13 +16,18 @@ import (
 
 // PlannedRunRequest 只传预期版本和操作权限；上游材料由仓储读取。
 type PlannedRunRequest struct {
-	BeatID       string                       `json:"beatId,omitempty"`
-	RequestID    string                       `json:"requestId"`
-	ChapterID    string                       `json:"chapterId"`
-	Expected     planning.ChapterPlanVersions `json:"expected"`
-	PlanVersion  int                          `json:"planVersion"`
-	DraftVersion int                          `json:"draftVersion"`
-	AutoRevise   bool                         `json:"autoRevise"`
+	Recheck       bool                         `json:"recheck,omitempty"`
+	Mode          string                       `json:"mode,omitempty"`
+	FromRunID     string                       `json:"fromRunId,omitempty"`
+	SourceVersion int                          `json:"sourceVersion,omitempty"`
+	Rewrite       *manuscript.AuthorRewrite    `json:"rewrite,omitempty"`
+	BeatID        string                       `json:"beatId,omitempty"`
+	RequestID     string                       `json:"requestId"`
+	ChapterID     string                       `json:"chapterId"`
+	Expected      planning.ChapterPlanVersions `json:"expected"`
+	PlanVersion   int                          `json:"planVersion"`
+	DraftVersion  int                          `json:"draftVersion"`
+	AutoRevise    bool                         `json:"autoRevise"`
 }
 type PlannedRunBinding struct {
 	Scope     string                        `json:"scope"`
@@ -30,7 +35,7 @@ type PlannedRunBinding struct {
 	Selection planning.ChapterPlanSelection `json:"selection"`
 }
 
-// 一章多 Beat 尚未组稿，每个 Beat 的候选稿本独立，避免重生成覆盖另一段。
+// 单段与整章候选使用独立稿本；整章用 ChapterBeatID，采用后按 BeatID 组稿。
 func PlannedDraftID(scope, chapter, beat string) string {
 	hash := sha256.Sum256([]byte(scope + "\x00" + chapter + "\x00" + beat))
 	return fmt.Sprintf("planned-%x", hash[:16])
@@ -116,15 +121,25 @@ func PreparePlannedContext(cfg config.Config, scope, runID string, base int, p p
 	rules := p.Input.Base.Style.Rules
 	style := manuscript.WritingStyle{POV: rules.POV, Tense: rules.Tense, Tone: rules.Tone, SentenceLength: manuscript.WritingRange(rules.SentenceLength), DialogueRatio: manuscript.WritingRange(rules.DialogueRatio), BannedPhrases: rules.BannedPhrases, StyleArc: rules.StyleArc}
 	b.WritingTask = &manuscript.WritingTask{Scope: scope, ChapterID: p.ChapterID, Versions: map[string]int{"input": p.Versions.Planning.Input, "direction": p.Versions.Planning.Direction, "style": p.Versions.Planning.Style, "core": p.Versions.Planning.Core, "outline": p.Versions.Outline, "bindings": p.Versions.Bindings}, PlanVersion: p.Version, SourceDigest: sourceDigest, Opening: true, StoryTime: *scene.StoryTime, Brief: manuscript.WritingBrief(p.Content.Brief), Style: style, SceneGoal: scene.Goal, SceneConflict: scene.Conflict, SceneOutcome: scene.Outcome, Voices: voices}
+	if chapter, ok := p.Input.Chapter(); ok {
+		b.WritingTask.ChapterTargetWords = chapter.TargetWords
+		beatCount := 0
+		for _, plannedScene := range p.Content.Scenes {
+			beatCount += len(plannedScene.Beats)
+		}
+		if beatCount > 0 {
+			b.WritingTask.BeatTargetWords = (chapter.TargetWords + beatCount - 1) / beatCount
+		}
+	}
 	b.WritingTask.Brief.SelectedBeatID = beat.ID
 	// Intake 的类型作为创作任务传入；不包含参考原文或未来章纲。
 	b.WritingTask.Genre = p.Input.Base.Source.Intake.Genres
 	budget, output := cfg.ContextTokens, cfg.MaxOutputTokens
 	if budget == 0 {
-		budget = 8000
+		budget = 32768
 	}
 	if output == 0 {
-		output = 2048
+		output = 8192
 	}
 	return contextassembly.Assemble(b, contextassembly.PreviousChapter{}, contextassembly.Options{RunID: runID, BaseDraftVersion: base, Budget: budget, ReservedOutputTokens: output, Excluded: []manuscript.ExcludedSource{
 		{Title: "前章定稿", Reason: "第一章无前章；未引用演示 ch7 的前情"},
@@ -135,25 +150,40 @@ func PreparePlannedContext(cfg config.Config, scope, runID string, base int, p p
 
 // Fake 仅是管线样例，文字不假称模型已创作；避免沿用演示小说正文与证据引用。
 func plannedFakeSteps(b manuscript.ContextBundle) []model.Step {
+	content := mustJSON(map[string]string{"text": "流程样例：" + b.Beat.Description})
+	if len(b.Targets) > 0 {
+		parts := []map[string]string{}
+		for _, t := range b.Targets {
+			parts = append(parts, map[string]string{"beatId": t.Beat.ID, "text": "流程样例：" + t.Beat.Description})
+		}
+		content = mustJSON(map[string]any{"parts": parts})
+	}
 	return []model.Step{
-		{Role: "planned_writer", Content: mustJSON(map[string]string{"text": "流程样例：" + b.Beat.Description})},
+		{Role: "planned_writer", Content: content},
 		{Role: "hard_consistency", Content: `{"findings":[]}`}, {Role: "ai_taste", Content: `{"findings":[]}`},
 	}
 }
 func mustJSON(v any) string { raw, _ := json.Marshal(v); return string(raw) }
 func ValidPlannedRequest(r PlannedRunRequest) bool {
-	return len(r.BeatID) <= 80 && len(r.RequestID) > 0 && len(r.RequestID) <= 80 && strings.TrimSpace(r.ChapterID) != "" && len(r.ChapterID) <= 80 && r.PlanVersion > 0 && r.DraftVersion >= 0
+	return (r.Mode == "" || r.Mode == "beat" || r.Mode == "chapter") && (!(r.Rewrite != nil || r.Recheck) || (r.FromRunID != "" && r.SourceVersion > 0 && r.Mode != "chapter" && !r.AutoRevise)) && !(r.Rewrite != nil && r.Recheck) && (r.FromRunID == "" || r.Rewrite != nil || r.Recheck) && len(r.FromRunID) <= 100 && len(r.BeatID) <= 80 && len(r.RequestID) > 0 && len(r.RequestID) <= 80 && strings.TrimSpace(r.ChapterID) != "" && len(r.ChapterID) <= 80 && r.PlanVersion > 0 && r.DraftVersion >= 0
 }
 
 type PlannedRunSource struct {
-	Knowledge   *memory.KnowledgeRef         `json:"knowledge,omitempty"`
-	Scope       string                       `json:"scope"`
-	ChapterID   string                       `json:"chapterId"`
-	BeatID      string                       `json:"beatId"`
-	Expected    planning.ChapterPlanVersions `json:"expected"`
-	PlanVersion int                          `json:"planVersion"`
+	NeighborPolicy string                       `json:"neighborPolicy,omitempty"`
+	Baseline       []manuscript.Passage         `json:"baseline,omitempty"`
+	FromRunID      string                       `json:"fromRunId,omitempty"`
+	SourceVersion  int                          `json:"sourceVersion,omitempty"`
+	Mode           string                       `json:"mode,omitempty"`
+	Neighbors      []manuscript.Passage         `json:"neighbors,omitempty"`
+	Knowledge      *memory.KnowledgeRef         `json:"knowledge,omitempty"`
+	Scope          string                       `json:"scope"`
+	ChapterID      string                       `json:"chapterId"`
+	BeatID         string                       `json:"beatId"`
+	Expected       planning.ChapterPlanVersions `json:"expected"`
+	PlanVersion    int                          `json:"planVersion"`
 }
 type PlannedRunReadiness struct {
+	Working      *manuscript.Passage          `json:"working,omitempty"`
 	BeatID       string                       `json:"beatId"`
 	Ready        bool                         `json:"ready"`
 	Reason       string                       `json:"reason"`

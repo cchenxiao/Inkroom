@@ -1,4 +1,4 @@
-import { Sparkles } from 'lucide-react';
+import { PenLine } from 'lucide-react';
 import { useUIStore } from '@/shared/lib/ui-store';
 import { workspaceMessages as m } from '@/shared/lib/messages-workspace';
 /** 流式输出独立于 TipTap 文档，只订阅当前段的候选事件。 */
@@ -16,7 +16,7 @@ export function StreamingCandidate({ segmentId, runId }: { segmentId: string; ru
     <aside className={`streaming-candidate ${live ? 'is-streaming' : ''}`} aria-live="polite">
       <details open={live || undefined}>
         <summary>
-          <Sparkles size={13} />
+          <PenLine size={13} />
           {live ? m.streaming : m.streamReady}
         </summary>
         <p>

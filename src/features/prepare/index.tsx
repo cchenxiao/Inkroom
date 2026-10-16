@@ -16,7 +16,7 @@ import BackendTrial from './components/BackendTrial';
 import SuggestionDialog from './components/SuggestionDialog';
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowRight, Feather, LockKeyhole, Upload, ChevronRight, Sparkles } from 'lucide-react';
+import { ArrowRight, Feather, LockKeyhole, Upload, ChevronRight, PenLine } from 'lucide-react';
 import { useAction, useBible, useChapter, useProject, useTree } from '@/shared/api/hooks';
 import { useUIStore } from '@/shared/lib/ui-store';
 import { pages as t } from '@/shared/lib/messages-pages';
@@ -45,9 +45,17 @@ export default function PreparePage() {
   const navigate = useNavigate();
   const branchId = useUIStore((s) => s.branchId);
   const stale = useUIStore((s) => s.stale);
-  const [searchParams,setSearchParams]=useSearchParams();
-  const section=['premise','style','world','outline','knowledge'].includes(searchParams.get('section')??'')?searchParams.get('section')!:'premise';
-  const setSection=(value:string)=>{const next=new URLSearchParams(searchParams);next.set('section',value);setSearchParams(next);};
+  const [searchParams, setSearchParams] = useSearchParams();
+  const section = ['premise', 'style', 'world', 'outline', 'knowledge'].includes(
+    searchParams.get('section') ?? '',
+  )
+    ? searchParams.get('section')!
+    : 'premise';
+  const setSection = (value: string) => {
+    const next = new URLSearchParams(searchParams);
+    next.set('section', value);
+    setSearchParams(next);
+  };
   const [trialOpen, setTrialOpen] = useState(false);
   const [form, setForm] = useState<Partial<Project>>({});
   const [importOpen, setImportOpen] = useState(false);
@@ -70,10 +78,35 @@ export default function PreparePage() {
   const realPlanning = projectId === 'project-zhuoliu' && branchId === 'main';
   const planningState = planning.data;
   const sectionReady: Record<string, boolean> = {
-    premise: Boolean(realPlanning && planningState?.selection && planningState.selection.inputVersion === planningState.input.version),
-    style: realPlanning ? Boolean(planningState?.styleSelection && planningState.styleSelection.inputVersion === planningState.input.version && planningState.styleSelection.directionVersion === planningState.directionVersion) : Boolean(bible.data?.style.anchorText),
-    world: realPlanning ? Boolean(planningState?.coreSelection && planningState.coreSelection.inputVersion === planningState.input.version && planningState.coreSelection.directionVersion === planningState.directionVersion && planningState.coreSelection.styleVersion === planningState.styleVersion && Object.values(planningState.coreSelection.decisions).some(s=>s==='confirmed') && !Object.values(planningState.coreSelection.decisions).includes('pending')) : false,
-    outline: Boolean(realPlanning && planningState && outlineReady(planningState) && planningState.outlineSelection?.confirmed && sameVersions(planningState.outlineSelection.versions, planningVersions(planningState))),
+    premise: Boolean(
+      realPlanning &&
+      planningState?.selection &&
+      planningState.selection.inputVersion === planningState.input.version,
+    ),
+    style: realPlanning
+      ? Boolean(
+          planningState?.styleSelection &&
+          planningState.styleSelection.inputVersion === planningState.input.version &&
+          planningState.styleSelection.directionVersion === planningState.directionVersion,
+        )
+      : Boolean(bible.data?.style.anchorText),
+    world: realPlanning
+      ? Boolean(
+          planningState?.coreSelection &&
+          planningState.coreSelection.inputVersion === planningState.input.version &&
+          planningState.coreSelection.directionVersion === planningState.directionVersion &&
+          planningState.coreSelection.styleVersion === planningState.styleVersion &&
+          Object.values(planningState.coreSelection.decisions).some((s) => s === 'confirmed') &&
+          !Object.values(planningState.coreSelection.decisions).includes('pending'),
+        )
+      : false,
+    outline: Boolean(
+      realPlanning &&
+      planningState &&
+      outlineReady(planningState) &&
+      planningState.outlineSelection?.confirmed &&
+      sameVersions(planningState.outlineSelection.versions, planningVersions(planningState)),
+    ),
   };
   async function saveProject() {
     await save.mutateAsync({ ...form, draftVersion: version, branchId });
@@ -116,13 +149,12 @@ export default function PreparePage() {
           ))}
         </nav>
         <div className="prepare-section">
-          <div className="prepare-section-tools">
-            <span className="page-eyebrow">
-              {section === 'knowledge' ? e.prepare.sources : e.prepare.preparation}
-            </span>
-
-          </div>
-          {section === 'knowledge' && <><PlanningKnowledgePublish />{realPlanning && <BackendKnowledge />}</>}
+          {section === 'knowledge' && (
+            <>
+              <PlanningKnowledgePublish />
+              {realPlanning && <BackendKnowledge />}
+            </>
+          )}
           {section === 'premise' && <BackendPlanning />}
           {section === 'style' && <BackendStyleTrial />}
           {section === 'world' && <BackendCoreSettings />}
@@ -153,7 +185,7 @@ export default function PreparePage() {
                         {t.common.import}
                       </Button>
                       <Button size="sm" disabled={!version} onClick={() => setSuggestOpen(true)}>
-                        <Sparkles size={14} />
+                        <PenLine size={14} />
                         {t.common.suggestion}
                       </Button>
                     </div>
@@ -258,11 +290,21 @@ export default function PreparePage() {
                 )}
                 {bible.data && ['style', 'world'].includes(section) && (
                   <details className="planning-mock">
-                    <summary>{section === 'style' ? styleTrialMessages.mock : coreSettingsMessages.mock}</summary>
-                    {section === 'world' && <div className="page-actions">
-                      <Button variant="ghost" size="sm" onClick={() => setImportOpen(true)}><Upload size={14} />{t.common.import}</Button>
-                      <Button size="sm" disabled={!version} onClick={() => setSuggestOpen(true)}><Sparkles size={14} />{t.common.suggestion}</Button>
-                    </div>}
+                    <summary>
+                      {section === 'style' ? styleTrialMessages.mock : coreSettingsMessages.mock}
+                    </summary>
+                    {section === 'world' && (
+                      <div className="page-actions">
+                        <Button variant="ghost" size="sm" onClick={() => setImportOpen(true)}>
+                          <Upload size={14} />
+                          {t.common.import}
+                        </Button>
+                        <Button size="sm" disabled={!version} onClick={() => setSuggestOpen(true)}>
+                          <PenLine size={14} />
+                          {t.common.suggestion}
+                        </Button>
+                      </div>
+                    )}
 
                     <div className="section-title">
                       <h2>{section === 'style' ? t.bible.tabs.style : t.prepare.bible}</h2>
@@ -463,99 +505,101 @@ export default function PreparePage() {
                   </details>
                 )}
                 {section === 'outline' && (
-                  <details className="planning-mock"><summary>{outlineMessages.mock}</summary>
-            {section === 'outline' && (
-              <div className="page-actions">
-                <Button variant="ghost" size="sm" onClick={() => setImportOpen(true)}>
-                  <Upload size={14} />
-                  {t.common.import}
-                </Button>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  disabled={!version}
-                  onClick={() => setSuggestOpen(true)}
-                >
-                  <Sparkles size={14} />
-                  {t.common.suggestion}
-                </Button>
-              </div>
-            )}
-                  <section className="page-section">
-                    <div className="section-title">
-                      <h2>{t.prepare.outline}</h2>
-                      <small>{t.prepare.outlineDescription}</small>
-                    </div>
-                    <div className="outline-list">
-                      {tree.data?.map((ch) => (
-                        <Card key={ch.id} className="outline-card">
-                          <div className="page-row">
-                            <div>
-                              <small className="page-eyebrow">
-                                CHAPTER {String(ch.number).padStart(2, '0')}
-                              </small>
-                              <h3>{ch.title}</h3>
+                  <details className="planning-mock">
+                    <summary>{outlineMessages.mock}</summary>
+                    {section === 'outline' && (
+                      <div className="page-actions">
+                        <Button variant="ghost" size="sm" onClick={() => setImportOpen(true)}>
+                          <Upload size={14} />
+                          {t.common.import}
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          disabled={!version}
+                          onClick={() => setSuggestOpen(true)}
+                        >
+                          <PenLine size={14} />
+                          {t.common.suggestion}
+                        </Button>
+                      </div>
+                    )}
+                    <section className="page-section">
+                      <div className="section-title">
+                        <h2>{t.prepare.outline}</h2>
+                        <small>{t.prepare.outlineDescription}</small>
+                      </div>
+                      <div className="outline-list">
+                        {tree.data?.map((ch) => (
+                          <Card key={ch.id} className="outline-card">
+                            <div className="page-row">
+                              <div>
+                                <small className="page-eyebrow">
+                                  CHAPTER {String(ch.number).padStart(2, '0')}
+                                </small>
+                                <h3>{ch.title}</h3>
+                              </div>
+                              <Badge
+                                tone={
+                                  ch.status === 'finalized'
+                                    ? 'success'
+                                    : ch.status === 'human'
+                                      ? 'human'
+                                      : 'muted'
+                                }
+                              >
+                                {zh.status[ch.status]}
+                              </Badge>
                             </div>
-                            <Badge
-                              tone={
-                                ch.status === 'finalized'
-                                  ? 'success'
-                                  : ch.status === 'human'
-                                    ? 'human'
-                                    : 'muted'
-                              }
-                            >
-                              {zh.status[ch.status]}
-                            </Badge>
-                          </div>
-                          {ch.scenes.map((scene) => (
-                            <details key={scene.id}>
-                              <summary>
-                                {scene.title}
-                                <ChevronRight size={13} />
-                              </summary>
-                              {scene.beats.map((beat) => (
-                                <div className="beat-row" key={beat.id}>
-                                  <span>{String(beat.order).padStart(2, '0')}</span>
-                                  <div>
-                                    <strong>{beat.title}</strong>
-                                    <p>{beat.description}</p>
+                            {ch.scenes.map((scene) => (
+                              <details key={scene.id}>
+                                <summary>
+                                  {scene.title}
+                                  <ChevronRight size={13} />
+                                </summary>
+                                {scene.beats.map((beat) => (
+                                  <div className="beat-row" key={beat.id}>
+                                    <span>{String(beat.order).padStart(2, '0')}</span>
+                                    <div>
+                                      <strong>{beat.title}</strong>
+                                      <p>{beat.description}</p>
+                                    </div>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => {
+                                        setEdit({ kind: 'beats', id: beat.id, value: { ...beat } });
+                                        setReason('');
+                                      }}
+                                    >
+                                      {t.common.edit}
+                                    </Button>
                                   </div>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => {
-                                      setEdit({ kind: 'beats', id: beat.id, value: { ...beat } });
-                                      setReason('');
-                                    }}
-                                  >
-                                    {t.common.edit}
-                                  </Button>
-                                </div>
-                              ))}
-                            </details>
-                          ))}
-                          <div className="page-row">
-                            <small>
-                              {ch.wordCount.toLocaleString()} / {ch.targetWords.toLocaleString()}{' '}
-                              {t.reports.wordsUnit}
-                            </small>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                useUIStore.getState().setChapter(ch.id);
-                                navigate('/workspace');
-                              }}
-                            >
-                              {t.prepare.start}
-                              <ArrowRight size={14} />
-                            </Button>
-                          </div>
-                        </Card>
-                      ))}
-                    </div>
-                  </section></details>
+                                ))}
+                              </details>
+                            ))}
+                            <div className="page-row">
+                              <small>
+                                {ch.wordCount.toLocaleString()} / {ch.targetWords.toLocaleString()}{' '}
+                                {t.reports.wordsUnit}
+                              </small>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  useUIStore.getState().setChapter(ch.id);
+                                  navigate('/workspace');
+                                }}
+                              >
+                                {t.prepare.start}
+                                <ArrowRight size={14} />
+                              </Button>
+                            </div>
+                          </Card>
+                        ))}
+                      </div>
+                    </section>
+                  </details>
                 )}
               </>
             )}

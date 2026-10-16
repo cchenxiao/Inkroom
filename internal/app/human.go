@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -38,6 +39,15 @@ func ExecuteHuman(ctx context.Context, cfg config.Config, r Run, repo HumanRepos
 	var err error
 	if r.Provider == "fake" {
 		chat = lookupFake{next: demo.NewHumanFake(*r.Result)}
+		if r.PendingAction != nil && r.PendingAction.Type == "rewrite" && r.PendingAction.Rewrite != nil {
+			req := r.PendingAction.Rewrite
+			if err := req.Validate(r.Result.Segments); err != nil {
+				return err
+			}
+			text := string([]rune(req.Original)[req.Start:req.End]) + "（演示修改）"
+			raw, _ := json.Marshal(map[string]string{"text": text})
+			chat = model.NewFake([]model.Step{{Role: "planned_writer", Content: string(raw)}, {Role: "hard_consistency", Content: `{"findings":[]}`}, {Role: "ai_taste", Content: `{"findings":[]}`}})
+		}
 	} else {
 		if cfg.Model != r.Provider || cfg.ModelName != r.Model {
 			return fmt.Errorf("恢复需要与原运行相同的供应商和模型配置")

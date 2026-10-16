@@ -1,6 +1,6 @@
 export const chapterReviewMessages = {
   title: '整章复审',
-  note: '两路 Critic 独立阅读整章，核对跨段衔接与语言重复。只提出意见，不改正文；空意见不代表查证完备。',
+  note: '两项审查分别阅读整章，核对跨段衔接与语言重复。只提出意见，不改正文；空意见不代表查证完备。',
   start: '开始整章复审',
   again: '重新复审',
   refresh: '刷新复审',
@@ -22,7 +22,7 @@ export const chapterReviewMessages = {
   confirm: '我已通读当前章稿和复审意见',
   confirmRequired: '请先通读并确认',
   approved: '作者已确认复审通过',
-  requested: '已记录返工要求；请回到对应 Beat 修改、审核提交后重新组稿。',
+  requested: '已记录返工要求；请回到对应情节段修改、审核提交后重新组稿。',
   notFinal: '复审通过后仍需核对事实并确认整章定稿；复审本身不自动同步事实。',
   evidence: '证据原文',
   locate: '定位章稿原文',

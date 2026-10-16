@@ -70,6 +70,9 @@ var chapterReviewsMigration string
 //go:embed migrations/018_chapter_publications.sql
 var chapterPublicationsMigration string
 
+//go:embed migrations/019_chapter_facts.sql
+var chapterFactsMigration string
+
 type Store struct {
 	pool  *pgxpool.Pool
 	lease *pgx.Conn
@@ -134,7 +137,7 @@ func (s *Store) migrate(ctx context.Context) error {
 	if _, err = tx.Exec(ctx, "CREATE TABLE IF NOT EXISTS schema_migrations(version integer PRIMARY KEY, checksum text NOT NULL)"); err != nil {
 		return err
 	}
-	for i, sql := range []string{migration, humanMigration, eventMigration, commitMigration, memoryMigration, preparationMigration, criticLookupMigration, knowledgeMigration, planningMigration, styleTrialsMigration, styleAnalysisMigration, coreSettingsMigration, outlineMigration, chapterPlanMigration, plannedRunsMigration, chapterAssembliesMigration, chapterReviewsMigration, chapterPublicationsMigration} {
+	for i, sql := range []string{migration, humanMigration, eventMigration, commitMigration, memoryMigration, preparationMigration, criticLookupMigration, knowledgeMigration, planningMigration, styleTrialsMigration, styleAnalysisMigration, coreSettingsMigration, outlineMigration, chapterPlanMigration, plannedRunsMigration, chapterAssembliesMigration, chapterReviewsMigration, chapterPublicationsMigration, chapterFactsMigration} {
 		version := i + 1
 		checksum := fmt.Sprintf("%x", sha256.Sum256([]byte(sql)))
 		var existing string
@@ -156,6 +159,13 @@ func (s *Store) migrate(ctx context.Context) error {
 	return tx.Commit(ctx)
 }
 func (s *Store) recoverInterrupted(ctx context.Context) error {
+	if _, err := s.pool.Exec(ctx, `UPDATE chapter_fact_jobs SET status='interrupted',record=record || '{"status":"interrupted","message":"服务中断，事实候选未完成；未自动重发模型请求。"}'::jsonb WHERE status='running'`); err != nil {
+		return err
+	}
+	if _, err := s.pool.Exec(ctx, `UPDATE chapter_fact_calls SET record=record || '{"phase":"unknown"}'::jsonb WHERE record->>'phase'='started'`); err != nil {
+		return err
+	}
+
 	if _, err := s.pool.Exec(ctx, `UPDATE chapter_review_jobs SET status='interrupted',record=record || '{"status":"interrupted","message":"服务中断，未自动重发整章复审；请手动重试。"}'::jsonb WHERE status='running'`); err != nil {
 		return err
 	}

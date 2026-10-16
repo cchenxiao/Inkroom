@@ -6,7 +6,7 @@ export const libraryMessages = {
   continue: '继续写',
   resumePlan: '继续创作向导',
   demo: '演示数据',
-  demoNote: '书架与总览均为展示 Mock；新作品保存在此浏览器。Go 仅支持《浊流》/ main / 第 7 章。',
+  demoNote: '此处为浏览器演示作品；《浊流》main 的真实规划与写作请从书架主体进入。',
   emptyTitle: '书架还没有作品',
   emptyHint: '从一个故事想法开始，逐步确认方向、文风、世界与大纲。',
   stage: { planning: '筹备中', writing: '创作中', finalized: '已完成' },

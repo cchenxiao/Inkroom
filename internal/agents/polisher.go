@@ -12,11 +12,11 @@ import (
 	"inkloom/internal/domain/revision"
 )
 
-func Polish(ctx context.Context, chat model.ChatModel, segments []manuscript.Segment, findings []review.Finding, version int, protected []string) (revision.Proposal, model.Usage, error) {
-	return PolishWithInstruction(ctx, chat, segments, findings, version, protected, "")
+func Polish(ctx context.Context, chat model.ChatModel, segments []manuscript.Segment, findings []review.Finding, version int, protected []string, contexts ...manuscript.ContextBundle) (revision.Proposal, model.Usage, error) {
+	return PolishWithInstruction(ctx, chat, segments, findings, version, protected, "", contexts...)
 }
 
-func PolishWithInstruction(ctx context.Context, chat model.ChatModel, segments []manuscript.Segment, findings []review.Finding, version int, protected []string, instruction string) (revision.Proposal, model.Usage, error) {
+func PolishWithInstruction(ctx context.Context, chat model.ChatModel, segments []manuscript.Segment, findings []review.Finding, version int, protected []string, instruction string, contexts ...manuscript.ContextBundle) (revision.Proposal, model.Usage, error) {
 	targets := make([]review.Finding, 0)
 	ids := map[string]bool{}
 	for _, f := range findings {
@@ -32,12 +32,13 @@ func PolishWithInstruction(ctx context.Context, chat model.ChatModel, segments [
 		}
 	}
 	material, err := json.Marshal(struct {
-		AuthorInstruction string               `json:"authorInstruction,omitempty"`
-		DraftVersion      int                  `json:"draftVersion"`
-		Segments          []manuscript.Segment `json:"segments"`
-		Findings          []review.Finding     `json:"findings"`
-		ProtectedTerms    []string             `json:"protectedTerms"`
-	}{instruction, version, subset, targets, protected})
+		Context           []manuscript.ContextBundle `json:"context,omitempty"`
+		AuthorInstruction string                     `json:"authorInstruction,omitempty"`
+		DraftVersion      int                        `json:"draftVersion"`
+		Segments          []manuscript.Segment       `json:"segments"`
+		Findings          []review.Finding           `json:"findings"`
+		ProtectedTerms    []string                   `json:"protectedTerms"`
+	}{contexts, instruction, version, subset, targets, protected})
 	if err != nil {
 		return revision.Proposal{}, model.Usage{}, err
 	}

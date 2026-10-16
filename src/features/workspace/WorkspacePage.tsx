@@ -1,29 +1,18 @@
+import { EditorToolbar } from './components/EditorToolbar';
 import { ReconcileDialog } from './components/ReconcileDialog';
 import { StreamingCandidate } from './components/StreamingCandidate';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useShallow } from 'zustand/react/shallow';
 import { defaultRangeExtractor, useVirtualizer } from '@tanstack/react-virtual';
-import {
-  AlignLeft,
-  Check,
-  CheckCheck,
-  Eye,
-  Focus,
-  Highlighter,
-  MessageSquare,
-  Sparkles,
-  Cloud,
-  CloudOff,
-  ArrowLeft,
-} from 'lucide-react';
+import { Check, Eye, MessageSquare, PenLine, Cloud, CloudOff, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { useBible, useChapter } from '@/shared/api/hooks';
 import { ApiError } from '@/shared/api/client';
 import { endpoints, queryKeys } from '@/shared/api/endpoints';
 import { useUIStore } from '@/shared/lib/ui-store';
 import { workspaceMessages as m } from '@/shared/lib/messages-workspace';
-import { AsyncState, Badge, Button, Modal, Textarea, Tooltip } from '@/shared/ui';
+import { AsyncState, Badge, Button, Modal, Textarea } from '@/shared/ui';
 import type { ChapterDocument, Finding, RevisionPatch } from '@/types/domain';
 import { workspaceApi } from './api';
 import { useAutosave } from './use-autosave';
@@ -372,64 +361,18 @@ function Manuscript({
           </Button>
         </div>
       )}
-      <header className="manuscript-toolbar">
-        <div
-          className="manuscript-context"
-          title={`${activeScene?.title ?? ''} · ${activeBeat?.title ?? ''} · ${document.chapter.pov}`}
-        >
-          <span>{activeBeat?.title ?? activeScene?.title}</span>
-          <span>
-            {studio.pov} · {document.chapter.pov}
-          </span>
-          <span className="rhythm-label">{bible.data?.style.tone ?? ''}</span>
-        </div>
-        <div className="manuscript-tabs" role="tablist" aria-label={m.editor}>
-          {(
-            [
-              ['editor', AlignLeft, m.editor],
-              ['comments', MessageSquare, m.comments],
-              ['final', CheckCheck, m.final],
-            ] as const
-          ).map(([value, Icon, label]) => (
-            <button
-              key={value}
-              role="tab"
-              aria-selected={mode === value}
-              onClick={() => setMode(value)}
-            >
-              <Icon size={14} />
-              {label}
-              {value === 'comments' && document.segments.some((s) => s.comments?.length) ? (
-                <span className="tab-count">
-                  {document.segments.reduce((n, s) => n + (s.comments?.length ?? 0), 0)}
-                </span>
-              ) : null}
-            </button>
-          ))}
-        </div>
-        <div className="manuscript-tools">
-          <Tooltip content={m.heatmapHint}>
-            <button
-              className={ui.heatmap ? 'active' : ''}
-              aria-pressed={ui.heatmap}
-              aria-label={m.heatmap}
-              onClick={() => ui.setHeatmap(!ui.heatmap)}
-            >
-              <Highlighter size={14} />
-              <span>{m.heatmap}</span>
-            </button>
-          </Tooltip>
-          <Tooltip content={ui.focus ? m.exitFocus : m.focus}>
-            <button
-              aria-label={ui.focus ? m.exitFocus : m.focus}
-              aria-pressed={ui.focus}
-              onClick={() => ui.setFocus(!ui.focus)}
-            >
-              <Focus size={15} />
-            </button>
-          </Tooltip>
-        </div>
-      </header>
+      <EditorToolbar
+        title={activeBeat?.title ?? activeScene?.title}
+        pov={document.chapter.pov}
+        tone={bible.data?.style.tone}
+        mode={mode}
+        onMode={setMode}
+        heatmap={ui.heatmap}
+        onHeatmap={() => ui.setHeatmap(!ui.heatmap)}
+        focus={ui.focus}
+        onFocus={() => ui.setFocus(!ui.focus)}
+        commentCount={document.segments.reduce((n, s) => n + (s.comments?.length ?? 0), 0)}
+      />
       {stale && (
         <div className="manuscript-alert" role="alert">
           <CloudOff size={16} />
@@ -484,7 +427,7 @@ function Manuscript({
             )}
             {!document.segments.length && (
               <div className="manuscript-empty">
-                <Sparkles size={24} />
+                <PenLine size={24} />
                 <h3>{m.empty}</h3>
                 <p>{m.emptyHint}</p>
               </div>

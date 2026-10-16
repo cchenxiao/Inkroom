@@ -117,6 +117,9 @@ func (s *Store) SaveProgress(ctx context.Context, r app.Run, expected int) error
 		return err
 	}
 	defer tx.Rollback(context.Background())
+	if err = lockDraftPlanning(ctx, tx, r.ChapterID, r.BranchID); err != nil {
+		return err
+	}
 	if err = saveProgressTx(ctx, tx, r, expected); err != nil {
 		return err
 	}

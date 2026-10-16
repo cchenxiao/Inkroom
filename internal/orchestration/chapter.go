@@ -82,12 +82,14 @@ func NewChapter(ctx context.Context, chat model.ChatModel, opts Options) (compos
 			return ChapterState{}, err
 		}
 		state := start(ChapterState{Context: frozen, Report: review.Report{Findings: []review.Finding{}}, Status: "running", DraftVersion: opts.BaseDraftVersion, MaxRounds: opts.MaxRounds, Segments: []manuscript.Segment{}, Reviews: []review.Report{}, Revisions: []revision.Revision{}, Metrics: []style.Stats{}}, "draft")
-		segment, usage, err := agents.Write(ctx, chat, frozen)
+		segments, usage, err := agents.WriteScope(ctx, chat, frozen)
 		if err != nil {
 			return state, err
 		}
-		segment.Version = opts.BaseDraftVersion + 1
-		state.Segments = []manuscript.Segment{segment}
+		for i := range segments {
+			segments[i].Version = opts.BaseDraftVersion + 1
+		}
+		state.Segments = segments
 		state.DraftVersion = opts.BaseDraftVersion + 1
 		state.Usage = usage
 		return done(state), nil
@@ -120,7 +122,7 @@ func NewChapter(ctx context.Context, chat model.ChatModel, opts Options) (compos
 		if err != nil {
 			return state, err
 		}
-		report, err := review.Aggregate(state.Findings, state.Segments, state.DraftVersion, evidence.FactSources()...)
+		report, err := review.Aggregate(state.Findings, state.Segments, state.DraftVersion, evidence.ReadingSources()...)
 		if err != nil {
 			return state, err
 		}
@@ -158,7 +160,7 @@ func NewChapter(ctx context.Context, chat model.ChatModel, opts Options) (compos
 			var usage model.Usage
 			var err error
 			if node == "polisher" {
-				proposal, usage, err = agents.Polish(ctx, chat, state.Segments, state.Report.Findings, state.DraftVersion, state.Context.ProtectedTerms)
+				proposal, usage, err = agents.Polish(ctx, chat, state.Segments, state.Report.Findings, state.DraftVersion, state.Context.ProtectedTerms, state.Context)
 			} else {
 				var evidence manuscript.ContextBundle
 				evidence, err = state.ReviewContext()

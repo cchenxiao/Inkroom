@@ -19,3 +19,6 @@
 # 2 最终输出契约
 查证阶段可发起原生 tool_calls；下面的 JSON 契约只约束查证结束后的最终回答，不限制工具调用。最终只输出一个 JSON 对象，不要围栏、解释或额外字段。
 {{.Schema}}
+
+# 叙事衔接
+若有 neighbors，检查前后动作、地点、时间、物件与信息披露是否连续。邻段是只读叙事证据，不是角色已确认知识；引用邻段用 passage/beatId/segmentId。targets 存在时按目标正文的 beatId 使用对应 target 的 facts，不得混用其他视角事实。跨段原文可用其 segment id 作为 ruleRef 并逐字引用 ruleQuote。只给当前可修改 segments 提问题，不修改邻段；不把对白直接当事实。

@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useUIStore } from '@/shared/lib/ui-store';
+import { EmptyState } from './index';
 import type { EChartsOption } from 'echarts';
 import type { EChartsType } from 'echarts/core';
 /** 按可见区域加载 ECharts；团队色板作为主题，业务组件只传数据。 */
@@ -12,13 +13,25 @@ export function Chart({
   height?: number;
   className?: string;
 }) {
+  const series = (
+    Array.isArray(option.series) ? option.series : option.series ? [option.series] : []
+  ) as {
+    type?: string;
+    data?: unknown[];
+    links?: unknown[];
+    edges?: unknown[];
+  }[];
+  const empty = !series.length || series.every((s) => !s.data?.some((value) => value != null));
+  const missingRelations =
+    series.some((s) => s.type === 'graph') &&
+    series.filter((s) => s.type === 'graph').every((s) => !(s.links?.length || s.edges?.length));
   const theme = useUIStore((s) => s.theme);
   const ref = useRef<HTMLDivElement>(null);
   const chart = useRef<EChartsType>();
   useEffect(() => {
     let stopped = false;
     const el = ref.current;
-    if (!el) return;
+    if (!el || empty || missingRelations) return;
     let observer: ResizeObserver | undefined;
     const visibility = new IntersectionObserver((entries) => {
       if (!entries.some((e) => e.isIntersecting) || chart.current) return;
@@ -69,7 +82,19 @@ export function Chart({
       chart.current?.dispose();
       chart.current = undefined;
     };
-  }, [option, theme]);
+  }, [option, theme, empty, missingRelations]);
+  if (empty || missingRelations)
+    return (
+      <EmptyState
+        compact
+        title={missingRelations ? '人物关系尚未建立' : '暂无评测数据'}
+        description={
+          missingRelations
+            ? '确认人物关系后再展示关系图；孤立人物可在人物列表查看。'
+            : '完成正文并运行对应评测后，这里会显示结果。'
+        }
+      />
+    );
   return (
     <div
       ref={ref}

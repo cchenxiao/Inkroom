@@ -20,12 +20,13 @@ const HumanWorkflowVersion = "human.v1"
 
 // ID 是作者一次操作的稳定业务键；网络重试沿用 ID，不是模型 attempt。
 type HumanAction struct {
-	ID           string `json:"id"`
-	Type         string `json:"type"`
-	DraftVersion int    `json:"draftVersion"`
-	Instruction  string `json:"instruction,omitempty"`
-	SegmentID    string `json:"segmentId,omitempty"`
-	Text         string `json:"text,omitempty"`
+	Rewrite      *manuscript.AuthorRewrite `json:"rewrite,omitempty"`
+	ID           string                    `json:"id"`
+	Type         string                    `json:"type"`
+	DraftVersion int                       `json:"draftVersion"`
+	Instruction  string                    `json:"instruction,omitempty"`
+	SegmentID    string                    `json:"segmentId,omitempty"`
+	Text         string                    `json:"text,omitempty"`
 }
 type humanState struct {
 	Chapter ChapterState
@@ -94,6 +95,11 @@ func ValidateHumanAction(s ChapterState, a HumanAction) error {
 		if strings.TrimSpace(a.Instruction) == "" || utf8.RuneCountInString(a.Instruction) > 1000 {
 			return fmt.Errorf("请填写 1–1000 字局部修改要求")
 		}
+	case "rewrite":
+		if a.Rewrite == nil {
+			return fmt.Errorf("缺少重写目标")
+		}
+		return a.Rewrite.Validate(s.Segments)
 	case "inline_edit":
 		if strings.TrimSpace(a.Text) == "" || utf8.RuneCountInString(a.Text) > 20000 {
 			return fmt.Errorf("正文需为 1–20000 字")
@@ -164,12 +170,25 @@ func RunHuman(ctx context.Context, initial ChapterState, chat model.ChatModel, o
 					s.Segments[i].Version = expected + 1
 				}
 			}
+		} else if in.Action.Type == "rewrite" {
+			updated, usage, err := agents.RewriteAuthor(ctx, chat, s.Segments, s.Context, *in.Action.Rewrite)
+			if err != nil {
+				return in, err
+			}
+			s.Segments = updated
+			for i := range s.Segments {
+				if s.Segments[i].ID == in.Action.Rewrite.SegmentID {
+					s.Segments[i].Version = expected + 1
+				}
+			}
+			s.Usage.InputTokens += usage.InputTokens
+			s.Usage.OutputTokens += usage.OutputTokens
 		} else {
 			s.Route = review.Route(s.Report, s.Segments, s.Context, true, true)
 			var p revision.Proposal
 			var err error
 			if s.Route.Kind == "micro" {
-				p, _, err = agents.PolishWithInstruction(ctx, chat, s.Segments, s.Report.Findings, s.DraftVersion, s.Context.ProtectedTerms, in.Action.Instruction)
+				p, _, err = agents.PolishWithInstruction(ctx, chat, s.Segments, s.Report.Findings, s.DraftVersion, s.Context.ProtectedTerms, in.Action.Instruction, s.Context)
 			} else {
 				evidence, e := s.ReviewContext()
 				if e != nil {
@@ -231,7 +250,7 @@ func RunHuman(ctx context.Context, initial ChapterState, chat model.ChatModel, o
 		if err != nil {
 			return in, err
 		}
-		report, err := review.Aggregate(fs, s.Segments, s.DraftVersion, evidence.FactSources()...)
+		report, err := review.Aggregate(fs, s.Segments, s.DraftVersion, evidence.ReadingSources()...)
 		if err != nil {
 			return in, err
 		}

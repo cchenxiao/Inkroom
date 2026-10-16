@@ -27,7 +27,7 @@
   color: var(--text-dim);
 }
 .change-tabs button span {
-  font-family: var(--font-mono);
+  font-family: var(--font-ui);
   font-size: 11px;
 }
 .change-tabs button[aria-current] {
