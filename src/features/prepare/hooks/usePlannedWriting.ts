@@ -11,15 +11,22 @@ import { useBackendEvents } from './useBackendEvents';
 import { usePlanning } from './usePlanning';
 import { chapterPlanVersions, sameChapterPlanVersions } from '../types/chapter-plan';
 /** Real data controller. It owns no alternate workspace or manuscript presentation. */
-export function usePlannedWriting(chapterId: string, beatId: string, editing: boolean) {
+export function usePlannedWriting(
+  chapterId: string,
+  beatId: string,
+  editing: boolean,
+  instructionOwner?: string,
+) {
   const client = useQueryClient();
   const localEdit = useWritingLocked();
+  const otherRevisionEdits = useWritingLocked(instructionOwner);
   const planning = usePlanning();
   const [selection, setSelection] = useState<{ target: string; id: string | null } | null>(null);
   const target = chapterId + ':' + beatId;
   const runId = selection?.target === target ? selection.id : null;
   const setRunId = (id: string | null) => setSelection({ target, id });
   const [autoRevise, setAutoRevise] = useState(false);
+  const [enhancedContinuity, setEnhancedContinuity] = useState(false);
   const plan = planning.data?.chapterPlans?.find((c) => c.chapterId === chapterId);
 
   const [pendingStart, setPendingStart] = useState<PlannedRunRequest | null>(null);
@@ -109,9 +116,22 @@ export function usePlannedWriting(chapterId: string, beatId: string, editing: bo
       ? t.error
       : !plan?.confirmed
         ? ready?.reason || t.notReady
-        : !current
-          ? t.stale
-          : ready?.reason;
+        : !ready
+          ? undefined // No response yet is not evidence of a version conflict.
+          : !current
+            ? t.stale
+            : ready.reason;
+  // Readiness polling can lag behind the run's SSE completion. Its running
+  // block still disables starting another job, but is never a manuscript error.
+  const blockIsProgress = Boolean(
+    !editing &&
+    !gate.isError &&
+    !planning.isError &&
+    current &&
+    !ready?.ready &&
+    ready?.runs?.some((candidate) => candidate.status === 'running'),
+  );
+  const loading = (!ready && gate.isPending) || (!!activeID && !run && runQuery.isPending);
   const runStale = Boolean(
     run?.planning &&
     p &&
@@ -119,7 +139,7 @@ export function usePlannedWriting(chapterId: string, beatId: string, editing: bo
       plan?.version !== run.planning.planVersion),
   );
   const guardedRun =
-    runStale && run
+    runStale && run && !run.commitId
       ? { ...run, status: 'stale' as const, approvalBlock: t.stale, instructionBlock: t.stale }
       : run;
 
@@ -142,6 +162,7 @@ export function usePlannedWriting(chapterId: string, beatId: string, editing: bo
       planVersion: ready.planVersion,
       draftVersion: ready.draftVersion,
       autoRevise,
+      enhancedContinuity,
     };
     setPendingStart(req);
     start.mutate(req);
@@ -170,30 +191,47 @@ export function usePlannedWriting(chapterId: string, beatId: string, editing: bo
       planVersion: ready.planVersion,
       draftVersion: ready.draftVersion,
       autoRevise,
+      enhancedContinuity,
     };
     setPendingStart(request);
     start.mutate(request);
   };
-  const revise = async (rewrite?: AuthorRewrite) => {
+  // A rewrite consumes its own instruction draft. It must still respect every
+  // other editor and unresolved request; rechecks consume no author input.
+  const revisionBlock = (rewriting = false) => {
+    const reviewReady = !rewriting && run?.planning?.mode === 'chapter' ? chapterGate.data : ready;
+    if (editing) return '请先完成创作准备。';
     if (
-      !ready?.ready ||
-      !current ||
-      editing ||
-      !run ||
-      pendingStart ||
-      start.isPending ||
-      run.status === 'running'
+      gate.isError ||
+      planning.isError ||
+      runQuery.isError ||
+      draft.isError ||
+      (!rewriting && run?.planning?.mode === 'chapter' && chapterGate.isError)
     )
-      return false;
+      return '暂时无法核对最新状态，请恢复连接并刷新后重试。';
+    if (rewriting ? otherRevisionEdits : localEdit)
+      return '还有其他未保存的修改或未完成请求，请先处理。';
+    if (pendingStart || start.isPending || run?.status === 'running')
+      return '当前操作尚未完成，请等待或重试原请求。';
+    if (!run) return '正在读取当前正文，请稍候。';
+    if (!current || !reviewReady?.ready)
+      return reviewReady?.reason || '正在核对最新上下文，请稍候再试。';
+    return '';
+  };
+  const revise = async (rewrite?: AuthorRewrite) => {
+    const wholeChapter = !rewrite && run?.planning?.mode === 'chapter';
+    const reviewReady = wholeChapter ? chapterGate.data : ready;
+    if (revisionBlock(!!rewrite) || !reviewReady || !run) return false;
     const request: PlannedRunRequest = {
       requestId: crypto.randomUUID(),
       chapterId,
-      beatId,
-      mode: 'beat',
-      expected: ready.expected,
-      planVersion: ready.planVersion,
-      draftVersion: ready.draftVersion,
+      ...(wholeChapter ? {} : { beatId }),
+      mode: wholeChapter ? 'chapter' : 'beat',
+      expected: reviewReady.expected,
+      planVersion: reviewReady.planVersion,
+      draftVersion: reviewReady.draftVersion,
       autoRevise: false,
+      enhancedContinuity,
       fromRunId: run.id,
       sourceVersion: run.draftVersion,
       ...(rewrite ? { rewrite } : { recheck: true }),
@@ -210,6 +248,7 @@ export function usePlannedWriting(chapterId: string, beatId: string, editing: bo
     chapterGate,
     beginChapter,
     revise,
+    revisionBlock,
     planning,
     plan,
     gate,
@@ -217,9 +256,13 @@ export function usePlannedWriting(chapterId: string, beatId: string, editing: bo
     draft,
     run: guardedRun,
     current,
+    loading,
     block,
+    blockIsProgress,
     autoRevise,
     setAutoRevise,
+    enhancedContinuity,
+    setEnhancedContinuity,
     activeID,
     setRunId,
     localEdit,

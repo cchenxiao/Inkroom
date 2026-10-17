@@ -31,20 +31,30 @@ export function ManuscriptGutter({
       frame = requestAnimationFrame(() => {
         const box = scroller.getBoundingClientRect();
         const next = [...scroller.querySelectorAll<HTMLElement>('[data-manuscript-segment]')]
-          .map((row) => ({
-            id: row.dataset.manuscriptSegment!,
-            order: row.dataset.segmentOrder ?? '',
-            beat: row.dataset.beatTitle ?? '',
-            top: row.getBoundingClientRect().top - box.top + 14,
-            findings: findings.filter(
-              (f) => f.segmentId === row.dataset.manuscriptSegment && f.status === 'open',
-            ),
-          }))
-          .filter((row) => row.top > -40 && row.top < box.height);
+          .flatMap((row) =>
+            findings
+              .filter((f) => f.segmentId === row.dataset.manuscriptSegment && f.status === 'open')
+              .map((f) => ({
+                id: f.id,
+                order: row.dataset.segmentOrder ?? '',
+                beat: row.dataset.beatTitle ?? '',
+                top:
+                  (
+                    row.querySelector(`[data-finding-id="${CSS.escape(f.id)}"]`) ?? row
+                  ).getBoundingClientRect().top - box.top,
+                findings: [f],
+              })),
+          )
+          .filter((row) => row.top > -40 && row.top < box.height)
+          .sort((a, b) => a.top - b.top);
+        // Nearby findings remain individually clickable instead of covering each other.
+        next.forEach((marker, i) => {
+          if (i) marker.top = Math.max(marker.top, next[i - 1].top + 20);
+        });
         setMarkers(next);
         let lineNumber = 0;
         const measured: { number: number; top: number }[] = [];
-        scroller.querySelectorAll('.tiptap p').forEach((paragraph) => {
+        scroller.querySelectorAll('.tiptap > p').forEach((paragraph) => {
           const range = document.createRange();
           range.selectNodeContents(paragraph);
           const tops: number[] = [];

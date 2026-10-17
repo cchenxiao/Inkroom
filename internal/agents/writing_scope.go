@@ -35,7 +35,12 @@ func WriteScope(ctx context.Context, chat model.ChatModel, b manuscript.ContextB
 	if err != nil {
 		return nil, model.Usage{}, err
 	}
-	output, usage, err := parse.Generate[result](ctx, chat, model.Input{Role: "planned_writer", Task: "一次写完整章。严格按 targets 的顺序为每个情节段返回一个 parts 条目，保持相邻段连续；每段只使用该 target 的视角与可知事实。", Material: material, OutputSchema: contracts.ChapterWriterSchema}, func(out result) error {
+	task := "一次写完整章。严格按 targets 的顺序为每个情节段返回一个 parts 条目，保持相邻段连续；每段只使用该 target 的视角与可知事实。"
+	if t := b.WritingTask; t != nil && t.ChapterTargetWords > 0 {
+		target := t.ChapterTargetWords
+		task += fmt.Sprintf("全章合计目标 %d 字，按非空白字符（含标点）计数，参考区间 %d–%d 字；这是全部 %d 段的总量，不是单段目标。先分配各段篇幅；避免反复确认同一件事，不能截断结尾来凑数。", target, (target*3+3)/4, target*4/3, len(b.Targets))
+	}
+	output, usage, err := parse.Generate[result](ctx, chat, model.Input{Role: "planned_writer", Task: task, Material: material, OutputSchema: contracts.ChapterWriterSchema}, func(out result) error {
 		if len(out.Parts) != len(b.Targets) {
 			return fmt.Errorf("chapter must contain every target exactly once")
 		}
@@ -82,8 +87,14 @@ func RewriteAuthor(ctx context.Context, chat model.ChatModel, segments []manuscr
 	if err != nil {
 		return nil, model.Usage{}, err
 	}
-	out, u, err := parse.Generate[contracts.WriterOutput](ctx, chat, model.Input{Role: "planned_writer", Task: "按 rewrite.instruction 重写指定范围。start/end 是原文 Unicode 码点偏移，end 不包含。只返回这个范围的替换正文 text，不包含前后缀。其他正文与 neighbors 只读；后文不是角色已知事实。", Material: material, OutputSchema: contracts.WriterSchema}, func(out contracts.WriterOutput) error {
-		if strings.TrimSpace(out.Text) == "" || out.Text == string([]rune(req.Original)[req.Start:req.End]) {
+	type replacementOutput struct {
+		Text *string `json:"text"`
+	}
+	out, u, err := parse.Generate[replacementOutput](ctx, chat, model.Input{Role: "planned_writer", Task: "按 rewrite.instruction 重写指定范围。start/end 是原文 Unicode 码点偏移，end 不包含。只返回这个范围的替换正文 text，不包含前后缀。注意选区外已有的标点，避免拼接后重复；若要求删除选区内容，text 可为空字符串。其他正文与 neighbors 只读；后文不是角色已知事实。", Material: material, OutputSchema: contracts.ReplacementSchema}, func(out replacementOutput) error {
+		if out.Text == nil {
+			return fmt.Errorf("模型未返回替换正文 text")
+		}
+		if manuscript.NormalizeReplacementBoundary(req, *out.Text) == string([]rune(req.Original)[req.Start:req.End]) {
 			return fmt.Errorf("模型没有修改选中的正文，本次结果未保存，请补充要求后重试")
 		}
 		return nil
@@ -91,14 +102,15 @@ func RewriteAuthor(ctx context.Context, chat model.ChatModel, segments []manuscr
 	if err != nil {
 		return nil, u, err
 	}
+	replacement := manuscript.NormalizeReplacementBoundary(req, *out.Text)
+	text, err := manuscript.ApplyAuthorReplacement(req.Original, req, replacement)
+	if err != nil {
+		return nil, u, err
+	}
 	updated := append([]manuscript.Segment{}, segments...)
 	for i, s := range updated {
 		if s.ID == req.SegmentID {
-			original := []rune(req.Original)
-			updated[i].Text = string(original[:req.Start]) + out.Text + string(original[req.End:])
-			if len([]rune(updated[i].Text)) > 20000 {
-				return nil, u, fmt.Errorf("rewritten segment exceeds limit")
-			}
+			updated[i].Text = text
 			updated[i].Version++
 		}
 	}

@@ -50,7 +50,7 @@ func GenerateChapterPlan(ctx context.Context, cfg config.Config, in planning.Cha
 			return empty, err
 		}
 	}
-	guard := model.NewGuard(chat, model.Limits{Calls: min(cfg.MaxCalls, 3), Tokens: cfg.MaxTokens, OutputTokens: cfg.MaxOutputTokens, Timeout: cfg.CallTimeout, ModelName: cfg.ModelName, OnCall: onCall})
+	guard := model.NewGuard(chat, model.Limits{Calls: min(cfg.MaxCalls, 3), Tokens: cfg.MaxTokens, OutputTokens: cfg.MaxOutputTokens, ConsistencyOutputTokens: cfg.ConsistencyOutputTokens, ConsistencyTimeout: cfg.ConsistencyTimeout, Timeout: cfg.CallTimeout, ModelName: cfg.ModelName, OnCall: onCall})
 	out, _, err := parse.Generate[planning.ChapterPlanContent](ctx, prompts.Bind(guard), model.Input{Role: "showrunner", Task: "仅展开指定章节的场景、Beat 与作者待确认 Brief，不写正文。", Material: material, OutputSchema: contracts.ShowrunnerSchema}, func(out planning.ChapterPlanContent) error {
 		return out.Validate(in)
 	})

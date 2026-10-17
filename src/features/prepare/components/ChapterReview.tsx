@@ -1,3 +1,5 @@
+import { ContinuityOption } from './continuity-option';
+import { ReviewProgress } from './review-progress';
 import { textLabel, repairScopeLabels, readableMessage } from '@/shared/lib/business-labels';
 import { TechnicalDetails } from '@/shared/ui/technical-details';
 import type { ManuscriptInspection } from '@/types/domain/manuscript-view';
@@ -20,8 +22,12 @@ export default function ChapterReview({
   assemblies,
   editing,
   onRead,
+  enhancedContinuity,
+  onPrepare,
 }: {
   assemblies: ChapterAssembly[];
+  onPrepare?: () => void;
+  enhancedContinuity?: boolean;
   editing: boolean;
   onRead?: (view: ManuscriptInspection) => void;
 }) {
@@ -37,11 +43,15 @@ export default function ChapterReview({
       if (!selected) setSelected(a.id);
     }
   }, [a, selected]);
+  const latestId = assemblies[0]?.id;
+  useEffect(() => {
+    if (onPrepare && latestId && !localEdit) setSelected(latestId);
+  }, [onPrepare, latestId, localEdit]);
   if (!a) return null;
   return (
     <section className="page-stack" aria-label={t.title}>
-      <h3>{t.title}</h3>
-      <details open={!onRead}>
+      {!onRead && <h3>{t.title}</h3>}
+      <details open={!onRead} hidden={!!onPrepare}>
         <summary>章稿版本 · v{a.version}</summary>
         <label>
           {t.chooseAssembly}
@@ -54,7 +64,14 @@ export default function ChapterReview({
           </select>
         </label>
       </details>
-      <ReviewSession key={a.id} assembly={a} editing={editing} onRead={onRead} />
+      <ReviewSession
+        key={a.id}
+        assembly={a}
+        editing={editing}
+        onRead={onRead}
+        sharedContinuity={enhancedContinuity}
+        onPrepare={onPrepare}
+      />
     </section>
   );
 }
@@ -62,14 +79,20 @@ function ReviewSession({
   assembly: a,
   editing,
   onRead,
+  sharedContinuity,
+  onPrepare,
 }: {
   assembly: ChapterAssembly;
+  onPrepare?: () => void;
+  sharedContinuity?: boolean;
   editing: boolean;
   onRead?: (view: ManuscriptInspection) => void;
 }) {
   const client = useQueryClient();
   const [selected, setSelected] = useState('');
   const localEdit = useWritingLocked();
+  const [localContinuity, setLocalContinuity] = useState(false);
+  const enhancedContinuity = sharedContinuity ?? localContinuity;
   const [pending, setPending] = useState<ChapterReviewRequest | null>(null);
   const query = useQuery({
     queryKey: ['chapter-review', a.id],
@@ -103,7 +126,8 @@ function ReviewSession({
       if (!selected) setSelected(job.id);
     }
   }, [selected, job]);
-  const running = query.data?.jobs.some((j) => j.status === 'running');
+  const activeJob = query.data?.jobs.find((j) => j.status === 'running');
+  const running = !!activeJob;
   const blocked = editing
     ? t.editBlock
     : query.isError
@@ -115,9 +139,68 @@ function ReviewSession({
           : '';
   return (
     <>
-      <details open={!onRead || !job || !!pending || start.isError}>
-        <summary>复审批次与运行设置</summary>
-        <p className="muted">{t.note}</p>
+      {sharedContinuity === undefined && (
+        <details className="chapter-check-settings">
+          <summary>检查设置</summary>
+          <ContinuityOption
+            checked={localContinuity}
+            onChange={setLocalContinuity}
+            disabled={!!running || !!pending || start.isPending || editing || localEdit}
+          />
+        </details>
+      )}
+      <ReviewProgress
+        run={
+          activeJob
+            ? {
+                status: activeJob.status,
+                activeCalls: activeJob.calls,
+                activeRoles: activeJob.calls
+                  .filter((c) => c.phase === 'started')
+                  .map((c) => c.role),
+              }
+            : undefined
+        }
+      />
+      {onPrepare && query.data && !query.data.current && (
+        <section className="writing-next-step" aria-label="整章下一步">
+          <strong>正文已更新，请核对最新整章</strong>
+          <p>重新保存已采用的段落，再检查整章衔接。旧审核仅保留为历史记录。</p>
+          <Button variant="default" disabled={editing || localEdit || running} onClick={onPrepare}>
+            核对最新整章
+          </Button>
+        </section>
+      )}
+      <details
+        open={!onPrepare || !!query.data?.current}
+        hidden={!job}
+        className="chapter-review-result"
+      >
+        <summary hidden={!onPrepare || !!query.data?.current}>上次审核记录</summary>
+        {job && (
+          <ReviewResult
+            key={job.id}
+            job={job}
+            onRead={onRead}
+            blocked={
+              editing ||
+              query.isError ||
+              start.isPending ||
+              !!pending ||
+              !query.data?.jobs.some((j) => j.id === job.id)
+            }
+            onChange={refresh}
+          />
+        )}
+      </details>
+      <section
+        hidden={!!onPrepare && !!query.data && !query.data.current}
+        className="chapter-review-run"
+        aria-label="发起整章复审"
+      >
+        <p className="muted">
+          {enhancedContinuity ? '下次复审将加强核对衔接' : '下次复审核对事实与语言'}
+        </p>
         <div className="core-heading">
           <Button
             disabled={!!blocked || !!pending || localEdit}
@@ -126,6 +209,7 @@ function ReviewSession({
             onClick={() => {
               if (query.data?.jobs.length && !window.confirm(t.rerunWarning)) return;
               const req = {
+                enhancedContinuity,
                 requestId: crypto.randomUUID(),
                 assemblyId: a.id,
                 assemblyVersion: a.version,
@@ -155,6 +239,12 @@ function ReviewSession({
             <Button onClick={() => start.mutate(pending)}>{t.retry}</Button>
           </>
         )}
+      </section>
+      <details>
+        <summary>
+          复审记录{job ? ` · ${job.input.enhancedContinuity ? '含加强衔接检查' : '常规检查'}` : ''}
+        </summary>
+        <p className="muted">{t.note}</p>
         {!!query.data?.jobs.length && (
           <label>
             {t.chooseReview}
@@ -172,21 +262,6 @@ function ReviewSession({
           </label>
         )}
       </details>
-      {job && (
-        <ReviewResult
-          key={job.id}
-          job={job}
-          onRead={onRead}
-          blocked={
-            editing ||
-            query.isError ||
-            start.isPending ||
-            !!pending ||
-            !query.data?.jobs.some((j) => j.id === job.id)
-          }
-          onChange={refresh}
-        />
-      )}
     </>
   );
 }

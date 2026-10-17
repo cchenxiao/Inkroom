@@ -2,7 +2,9 @@ import type { Finding, RunState } from '@/types/domain';
 
 /** I3 结果是隔离的单段候选，不是工作台正式稿本。 */
 export interface BackendRun extends Omit<RunState, 'status' | 'currentNode'> {
+  neighborsChanged?: boolean;
   planning?: {
+    enhancedContinuity?: boolean;
     mode?: 'beat' | 'chapter';
     neighborPolicy?: string;
     neighbors?: {
@@ -46,6 +48,7 @@ export interface BackendRun extends Omit<RunState, 'status' | 'currentNode'> {
   commitId?: string;
   eventSequence: number;
   activeRoles: string[];
+  activeCalls?: ModelCall[];
   status: RunState['status'] | 'needs_human' | 'stale' | 'interrupted' | 'approved' | 'committed';
   canResume: boolean;
   approvalBlock?: string;
@@ -62,6 +65,28 @@ export interface BackendRun extends Omit<RunState, 'status' | 'currentNode'> {
   error?: string;
   usage?: { inputTokens: number; outputTokens: number; known: boolean };
   result?: {
+    reviewPending?: boolean;
+    findingProposal?: {
+      id: string;
+      findingId: string;
+      draftVersion: number;
+      request: AuthorRewrite;
+      replacement: string;
+    };
+    findingChanges?: {
+      findingId: string;
+      segmentId: string;
+      before: string;
+      after: string;
+      fromVersion: number;
+      toVersion: number;
+    }[];
+    findingDecisions?: {
+      findingId: string;
+      draftVersion: number;
+      decision: 'keep' | 'reopen';
+      reason: string;
+    }[];
     authorRequest?: AuthorRewrite;
     nodePhase?: 'started' | 'finished';
     route: {
@@ -71,18 +96,36 @@ export interface BackendRun extends Omit<RunState, 'status' | 'currentNode'> {
       needsHuman: boolean;
       reason: string;
     };
-    criticReviews: {
-      authorCheck?: {
-        status: 'addressed' | 'unresolved' | 'needs_clarification';
-        reason: string;
-        quote: string;
-      };
-      critic: string;
-      draftVersion: number;
-      status: string;
-      findings: BackendFinding[];
-      error?: string;
-    }[];
+    criticReviews:
+      | {
+          length?: {
+            scope: 'chapter' | 'beat';
+            actual: number;
+            target: number;
+            lower: number;
+            upper: number;
+            status: 'short' | 'within' | 'long';
+          };
+          continuity?: {
+            segmentId: string;
+            status: 'clear' | 'conflict' | 'uncertain';
+            openingQuote: string;
+            closingQuote: string;
+            reason: string;
+          }[];
+          authorCheck?: {
+            status: 'addressed' | 'unresolved' | 'needs_clarification';
+            reason: string;
+            quote: string;
+          };
+          critic: string;
+          draftVersion: number;
+          status: string;
+          findings: BackendFinding[];
+          error?: string;
+          failureCode?: string;
+        }[]
+      | null;
     context: {
       rewrite?: AuthorRewrite;
       revisionRequest?: AuthorRewrite;
@@ -174,6 +217,10 @@ export interface StoredVersion {
   createdAt: string;
 }
 export interface ModelCall {
+  startedAt?: string;
+  timeoutMs?: number;
+  outputLimit?: number;
+  activity?: string;
   number: number;
   role: string;
   purpose: string;
@@ -186,7 +233,20 @@ export interface ModelCall {
 
 export interface HumanAction {
   id: string;
-  type: 'approve' | 'instruct' | 'inline_edit' | 'rewrite';
+  type:
+    | 'approve'
+    | 'instruct'
+    | 'inline_edit'
+    | 'rewrite'
+    | 'finding_decision'
+    | 'propose_finding'
+    | 'apply_finding'
+    | 'discard_finding'
+    | 'edit_finding'
+    | 'review_batch';
+  proposalId?: string;
+  findingId?: string;
+  decision?: 'keep' | 'reopen';
   rewrite?: AuthorRewrite;
   draftVersion: number;
   instruction?: string;

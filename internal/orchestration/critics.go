@@ -8,6 +8,7 @@ import (
 
 	"inkloom/internal/agents"
 	"inkloom/internal/agents/model"
+	"inkloom/internal/agents/parse"
 	"inkloom/internal/domain/manuscript"
 	"inkloom/internal/domain/memory"
 	"inkloom/internal/domain/review"
@@ -17,14 +18,17 @@ import (
 type ConsistencyCheck func(context.Context, model.ChatModel, ChapterState) (CriticReview, model.Usage, error)
 
 type CriticReview struct {
-	AuthorCheck  *review.AuthorCheck      `json:"authorCheck,omitempty"`
-	Lookup       *memory.LookupTrace      `json:"lookup,omitempty"`
-	Evidence     *memory.RetrievalContext `json:"evidence,omitempty"`
-	Critic       string                   `json:"critic"`
-	DraftVersion int                      `json:"draftVersion"`
-	Status       string                   `json:"status"`
-	Findings     []review.Finding         `json:"findings"`
-	Error        string                   `json:"error,omitempty"`
+	Length       *manuscript.LengthSummary `json:"length,omitempty"`
+	Continuity   []review.ContinuityCheck  `json:"continuity,omitempty"`
+	AuthorCheck  *review.AuthorCheck       `json:"authorCheck,omitempty"`
+	Lookup       *memory.LookupTrace       `json:"lookup,omitempty"`
+	Evidence     *memory.RetrievalContext  `json:"evidence,omitempty"`
+	Critic       string                    `json:"critic"`
+	DraftVersion int                       `json:"draftVersion"`
+	Status       string                    `json:"status"`
+	Findings     []review.Finding          `json:"findings"`
+	FailureCode  string                    `json:"failureCode,omitempty"`
+	Error        string                    `json:"error,omitempty"`
 }
 
 // reviewTogether 是 fan-out/barrier：两个 goroutine 各写自己的槽位，Wait 后主协程才合并。
@@ -51,7 +55,8 @@ func reviewTogether(ctx context.Context, chat model.ChatModel, state ChapterStat
 							errs[i] = e
 						} else {
 							var extra model.Usage
-							fs, results[i].AuthorCheck, extra, errs[i] = agents.CheckConsistencyRevision(ctx, chat, state.Segments, state.DraftVersion, b, state.RewriteRequest())
+							assessment, usage, err := agents.AssessConsistency(ctx, chat, state.Segments, state.DraftVersion, b, state.RewriteRequest())
+							fs, results[i].AuthorCheck, results[i].Continuity, extra, errs[i] = assessment.Findings, assessment.AuthorCheck, assessment.Continuity, usage, err
 							ids := map[string]bool{}
 							for _, existing := range results[i].Findings {
 								ids[existing.ID] = true
@@ -72,22 +77,28 @@ func reviewTogether(ctx context.Context, chat model.ChatModel, state ChapterStat
 					if errs[i] != nil {
 						results[i].Status = "failed"
 						results[i].Error = errs[i].Error()
+						results[i].FailureCode = reviewFailureCode(errs[i])
 						results[i].Findings = []review.Finding{}
 						cancel()
 					}
 					return
 				}
-				fs, results[i].AuthorCheck, usages[i], errs[i] = agents.CheckConsistencyRevision(ctx, chat, state.Segments, state.DraftVersion, state.Context, state.RewriteRequest())
+				assessment, usage, err := agents.AssessConsistency(ctx, chat, state.Segments, state.DraftVersion, state.Context, state.RewriteRequest())
+				fs, results[i].AuthorCheck, results[i].Continuity, usages[i], errs[i] = assessment.Findings, assessment.AuthorCheck, assessment.Continuity, usage, err
 			} else {
 				fs, usages[i], errs[i] = agents.Critique(ctx, chat, state.Segments, state.DraftVersion, state.Metrics, state.Context)
 				if errs[i] == nil {
 					fs = style.AddFindings(fs, state.Metrics, state.DraftVersion)
 				}
 			}
-			r := CriticReview{AuthorCheck: results[i].AuthorCheck, Critic: role, DraftVersion: state.DraftVersion, Status: "completed", Findings: fs}
+			if role == "ai_taste" {
+				results[i].Length = manuscript.MeasureLength(state.Segments, state.Context)
+			}
+			r := CriticReview{Length: results[i].Length, Continuity: results[i].Continuity, AuthorCheck: results[i].AuthorCheck, Critic: role, DraftVersion: state.DraftVersion, Status: "completed", Findings: fs}
 			if errs[i] != nil {
 				r.Status = "failed"
 				r.Error = errs[i].Error()
+				r.FailureCode = reviewFailureCode(errs[i])
 				r.Findings = []review.Finding{}
 				cancel()
 			}
@@ -123,4 +134,21 @@ func (s ChapterState) RewriteRequest() *manuscript.AuthorRewrite {
 		return s.Context.RevisionRequest
 	}
 	return s.Context.Rewrite
+}
+
+// Stable business-facing classification; raw provider details stay out of UI copy.
+func reviewFailureCode(err error) string {
+	var output *parse.Error
+	switch {
+	case errors.As(err, &output):
+		return string(output.Kind)
+	case errors.Is(err, context.DeadlineExceeded):
+		return "timeout"
+	case errors.Is(err, context.Canceled):
+		return "canceled"
+	case errors.Is(err, model.ErrBudgetExhausted):
+		return "budget_exhausted"
+	default:
+		return "review_failed"
+	}
 }

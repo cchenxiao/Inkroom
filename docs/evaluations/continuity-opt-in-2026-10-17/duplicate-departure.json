@@ -1,0 +1,94 @@
+{
+  "datasetTotal": 9,
+  "selectedCases": [
+    "duplicate-departure"
+  ],
+  "maxCalls": 14,
+  "maxTokens": 128000,
+  "maxOutputTokens": 30000,
+  "callTimeoutMs": 90000,
+  "reviewMode": "parallel-focused-narrative-pairs-v3",
+  "startedAt": "2026-10-17T13:27:50.067836Z",
+  "model": "deepseek-flash",
+  "datasetDigest": "ad07ba4d5545a11ff617d1dc8e4341a9c610841f427cb83fd841284ea6ca6246",
+  "total": 1,
+  "passed": 1,
+  "results": [
+    {
+      "case": {
+        "id": "duplicate-departure",
+        "texts": [
+          "赵平把门从外面锁上，乘出租车离开了仓库。房里只剩周岚一人。",
+          "赵平又从屋内拉开门，向周岚挥手告别。期间没有人回到仓库。"
+        ],
+        "expectedSegment": 1,
+        "requiredEvidence": "赵平"
+      },
+      "assessment": {
+        "findings": [
+          {
+            "ruleRef": "s0",
+            "ruleQuote": "赵平把门从外面锁上，乘出租车离开了仓库。房里只剩周岚一人。",
+            "evidenceStatus": "confirmed",
+            "requiresHuman": true,
+            "id": "continuity-pair-1",
+            "critic": "hard_consistency",
+            "severity": "P1",
+            "segmentId": "s1",
+            "quote": "赵平又从屋内拉开门，向周岚挥手告别。期间没有人回到仓库。",
+            "evidenceRefs": [
+              "s1",
+              "s0"
+            ],
+            "reason": "p1 已明确赵平从外面锁门并乘出租车离开，屋内只剩周岚；p2 却写赵平从屋内拉开门向周岚告别，还补充期间无人回到仓库，这与赵平已离开且不可能从屋内出现矛盾。",
+            "suggestion": "需作者决定保留哪一处：若保留 p1，应改写或删除 p2 中赵平从屋内开门告别及“无人回到仓库”的内容；若保留 p2，则应改写 p1 的锁门离开情节，使赵平仍在屋内。",
+            "repairScope": "segment",
+            "draftVersion": 1
+          }
+        ],
+        "continuity": [
+          {
+            "segmentId": "s0",
+            "status": "clear",
+            "openingQuote": "赵平把门从外面锁上，乘出租车离开了仓库。房里只剩周岚一人。",
+            "closingQuote": "赵平把门从外面锁上，乘出租车离开了仓库。房里只剩周岚一人。",
+            "reason": "本轮逐段对照暂未发现有证据的状态冲突；仍需作者核对。"
+          },
+          {
+            "segmentId": "s1",
+            "status": "conflict",
+            "openingQuote": "赵平把门从外面锁上，乘出租车离开了仓库。房里只剩周岚一人。",
+            "closingQuote": "赵平又从屋内拉开门，向周岚挥手告别。期间没有人回到仓库。",
+            "reason": "p1 已明确赵平从外面锁门并乘出租车离开，屋内只剩周岚；p2 却写赵平从屋内拉开门向周岚告别，还补充期间无人回到仓库，这与赵平已离开且不可能从屋内出现矛盾。"
+          }
+        ]
+      },
+      "passed": true,
+      "calls": [
+        {
+          "outputLimit": 30000,
+          "timeoutMs": 90000,
+          "thinking": true,
+          "role": "hard_consistency",
+          "promptVersion": "hard_consistency.v13",
+          "schemaVersion": "continuity_pairs.v2",
+          "inputDigest": "6d677f6e26a27c6f71399253cc9ef91a5f964b609fcd22a58e0365db2afefb6a",
+          "promptDigest": "9bfdb5c6452cff86030564f4686a5be069d3865329dc2dc818baa9ff62dcf57b",
+          "output": "{\"checked\":[\"s0\",\"s1\"],\"issues\":[{\"earlier\":\"p1\",\"later\":\"p2\",\"reason\":\"p1 已明确赵平从外面锁门并乘出租车离开，屋内只剩周岚；p2 却写赵平从屋内拉开门向周岚告别，还补充期间无人回到仓库，这与赵平已离开且不可能从屋内出现矛盾。\",\"suggestion\":\"需作者决定保留哪一处：若保留 p1，应改写或删除 p2 中赵平从屋内开门告别及“无人回到仓库”的内容；若保留 p2，则应改写 p1 的锁门离开情节，使赵平仍在屋内。\",\"needsAuthor\":true}]}",
+          "finishReason": "complete",
+          "usage": {
+            "inputTokens": 830,
+            "outputTokens": 452,
+            "known": true
+          },
+          "elapsedMs": 2829
+        }
+      ]
+    }
+  ],
+  "usage": {
+    "inputTokens": 830,
+    "outputTokens": 452,
+    "known": true
+  }
+}

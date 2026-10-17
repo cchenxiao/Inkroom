@@ -39,7 +39,7 @@ func ExecuteHuman(ctx context.Context, cfg config.Config, r Run, repo HumanRepos
 	var err error
 	if r.Provider == "fake" {
 		chat = lookupFake{next: demo.NewHumanFake(*r.Result)}
-		if r.PendingAction != nil && r.PendingAction.Type == "rewrite" && r.PendingAction.Rewrite != nil {
+		if r.PendingAction != nil && (r.PendingAction.Type == "rewrite" || r.PendingAction.Type == "propose_finding") && r.PendingAction.Rewrite != nil {
 			req := r.PendingAction.Rewrite
 			if err := req.Validate(r.Result.Segments); err != nil {
 				return err
@@ -62,7 +62,7 @@ func ExecuteHuman(ctx context.Context, cfg config.Config, r Run, repo HumanRepos
 	if err != nil {
 		return err
 	}
-	guard := model.NewGuard(chat, model.Limits{History: calls, Calls: r.MaxCalls, Tokens: r.MaxTokens, OutputTokens: cfg.MaxOutputTokens, Timeout: cfg.CallTimeout, ModelName: r.Model, OnCall: func(_ context.Context, c model.CallRecord) error {
+	guard := model.NewGuard(chat, model.Limits{History: calls, Calls: r.MaxCalls, Tokens: r.MaxTokens, OutputTokens: cfg.MaxOutputTokens, ConsistencyOutputTokens: cfg.ConsistencyOutputTokens, ConsistencyTimeout: cfg.ConsistencyTimeout, Timeout: cfg.CallTimeout, ModelName: r.Model, OnCall: func(_ context.Context, c model.CallRecord) error {
 		save, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		return repo.RecordCall(save, r.ID, c)

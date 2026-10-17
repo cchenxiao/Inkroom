@@ -6,6 +6,7 @@ import (
 	"inkloom/internal/domain/knowledge"
 	"inkloom/internal/domain/manuscript"
 	"inkloom/internal/domain/planning"
+	"strings"
 )
 
 const ChapterBeatID = "__chapter__"
@@ -40,4 +41,20 @@ func PrepareChapterWriting(cfg config.Config, scope, runID string, base int, p p
 		in.Manifest.ReservedOutputTokens = 8192
 	}
 	return ReassemblePlanned(in)
+}
+
+// Rechecking an entire chapter must preserve exactly the original planned scope.
+func ValidateChapterRecheck(b manuscript.ContextBundle, origin Run) error {
+	if origin.Planning == nil || origin.Planning.Mode != "chapter" || origin.Result == nil || len(origin.Result.Segments) != len(b.Targets) || len(b.Targets) == 0 {
+		return ErrVersionMismatch
+	}
+	ids := map[string]bool{}
+	for i, target := range b.Targets {
+		s := origin.Result.Segments[i]
+		if s.BeatID != target.Beat.ID || s.SceneID != target.Beat.SceneID || s.ID == "" || ids[s.ID] || strings.TrimSpace(s.Text) == "" {
+			return ErrVersionMismatch
+		}
+		ids[s.ID] = true
+	}
+	return nil
 }

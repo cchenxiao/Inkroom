@@ -165,3 +165,19 @@ func validate(f Finding, segments map[string]manuscript.Segment, version int, fa
 	}
 	return nil
 }
+
+// ContinuityCheck records observed narrative boundaries, not an approval decision.
+type ContinuityTransition struct {
+	Entity string `json:"entity"`
+	Quote  string `json:"quote"`
+	State  string `json:"state"`
+}
+
+type ContinuityCheck struct {
+	Transitions  []ContinuityTransition `json:"transitions,omitempty"`
+	SegmentID    string                 `json:"segmentId"`
+	Status       string                 `json:"status"`
+	OpeningQuote string                 `json:"openingQuote"`
+	ClosingQuote string                 `json:"closingQuote"`
+	Reason       string                 `json:"reason"`
+}

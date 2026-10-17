@@ -23,7 +23,7 @@ func criticEvaluation(ctx context.Context, candidate bool) error {
 	}
 	ctx, stop := context.WithTimeout(ctx, 3*time.Minute)
 	defer stop()
-	limits := model.Limits{Calls: 4, Tokens: cfg.MaxTokens, OutputTokens: cfg.MaxOutputTokens, Timeout: cfg.CallTimeout, ModelName: cfg.ModelName}
+	limits := model.Limits{Calls: 4, Tokens: cfg.MaxTokens, OutputTokens: cfg.MaxOutputTokens, ConsistencyOutputTokens: cfg.ConsistencyOutputTokens, ConsistencyTimeout: cfg.ConsistencyTimeout, Timeout: cfg.CallTimeout, ModelName: cfg.ModelName}
 	report, runErr := evaluation.Run(ctx, cfg.Model, cfg.ModelName, limits, factory, candidate)
 	encoder := json.NewEncoder(os.Stdout)
 	encoder.SetIndent("", "  ")

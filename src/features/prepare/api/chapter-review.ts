@@ -18,6 +18,7 @@ export interface ReviewPart {
   facts: ReviewSource[];
 }
 export interface ChapterReviewRequest {
+  enhancedContinuity?: boolean;
   requestId: string;
   assemblyId: string;
   assemblyVersion: number;
@@ -37,7 +38,13 @@ export interface ChapterReviewJob {
   provider: string;
   model: string;
   inputDigest: string;
-  input: { assemblyId: string; draftVersion: number; assemblyDigest: string; parts: ReviewPart[] };
+  input: {
+    enhancedContinuity?: boolean;
+    assemblyId: string;
+    draftVersion: number;
+    assemblyDigest: string;
+    parts: ReviewPart[];
+  };
   output?: {
     critics: {
       critic: string;
@@ -52,6 +59,9 @@ export interface ChapterReviewJob {
   createdAt: string;
   decision?: ChapterReviewDecision;
   calls: {
+    startedAt?: string;
+    timeoutMs?: number;
+    activity?: string;
     number: number;
     role: string;
     phase: string;

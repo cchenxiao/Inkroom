@@ -4,6 +4,8 @@ import "inkloom/internal/domain/memory"
 
 // WritingTask 是作者任务，不是角色已知事实。完整规划快照单独存档，不发给 Writer。
 type WritingTask struct {
+	// ExperimentalContinuity is frozen per run; planned requests opt in explicitly, default off.
+	ExperimentalContinuity bool `json:"experimentalContinuity,omitempty"`
 	// Soft length guidance derived from the confirmed chapter and its Beat count.
 	ChapterTargetWords int                  `json:"chapterTargetWords,omitempty"`
 	BeatTargetWords    int                  `json:"beatTargetWords,omitempty"`

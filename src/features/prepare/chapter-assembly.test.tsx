@@ -90,7 +90,7 @@ it('requires author confirmation, reuses uncertain requests, and invalidates a s
   client.clear();
 });
 
-it('keeps embedded work focused on missing segments and preserves confirmation across steps', async () => {
+it('shows only the next chapter task and keeps history collapsed', async () => {
   let ready = false;
   const part = {
     sceneTitle: '门前',
@@ -117,8 +117,20 @@ it('keeps embedded work focused on missing segments and preserves confirmation a
           },
         ],
         draft: { parts: [part] },
-        history: [],
+        history: [
+          {
+            id: 'old-assembly',
+            version: 1,
+            createdAt: '2026-10-16',
+            parts: [part],
+            knowledge: { version: 1 },
+            planVersion: 1,
+          },
+        ],
       }),
+    ),
+    http.get('*/go-api/planning/chapter-reviews', () =>
+      HttpResponse.json({ current: false, reason: '来源已变化', jobs: [] }),
     ),
   );
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -132,13 +144,15 @@ it('keeps embedded work focused on missing segments and preserves confirmation a
   await user.click(await screen.findByRole('button', { name: '去审核这一段' }));
   expect(review).toHaveBeenCalledWith('b');
   expect(screen.queryByRole('button', { name: t.save })).not.toBeInTheDocument();
-  expect(screen.getByRole('combobox')).not.toBeVisible();
+  expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: '核对最新整章' })).not.toBeInTheDocument();
+  expect(screen.getByText('章稿版本 · v1')).not.toBeVisible();
   ready = true;
-  await user.click(screen.getByRole('button', { name: t.refresh }));
+  await user.click(screen.getByRole('button', { name: '更新状态' }));
+  await user.click(await screen.findByRole('button', { name: '核对最新整章' }));
   await user.click(await screen.findByRole('checkbox', { name: t.confirm }));
-  await user.click(screen.getByRole('button', { name: '历史版本' }));
-  expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
-  await user.click(screen.getByRole('button', { name: '整理章稿' }));
+  await user.click(screen.getByText('历史章稿与审核记录 · 1'));
+  expect(screen.queryByRole('button', { name: '整理章稿' })).not.toBeInTheDocument();
   expect(screen.getByRole('checkbox', { name: t.confirm })).toBeChecked();
   view.unmount();
   client.clear();

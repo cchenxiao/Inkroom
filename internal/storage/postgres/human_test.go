@@ -79,6 +79,39 @@ func TestHumanCheckpointRecovery(t *testing.T) {
 	if _, _, err = store.ClaimAction(ctx, id, orchestration.HumanAction{ID: rand.Text(), Type: "approve", DraftVersion: 1}); !errors.Is(err, app.ErrGateBlocked) {
 		t.Fatalf("blocked approval accepted: %v", err)
 	}
+	// A per-finding decision uses the same persisted gate without generating a
+	// manuscript version or invoking the model. It survives a store reconnect.
+	findingID := r.Result.Report.Findings[0].ID
+	callsBeforeDecision, err := store.Calls(ctx, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, decision := range []string{"keep", "reopen"} {
+		action := orchestration.HumanAction{ID: rand.Text(), Type: "finding_decision", DraftVersion: 1, FindingID: findingID, Decision: decision}
+		claimed, execute, e := store.ClaimAction(ctx, id, action)
+		if e != nil || !execute {
+			t.Fatalf("claim decision: %v", e)
+		}
+		if e = app.ExecuteHuman(ctx, cfg, claimed, store); e != nil {
+			t.Fatal(e)
+		}
+		store.Close()
+		store, err = Open(ctx, url)
+		if err != nil {
+			t.Fatal(err)
+		}
+		r, err = store.GetRun(ctx, id)
+		if err != nil || r.Status != "waiting_human" || r.DraftVersion != 1 || orchestration.FindingKept(*r.Result, findingID) != (decision == "keep") {
+			t.Fatalf("decision not persisted: %v", err)
+		}
+		if _, execute, e := store.ClaimAction(ctx, id, action); e != nil || execute {
+			t.Fatalf("decision retry not idempotent: %v", e)
+		}
+	}
+	callsAfterDecision, err := store.Calls(ctx, id)
+	if err != nil || len(callsAfterDecision) != len(callsBeforeDecision) || len(r.Result.FindingDecisions) != 2 {
+		t.Fatal("decision invoked model or lost audit history")
+	}
 	a := orchestration.HumanAction{ID: rand.Text(), Type: "instruct", DraftVersion: 1, Instruction: "删掉套话，保留事件结果"}
 	r, execute, err := store.ClaimAction(ctx, id, a)
 	if err != nil || !execute {

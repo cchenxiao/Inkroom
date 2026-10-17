@@ -75,16 +75,22 @@ func render(in model.Input, candidate string) (model.Input, error) {
 	default:
 		return in, fmt.Errorf("unsupported prompt role %q", name)
 	}
-	// Keep native tool loops on their existing protocol. Only stateless author revision
-	// and its dedicated consistency check use thinking; hidden reasoning is never stored.
+	// Author corrections and verification use thinking. Experimental object
+	// checks retain thinking; the character pass uses normal generation.
 	in.Thinking = false
+	var narrative struct {
+		Pass  bool   `json:"continuityPass"`
+		Focus string `json:"focus"`
+	}
+	_ = json.Unmarshal(in.Material, &narrative)
+	continuityPass := narrative.Pass
 	if in.Purpose != model.Repair && len(in.Tools) == 0 && len(in.Messages) == 0 {
 		var material struct {
 			Rewrite       *json.RawMessage `json:"rewrite"`
 			AuthorRequest *json.RawMessage `json:"authorRequest"`
 		}
 		if json.Unmarshal(in.Material, &material) == nil {
-			in.Thinking = (name == "planned_writer" && material.Rewrite != nil) || (name == "hard_consistency" && material.AuthorRequest != nil)
+			in.Thinking = (name == "planned_writer" && material.Rewrite != nil) || (name == "hard_consistency" && (material.AuthorRequest != nil || (continuityPass && narrative.Focus != "characters")))
 		}
 	}
 	if in.Purpose == model.Repair {
@@ -97,6 +103,9 @@ func render(in model.Input, candidate string) (model.Input, error) {
 	promptVersion := name + ".v1"
 	if name == "hard_consistency" {
 		promptVersion = "hard_consistency.v6"
+		if continuityPass {
+			promptVersion = "hard_consistency.v13"
+		}
 	}
 	if name == "planned_writer" {
 		promptVersion = "planned_writer.v6"
@@ -142,8 +151,14 @@ func render(in model.Input, candidate string) (model.Input, error) {
 	if in.Role == "chapter_consistency" || in.Role == "chapter_language" {
 		in.SchemaVersion = "chapter_review.v1"
 	}
+	if in.Role == "hard_consistency" && continuityPass {
+		in.SchemaVersion = "continuity_pairs.v2"
+	}
 	if in.Role == "planned_writer" {
 		in.SchemaVersion = "writer.v1"
+		if bytes.Equal(in.OutputSchema, contracts.ReplacementSchema) {
+			in.SchemaVersion = "replacement.v1"
+		}
 		if bytes.Equal(in.OutputSchema, contracts.ChapterWriterSchema) {
 			in.SchemaVersion = "chapter_writer.v1"
 		}

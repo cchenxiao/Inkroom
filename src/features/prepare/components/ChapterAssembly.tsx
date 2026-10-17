@@ -32,15 +32,18 @@ export default function ChapterAssembly({
   embedded = false,
   onRead,
   onReviewBeat,
+  enhancedContinuity,
 }: {
   chapterId: string;
   editing: boolean;
   embedded?: boolean;
+  enhancedContinuity?: boolean;
   onReviewBeat?: (beatId: string) => void;
   onRead?: (view: ManuscriptInspection) => void;
 }) {
   const client = useQueryClient();
-  const [step, setStep] = useState('assembly');
+  const [step, setStep] = useState('auto');
+  const [openedRecords, setOpenedRecords] = useState<string[]>([]);
   const [choices, setChoices] = useState<Record<string, string>>({});
   const [confirmed, setConfirmed] = useState('');
   const [uncertain, setUncertain] = useState<AssemblySaveRequest | null>(null);
@@ -98,9 +101,9 @@ export default function ChapterAssembly({
   return (
     <Card className={`core-workbench ${embedded ? 'chapter-workflow' : ''}`} aria-label={t.title}>
       <div className="core-heading">
-        <h3>{t.title}</h3>
+        <h3>{embedded ? '整章检查与定稿' : t.title}</h3>
         <Button size="sm" disabled={locked} onClick={refresh}>
-          {t.refresh}
+          {embedded ? '更新状态' : t.refresh}
         </Button>
       </div>
       {!embedded && <p className="muted">{t.note}</p>}
@@ -109,27 +112,27 @@ export default function ChapterAssembly({
       {data && (
         <>
           {embedded && (
-            <nav className="chapter-workflow-tabs" aria-label="整章审核步骤">
-              {[
-                ['assembly', '整理章稿'],
-                ['review', '整章复审'],
-                ['history', '历史版本'],
-              ].map(([id, label]) => (
-                <button
-                  key={id}
-                  aria-current={step === id ? 'step' : undefined}
-                  onClick={() => setStep(id)}
-                >
-                  {label}
-                </button>
-              ))}
-            </nav>
+            <ol className="chapter-workflow-progress" aria-label="整章审核步骤">
+              <li aria-current={!data.ready ? 'step' : undefined}>处理段落</li>
+              <li aria-current={data.ready ? 'step' : undefined}>检查整章</li>
+              <li>确认定稿</li>
+            </ol>
           )}
-          <div hidden={embedded && step !== 'assembly'} className="chapter-workflow-step">
+          <div
+            hidden={embedded && data.ready && step !== 'assembly' && !!data.history.length}
+            className="chapter-workflow-step"
+          >
+            {embedded && data.ready && !!data.history.length && step === 'assembly' && (
+              <Button size="sm" variant="ghost" onClick={() => setStep('review')}>
+                返回整章检查
+              </Button>
+            )}
             <div className="chapter-workflow-summary">
               <strong>{data.ready ? '正文已齐，可以核对章稿' : '先完成段落审核'}</strong>
               <p>
-                {data.slots.filter((s) => !s.reason).length}/{data.slots.length} 段已就绪
+                {data.slots.length
+                  ? `${data.slots.filter((s) => !s.reason).length}/${data.slots.length} 段已采用`
+                  : readableMessage(data.reason, '请先完成章节创作准备。')}
               </p>
             </div>
             {embedded && !data.ready && (
@@ -139,7 +142,7 @@ export default function ChapterAssembly({
                   .map((slot) => (
                     <li key={slot.part.beatId}>
                       <strong>{slot.part.beatTitle}</strong>
-                      <p>当前正文尚未审核采用，完成后即可加入章稿。</p>
+                      <p>请先核对并采用这一段的最新正文。</p>
                       {onReviewBeat && (
                         <Button
                           size="sm"
@@ -154,7 +157,7 @@ export default function ChapterAssembly({
                   ))}
               </ul>
             )}
-            <details open={!embedded}>
+            <details open={!embedded} hidden={embedded && !data.ready}>
               <summary>调整组稿来源 · {data.slots.length} 段</summary>
               {data.slots.map((slot) => (
                 <div key={slot.part.beatId} className="core-field">
@@ -241,7 +244,7 @@ export default function ChapterAssembly({
                   save.mutate(req);
                 }}
               >
-                {t.save}
+                {embedded ? '保存整章，进入检查' : t.save}
               </Button>
               {save.isSuccess && (
                 <p role="status">
@@ -262,16 +265,28 @@ export default function ChapterAssembly({
               )}
             </div>
           </div>
-          <div hidden={embedded && step !== 'history'}>
-            <details open={embedded}>
+          <div hidden={embedded && (!data.ready || step === 'assembly' || !data.history.length)}>
+            {embedded && !data.history.length && (
+              <p className="chapter-workflow-summary">先核对并保存章稿，再开始整章复审。</p>
+            )}
+            <ChapterReview
+              assemblies={data.history}
+              onPrepare={embedded ? () => setStep('assembly') : undefined}
+              editing={editing}
+              onRead={onRead}
+              enhancedContinuity={enhancedContinuity}
+            />
+          </div>
+          <div className="chapter-workflow-history">
+            <details>
               <summary>
-                {t.history} · {data.history.length}
+                {embedded ? '历史章稿与审核记录' : t.history} · {data.history.length}
               </summary>
               {!data.history.length && <p>{t.noHistory}</p>}
               {data.history.map((a) => (
                 <details key={a.id}>
                   <summary>
-                    v{a.version} · {new Date(a.createdAt).toLocaleString('zh-CN')} · {t.pending}
+                    v{a.version} · {new Date(a.createdAt).toLocaleString('zh-CN')}
                   </summary>
                   <p>{t.historical}</p>
                   <Badge>
@@ -288,6 +303,24 @@ export default function ChapterAssembly({
                   ) : (
                     <Manuscript parts={a.parts} />
                   )}
+                  {embedded && (
+                    <details
+                      onToggle={(event) => {
+                        if (event.currentTarget.open)
+                          setOpenedRecords((old) => (old.includes(a.id) ? old : [...old, a.id]));
+                      }}
+                    >
+                      <summary>查看历史审核与定稿</summary>
+                      {openedRecords.includes(a.id) && (
+                        <ChapterReview
+                          assemblies={[a]}
+                          editing={editing}
+                          onRead={onRead}
+                          enhancedContinuity={enhancedContinuity}
+                        />
+                      )}
+                    </details>
+                  )}
                   <TechnicalDetails
                     items={{
                       章稿编号: a.id,
@@ -302,12 +335,6 @@ export default function ChapterAssembly({
                 </details>
               ))}
             </details>
-          </div>
-          <div hidden={embedded && step !== 'review'}>
-            {embedded && !data.history.length && (
-              <p className="chapter-workflow-summary">先核对并保存章稿，再开始整章复审。</p>
-            )}
-            <ChapterReview assemblies={data.history} editing={editing} onRead={onRead} />
           </div>
         </>
       )}

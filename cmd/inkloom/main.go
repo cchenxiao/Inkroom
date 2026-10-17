@@ -21,6 +21,10 @@ import (
 )
 
 func main() {
+	continuitySuite := flag.String("continuity-suite", "stress", "continuity dataset: stress, compact or quantity; requires -continuity-eval")
+	continuityCase := flag.String("continuity-case", "", "run one fixed continuity case; requires -continuity-eval")
+	continuityEval := flag.Bool("continuity-eval", false, "evaluate narrative continuity on synthetic cases without database writes")
+	chapterEval := flag.Bool("chapter-workflow-eval", false, "evaluate a normal-length synthetic chapter and middle/selected revisions; no database writes")
 	revisionCase := flag.String("author-revision-case", "", "run one fixed case; requires -author-revision-eval")
 	revisionEval := flag.Bool("author-revision-eval", false, "evaluate author correction on isolated synthetic cases using configured real model; no database writes")
 	coreSettings := flag.String("core-settings", "", "generate unconfirmed core setting proposals from frozen planning JSON; no persistence")
@@ -47,6 +51,10 @@ func main() {
 	localRewrite := flag.Bool("allow-local-rewrite", false, "authorize current scene/beat candidate rewriting, preserving locked facts and event outcome")
 	autoRevise := flag.Bool("auto-revise", true, "authorize P2 edits to the isolated candidate")
 	flag.Parse()
+	if *continuitySuite != "stress" && *continuitySuite != "compact" && *continuitySuite != "quantity" {
+		fmt.Fprintln(os.Stderr, "unknown continuity suite")
+		os.Exit(1)
+	}
 	invalidKnowledgeOption := false
 	invalidKnowledgeVersion := false
 	flag.Visit(func(f *flag.Flag) {
@@ -65,6 +73,10 @@ func main() {
 		fmt.Fprintln(os.Stderr, "-chapter and -story-time require -knowledge-preview")
 		os.Exit(1)
 	}
+	if (*continuityCase != "" || *continuitySuite != "stress") && !*continuityEval {
+		fmt.Fprintln(os.Stderr, "-continuity-case requires -continuity-eval")
+		os.Exit(1)
+	}
 	if *revisionCase != "" && !*revisionEval {
 		fmt.Fprintln(os.Stderr, "-author-revision-case requires -author-revision-eval")
 		os.Exit(1)
@@ -74,7 +86,7 @@ func main() {
 		os.Exit(1)
 	}
 	modes := 0
-	for _, enabled := range []bool{*revisionEval, *coreSettings != "", *styleTrial != "", *knowledgeSeed, *knowledgeShow, *knowledgeImport != "", *knowledge, *evalCritic, *preview, *serve, *list, *seedMemory, *evalMemory, *memoryQuery != "", *memoryImport != ""} {
+	for _, enabled := range []bool{*continuityEval, *chapterEval, *revisionEval, *coreSettings != "", *styleTrial != "", *knowledgeSeed, *knowledgeShow, *knowledgeImport != "", *knowledge, *evalCritic, *preview, *serve, *list, *seedMemory, *evalMemory, *memoryQuery != "", *memoryImport != ""} {
 		if enabled {
 			modes++
 		}
@@ -110,7 +122,11 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	var err error
-	if *revisionEval {
+	if *continuityEval {
+		err = continuityEvaluation(ctx, *continuityCase, *continuitySuite)
+	} else if *chapterEval {
+		err = chapterWorkflowEvaluation(ctx)
+	} else if *revisionEval {
 		err = authorRevisionEvaluation(ctx, *revisionCase)
 	} else if *coreSettings != "" {
 		err = coreSettingsCommand(ctx, *coreSettings)

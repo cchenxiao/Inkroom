@@ -32,7 +32,7 @@ func LookupContext(ctx context.Context, cfg config.Config, base manuscript.Froze
 			return manuscript.FrozenInput{}, err
 		}
 	}
-	guard := model.NewGuard(chat, model.Limits{OnCall: onCall, Calls: cfg.MaxCalls, Tokens: cfg.MaxTokens, OutputTokens: cfg.MaxOutputTokens, Timeout: cfg.CallTimeout, ModelName: cfg.ModelName})
+	guard := model.NewGuard(chat, model.Limits{OnCall: onCall, Calls: cfg.MaxCalls, Tokens: cfg.MaxTokens, OutputTokens: cfg.MaxOutputTokens, ConsistencyOutputTokens: cfg.ConsistencyOutputTokens, ConsistencyTimeout: cfg.ConsistencyTimeout, Timeout: cfg.CallTimeout, ModelName: cfg.ModelName})
 	result, err := contextlookup.Run(ctx, guard, base.Bundle, func(ctx context.Context, q string) (retrieval.Result, error) { return session.Search(ctx, view, q, 3) }, onTrace)
 	if err != nil {
 		return manuscript.FrozenInput{}, err

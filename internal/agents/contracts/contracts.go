@@ -10,6 +10,9 @@ import (
 //go:embed writer.v1.json
 var WriterSchema []byte
 
+//go:embed replacement.v1.json
+var ReplacementSchema []byte
+
 //go:embed critic.v1.json
 var CriticSchema []byte
 

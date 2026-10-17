@@ -49,7 +49,7 @@ func ExecuteChapter(ctx context.Context, cfg config.Config, scenario string, opt
 		}
 		name = cfg.ModelName
 	}
-	guard := model.NewGuard(chat, model.Limits{History: opts.CallHistory, OnCall: opts.OnModelCall, Calls: cfg.MaxCalls, Tokens: cfg.MaxTokens, OutputTokens: cfg.MaxOutputTokens, Timeout: cfg.CallTimeout, ModelName: name})
+	guard := model.NewGuard(chat, model.Limits{History: opts.CallHistory, OnCall: opts.OnModelCall, Calls: cfg.MaxCalls, Tokens: cfg.MaxTokens, OutputTokens: cfg.MaxOutputTokens, ConsistencyOutputTokens: cfg.ConsistencyOutputTokens, ConsistencyTimeout: cfg.ConsistencyTimeout, Timeout: cfg.CallTimeout, ModelName: name})
 	var latest orchestration.ChapterState
 	observer := opts.OnProgress
 	opts.OnProgress = func(state orchestration.ChapterState) {

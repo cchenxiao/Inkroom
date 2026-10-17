@@ -341,5 +341,6 @@ func TestChapterPlanFrozenInputAndAuthorVersion(t *testing.T) {
 
 	exerciseChapterAssembly(t, s, scope, selected, cfg, commit)
 	exerciseWritingScopes(t, s, scope, selected, cfg)
+	exerciseMiddleWorkingDraft(t, s, scope, selected, cfg)
 
 }

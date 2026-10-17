@@ -1,0 +1,685 @@
+{
+  "dataset": "chapter-workflow-v1",
+  "datasetDigest": "58f64276a19a2d3e6695e207144e5bc9827f09421f1467b8d4d59900547dba99",
+  "provider": "deepseek",
+  "model": "deepseek-flash",
+  "startedAt": "2026-10-17T01:11:27.721911Z",
+  "total": 3,
+  "attempted": 1,
+  "passed": 0,
+  "usage": {
+    "inputTokens": 0,
+    "outputTokens": 0,
+    "known": false
+  },
+  "stages": [
+    {
+      "name": "generate-chapter",
+      "input": {
+        "targets": [
+          {
+            "writingTask": {
+              "chapterTargetWords": 2400,
+              "beatTargetWords": 800,
+              "scope": "isolated",
+              "chapterId": "night-shift",
+              "versions": {
+                "bindings": 1,
+                "core": 1,
+                "direction": 1,
+                "input": 1,
+                "outline": 1,
+                "style": 1
+              },
+              "planVersion": 1,
+              "sourceDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "opening": true,
+              "storyTime": 0,
+              "genre": "现实生活",
+              "brief": {
+                "selectedBeatId": "beat-1",
+                "mustHappen": "林宁在河堤值班室接夜班，清点蓝布袋里三枚铜签，核对交接手续，陈禾要走，林宁因字迹不清请他留下核对。展开两人的迟疑与协作，最后林宁拿着布袋走向窗口。不要提前交出铜签。",
+                "cannotChange": "三枚铜签交出两枚后剩一枚；不增加人物或关键往事。",
+                "reveal": "",
+                "withhold": "信封内文及寄信人尚未揭示，任何段落均不得揭示或猜成事实。",
+                "writingGuidance": "全章约2400字，每段约800字。通过具体动作、对话和手续核对展开，避免重复清点凑字数。"
+              },
+              "style": {
+                "pov": "第三人称限知，林宁",
+                "tense": "过去时",
+                "tone": "克制、具体、略有生活幽默",
+                "sentenceLength": {
+                  "min": 0,
+                  "max": 0
+                },
+                "dialogueRatio": {
+                  "min": 0,
+                  "max": 0
+                },
+                "bannedPhrases": null,
+                "styleArc": ""
+              },
+              "sceneGoal": "完成夜班交接",
+              "sceneConflict": "手续需要核对，双方都想尽早完成",
+              "sceneOutcome": "铜签交付完毕，登记簿封存",
+              "voices": null
+            },
+            "projectId": "chapter-workflow-evaluation",
+            "characters": null,
+            "facts": [
+              {
+                "id": "tokens",
+                "version": 1,
+                "text": "夜班交接开始时蓝布袋中只有三枚铜签，每枚可领取一盏灯。本章没有其他铜签补入，也没有遗失。"
+              },
+              {
+                "id": "people",
+                "version": 1,
+                "text": "林宁与陈禾都是河堤值班员；林宁负责当晚交接登记，陈禾负责领灯。"
+              }
+            ],
+            "bannedPhrases": null,
+            "protectedTerms": null,
+            "chapterId": "night-shift",
+            "branchId": "isolated",
+            "beat": {
+              "version": 1,
+              "locked": false,
+              "id": "beat-1",
+              "sceneId": "duty-room",
+              "title": "接班清点",
+              "description": "林宁在河堤值班室接夜班，清点蓝布袋里三枚铜签，核对交接手续，陈禾要走，林宁因字迹不清请他留下核对。展开两人的迟疑与协作，最后林宁拿着布袋走向窗口。不要提前交出铜签。"
+            },
+            "pov": "第三人称限知，林宁",
+            "sources": null
+          },
+          {
+            "writingTask": {
+              "chapterTargetWords": 2400,
+              "beatTargetWords": 800,
+              "scope": "isolated",
+              "chapterId": "night-shift",
+              "versions": {
+                "bindings": 1,
+                "core": 1,
+                "direction": 1,
+                "input": 1,
+                "outline": 1,
+                "style": 1
+              },
+              "planVersion": 1,
+              "sourceDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "opening": true,
+              "storyTime": 1,
+              "genre": "现实生活",
+              "brief": {
+                "selectedBeatId": "beat-2",
+                "mustHappen": "承接前段，林宁在窗口将蓝布袋中的两枚铜签交给陈禾，用于领取两盏巡堤灯；陈禾当面核对数量，林宁把剩余一枚放回袋内，双方核对交付登记并签名。不要提前封存登记簿，不猜测第三段才出现的信封内容。",
+                "cannotChange": "三枚铜签交出两枚后剩一枚；不增加人物或关键往事。",
+                "reveal": "",
+                "withhold": "信封内文及寄信人尚未揭示，任何段落均不得揭示或猜成事实。",
+                "writingGuidance": "全章约2400字，每段约800字。通过具体动作、对话和手续核对展开，避免重复清点凑字数。"
+              },
+              "style": {
+                "pov": "第三人称限知，林宁",
+                "tense": "过去时",
+                "tone": "克制、具体、略有生活幽默",
+                "sentenceLength": {
+                  "min": 0,
+                  "max": 0
+                },
+                "dialogueRatio": {
+                  "min": 0,
+                  "max": 0
+                },
+                "bannedPhrases": null,
+                "styleArc": ""
+              },
+              "sceneGoal": "完成夜班交接",
+              "sceneConflict": "手续需要核对，双方都想尽早完成",
+              "sceneOutcome": "铜签交付完毕，登记簿封存",
+              "voices": null
+            },
+            "projectId": "chapter-workflow-evaluation",
+            "characters": null,
+            "facts": [
+              {
+                "id": "tokens",
+                "version": 1,
+                "text": "夜班交接开始时蓝布袋中只有三枚铜签，每枚可领取一盏灯。本章没有其他铜签补入，也没有遗失。"
+              },
+              {
+                "id": "people",
+                "version": 1,
+                "text": "林宁与陈禾都是河堤值班员；林宁负责当晚交接登记，陈禾负责领灯。"
+              }
+            ],
+            "bannedPhrases": null,
+            "protectedTerms": null,
+            "chapterId": "night-shift",
+            "branchId": "isolated",
+            "beat": {
+              "version": 1,
+              "locked": false,
+              "id": "beat-2",
+              "sceneId": "duty-room",
+              "title": "交付铜签",
+              "description": "承接前段，林宁在窗口将蓝布袋中的两枚铜签交给陈禾，用于领取两盏巡堤灯；陈禾当面核对数量，林宁把剩余一枚放回袋内，双方核对交付登记并签名。不要提前封存登记簿，不猜测第三段才出现的信封内容。"
+            },
+            "pov": "第三人称限知，林宁",
+            "sources": null
+          },
+          {
+            "writingTask": {
+              "chapterTargetWords": 2400,
+              "beatTargetWords": 800,
+              "scope": "isolated",
+              "chapterId": "night-shift",
+              "versions": {
+                "bindings": 1,
+                "core": 1,
+                "direction": 1,
+                "input": 1,
+                "outline": 1,
+                "style": 1
+              },
+              "planVersion": 1,
+              "sourceDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "opening": true,
+              "storyTime": 2,
+              "genre": "现实生活",
+              "brief": {
+                "selectedBeatId": "beat-3",
+                "mustHappen": "承接交付和签名，林宁把登记簿放进抽屉再封好，收妥余下铜签；陈禾带着两枚铜签离开去领灯。林宁在值班桌下面发现一个封口完好的信封，只看见封面写着次日交站长，不拆封，不猜寄信人，以等待次日交接收尾。",
+                "cannotChange": "三枚铜签交出两枚后剩一枚；不增加人物或关键往事。",
+                "reveal": "",
+                "withhold": "信封内文及寄信人尚未揭示，任何段落均不得揭示或猜成事实。",
+                "writingGuidance": "全章约2400字，每段约800字。通过具体动作、对话和手续核对展开，避免重复清点凑字数。"
+              },
+              "style": {
+                "pov": "第三人称限知，林宁",
+                "tense": "过去时",
+                "tone": "克制、具体、略有生活幽默",
+                "sentenceLength": {
+                  "min": 0,
+                  "max": 0
+                },
+                "dialogueRatio": {
+                  "min": 0,
+                  "max": 0
+                },
+                "bannedPhrases": null,
+                "styleArc": ""
+              },
+              "sceneGoal": "完成夜班交接",
+              "sceneConflict": "手续需要核对，双方都想尽早完成",
+              "sceneOutcome": "铜签交付完毕，登记簿封存",
+              "voices": null
+            },
+            "projectId": "chapter-workflow-evaluation",
+            "characters": null,
+            "facts": [
+              {
+                "id": "tokens",
+                "version": 1,
+                "text": "夜班交接开始时蓝布袋中只有三枚铜签，每枚可领取一盏灯。本章没有其他铜签补入，也没有遗失。"
+              },
+              {
+                "id": "people",
+                "version": 1,
+                "text": "林宁与陈禾都是河堤值班员；林宁负责当晚交接登记，陈禾负责领灯。"
+              }
+            ],
+            "bannedPhrases": null,
+            "protectedTerms": null,
+            "chapterId": "night-shift",
+            "branchId": "isolated",
+            "beat": {
+              "version": 1,
+              "locked": false,
+              "id": "beat-3",
+              "sceneId": "duty-room",
+              "title": "封存登记簿",
+              "description": "承接交付和签名，林宁把登记簿放进抽屉再封好，收妥余下铜签；陈禾带着两枚铜签离开去领灯。林宁在值班桌下面发现一个封口完好的信封，只看见封面写着次日交站长，不拆封，不猜寄信人，以等待次日交接收尾。"
+            },
+            "pov": "第三人称限知，林宁",
+            "sources": null
+          }
+        ],
+        "writingTask": {
+          "chapterTargetWords": 2400,
+          "beatTargetWords": 800,
+          "scope": "isolated",
+          "chapterId": "night-shift",
+          "versions": {
+            "bindings": 1,
+            "core": 1,
+            "direction": 1,
+            "input": 1,
+            "outline": 1,
+            "style": 1
+          },
+          "planVersion": 1,
+          "sourceDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "opening": true,
+          "storyTime": 0,
+          "genre": "现实生活",
+          "brief": {
+            "selectedBeatId": "beat-1",
+            "mustHappen": "林宁在河堤值班室接夜班，清点蓝布袋里三枚铜签，核对交接手续，陈禾要走，林宁因字迹不清请他留下核对。展开两人的迟疑与协作，最后林宁拿着布袋走向窗口。不要提前交出铜签。",
+            "cannotChange": "三枚铜签交出两枚后剩一枚；不增加人物或关键往事。",
+            "reveal": "",
+            "withhold": "信封内文及寄信人尚未揭示，任何段落均不得揭示或猜成事实。",
+            "writingGuidance": "全章约2400字，每段约800字。通过具体动作、对话和手续核对展开，避免重复清点凑字数。"
+          },
+          "style": {
+            "pov": "第三人称限知，林宁",
+            "tense": "过去时",
+            "tone": "克制、具体、略有生活幽默",
+            "sentenceLength": {
+              "min": 0,
+              "max": 0
+            },
+            "dialogueRatio": {
+              "min": 0,
+              "max": 0
+            },
+            "bannedPhrases": null,
+            "styleArc": ""
+          },
+          "sceneGoal": "完成夜班交接",
+          "sceneConflict": "手续需要核对，双方都想尽早完成",
+          "sceneOutcome": "铜签交付完毕，登记簿封存",
+          "voices": null
+        },
+        "projectId": "chapter-workflow-evaluation",
+        "characters": null,
+        "facts": [
+          {
+            "id": "tokens",
+            "version": 1,
+            "text": "夜班交接开始时蓝布袋中只有三枚铜签，每枚可领取一盏灯。本章没有其他铜签补入，也没有遗失。"
+          },
+          {
+            "id": "people",
+            "version": 1,
+            "text": "林宁与陈禾都是河堤值班员；林宁负责当晚交接登记，陈禾负责领灯。"
+          }
+        ],
+        "bannedPhrases": null,
+        "protectedTerms": null,
+        "chapterId": "night-shift",
+        "branchId": "isolated",
+        "beat": {
+          "version": 1,
+          "locked": false,
+          "id": "beat-1",
+          "sceneId": "duty-room",
+          "title": "接班清点",
+          "description": "林宁在河堤值班室接夜班，清点蓝布袋里三枚铜签，核对交接手续，陈禾要走，林宁因字迹不清请他留下核对。展开两人的迟疑与协作，最后林宁拿着布袋走向窗口。不要提前交出铜签。"
+        },
+        "pov": "第三人称限知，林宁",
+        "sources": null
+      },
+      "state": {
+        "nodePhase": "started",
+        "criticReviews": null,
+        "route": {
+          "kind": "",
+          "targetIds": null,
+          "findingIds": null,
+          "needsHuman": false,
+          "reason": ""
+        },
+        "context": {
+          "targets": [
+            {
+              "writingTask": {
+                "chapterTargetWords": 2400,
+                "beatTargetWords": 800,
+                "scope": "isolated",
+                "chapterId": "night-shift",
+                "versions": {
+                  "bindings": 1,
+                  "core": 1,
+                  "direction": 1,
+                  "input": 1,
+                  "outline": 1,
+                  "style": 1
+                },
+                "planVersion": 1,
+                "sourceDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "opening": true,
+                "storyTime": 0,
+                "genre": "现实生活",
+                "brief": {
+                  "selectedBeatId": "beat-1",
+                  "mustHappen": "林宁在河堤值班室接夜班，清点蓝布袋里三枚铜签，核对交接手续，陈禾要走，林宁因字迹不清请他留下核对。展开两人的迟疑与协作，最后林宁拿着布袋走向窗口。不要提前交出铜签。",
+                  "cannotChange": "三枚铜签交出两枚后剩一枚；不增加人物或关键往事。",
+                  "reveal": "",
+                  "withhold": "信封内文及寄信人尚未揭示，任何段落均不得揭示或猜成事实。",
+                  "writingGuidance": "全章约2400字，每段约800字。通过具体动作、对话和手续核对展开，避免重复清点凑字数。"
+                },
+                "style": {
+                  "pov": "第三人称限知，林宁",
+                  "tense": "过去时",
+                  "tone": "克制、具体、略有生活幽默",
+                  "sentenceLength": {
+                    "min": 0,
+                    "max": 0
+                  },
+                  "dialogueRatio": {
+                    "min": 0,
+                    "max": 0
+                  },
+                  "bannedPhrases": null,
+                  "styleArc": ""
+                },
+                "sceneGoal": "完成夜班交接",
+                "sceneConflict": "手续需要核对，双方都想尽早完成",
+                "sceneOutcome": "铜签交付完毕，登记簿封存",
+                "voices": null
+              },
+              "projectId": "chapter-workflow-evaluation",
+              "characters": null,
+              "facts": [
+                {
+                  "id": "tokens",
+                  "version": 1,
+                  "text": "夜班交接开始时蓝布袋中只有三枚铜签，每枚可领取一盏灯。本章没有其他铜签补入，也没有遗失。"
+                },
+                {
+                  "id": "people",
+                  "version": 1,
+                  "text": "林宁与陈禾都是河堤值班员；林宁负责当晚交接登记，陈禾负责领灯。"
+                }
+              ],
+              "bannedPhrases": null,
+              "protectedTerms": null,
+              "chapterId": "night-shift",
+              "branchId": "isolated",
+              "beat": {
+                "version": 1,
+                "locked": false,
+                "id": "beat-1",
+                "sceneId": "duty-room",
+                "title": "接班清点",
+                "description": "林宁在河堤值班室接夜班，清点蓝布袋里三枚铜签，核对交接手续，陈禾要走，林宁因字迹不清请他留下核对。展开两人的迟疑与协作，最后林宁拿着布袋走向窗口。不要提前交出铜签。"
+              },
+              "pov": "第三人称限知，林宁",
+              "sources": null
+            },
+            {
+              "writingTask": {
+                "chapterTargetWords": 2400,
+                "beatTargetWords": 800,
+                "scope": "isolated",
+                "chapterId": "night-shift",
+                "versions": {
+                  "bindings": 1,
+                  "core": 1,
+                  "direction": 1,
+                  "input": 1,
+                  "outline": 1,
+                  "style": 1
+                },
+                "planVersion": 1,
+                "sourceDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "opening": true,
+                "storyTime": 1,
+                "genre": "现实生活",
+                "brief": {
+                  "selectedBeatId": "beat-2",
+                  "mustHappen": "承接前段，林宁在窗口将蓝布袋中的两枚铜签交给陈禾，用于领取两盏巡堤灯；陈禾当面核对数量，林宁把剩余一枚放回袋内，双方核对交付登记并签名。不要提前封存登记簿，不猜测第三段才出现的信封内容。",
+                  "cannotChange": "三枚铜签交出两枚后剩一枚；不增加人物或关键往事。",
+                  "reveal": "",
+                  "withhold": "信封内文及寄信人尚未揭示，任何段落均不得揭示或猜成事实。",
+                  "writingGuidance": "全章约2400字，每段约800字。通过具体动作、对话和手续核对展开，避免重复清点凑字数。"
+                },
+                "style": {
+                  "pov": "第三人称限知，林宁",
+                  "tense": "过去时",
+                  "tone": "克制、具体、略有生活幽默",
+                  "sentenceLength": {
+                    "min": 0,
+                    "max": 0
+                  },
+                  "dialogueRatio": {
+                    "min": 0,
+                    "max": 0
+                  },
+                  "bannedPhrases": null,
+                  "styleArc": ""
+                },
+                "sceneGoal": "完成夜班交接",
+                "sceneConflict": "手续需要核对，双方都想尽早完成",
+                "sceneOutcome": "铜签交付完毕，登记簿封存",
+                "voices": null
+              },
+              "projectId": "chapter-workflow-evaluation",
+              "characters": null,
+              "facts": [
+                {
+                  "id": "tokens",
+                  "version": 1,
+                  "text": "夜班交接开始时蓝布袋中只有三枚铜签，每枚可领取一盏灯。本章没有其他铜签补入，也没有遗失。"
+                },
+                {
+                  "id": "people",
+                  "version": 1,
+                  "text": "林宁与陈禾都是河堤值班员；林宁负责当晚交接登记，陈禾负责领灯。"
+                }
+              ],
+              "bannedPhrases": null,
+              "protectedTerms": null,
+              "chapterId": "night-shift",
+              "branchId": "isolated",
+              "beat": {
+                "version": 1,
+                "locked": false,
+                "id": "beat-2",
+                "sceneId": "duty-room",
+                "title": "交付铜签",
+                "description": "承接前段，林宁在窗口将蓝布袋中的两枚铜签交给陈禾，用于领取两盏巡堤灯；陈禾当面核对数量，林宁把剩余一枚放回袋内，双方核对交付登记并签名。不要提前封存登记簿，不猜测第三段才出现的信封内容。"
+              },
+              "pov": "第三人称限知，林宁",
+              "sources": null
+            },
+            {
+              "writingTask": {
+                "chapterTargetWords": 2400,
+                "beatTargetWords": 800,
+                "scope": "isolated",
+                "chapterId": "night-shift",
+                "versions": {
+                  "bindings": 1,
+                  "core": 1,
+                  "direction": 1,
+                  "input": 1,
+                  "outline": 1,
+                  "style": 1
+                },
+                "planVersion": 1,
+                "sourceDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "opening": true,
+                "storyTime": 2,
+                "genre": "现实生活",
+                "brief": {
+                  "selectedBeatId": "beat-3",
+                  "mustHappen": "承接交付和签名，林宁把登记簿放进抽屉再封好，收妥余下铜签；陈禾带着两枚铜签离开去领灯。林宁在值班桌下面发现一个封口完好的信封，只看见封面写着次日交站长，不拆封，不猜寄信人，以等待次日交接收尾。",
+                  "cannotChange": "三枚铜签交出两枚后剩一枚；不增加人物或关键往事。",
+                  "reveal": "",
+                  "withhold": "信封内文及寄信人尚未揭示，任何段落均不得揭示或猜成事实。",
+                  "writingGuidance": "全章约2400字，每段约800字。通过具体动作、对话和手续核对展开，避免重复清点凑字数。"
+                },
+                "style": {
+                  "pov": "第三人称限知，林宁",
+                  "tense": "过去时",
+                  "tone": "克制、具体、略有生活幽默",
+                  "sentenceLength": {
+                    "min": 0,
+                    "max": 0
+                  },
+                  "dialogueRatio": {
+                    "min": 0,
+                    "max": 0
+                  },
+                  "bannedPhrases": null,
+                  "styleArc": ""
+                },
+                "sceneGoal": "完成夜班交接",
+                "sceneConflict": "手续需要核对，双方都想尽早完成",
+                "sceneOutcome": "铜签交付完毕，登记簿封存",
+                "voices": null
+              },
+              "projectId": "chapter-workflow-evaluation",
+              "characters": null,
+              "facts": [
+                {
+                  "id": "tokens",
+                  "version": 1,
+                  "text": "夜班交接开始时蓝布袋中只有三枚铜签，每枚可领取一盏灯。本章没有其他铜签补入，也没有遗失。"
+                },
+                {
+                  "id": "people",
+                  "version": 1,
+                  "text": "林宁与陈禾都是河堤值班员；林宁负责当晚交接登记，陈禾负责领灯。"
+                }
+              ],
+              "bannedPhrases": null,
+              "protectedTerms": null,
+              "chapterId": "night-shift",
+              "branchId": "isolated",
+              "beat": {
+                "version": 1,
+                "locked": false,
+                "id": "beat-3",
+                "sceneId": "duty-room",
+                "title": "封存登记簿",
+                "description": "承接交付和签名，林宁把登记簿放进抽屉再封好，收妥余下铜签；陈禾带着两枚铜签离开去领灯。林宁在值班桌下面发现一个封口完好的信封，只看见封面写着次日交站长，不拆封，不猜寄信人，以等待次日交接收尾。"
+              },
+              "pov": "第三人称限知，林宁",
+              "sources": null
+            }
+          ],
+          "writingTask": {
+            "chapterTargetWords": 2400,
+            "beatTargetWords": 800,
+            "scope": "isolated",
+            "chapterId": "night-shift",
+            "versions": {
+              "bindings": 1,
+              "core": 1,
+              "direction": 1,
+              "input": 1,
+              "outline": 1,
+              "style": 1
+            },
+            "planVersion": 1,
+            "sourceDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "opening": true,
+            "storyTime": 0,
+            "genre": "现实生活",
+            "brief": {
+              "selectedBeatId": "beat-1",
+              "mustHappen": "林宁在河堤值班室接夜班，清点蓝布袋里三枚铜签，核对交接手续，陈禾要走，林宁因字迹不清请他留下核对。展开两人的迟疑与协作，最后林宁拿着布袋走向窗口。不要提前交出铜签。",
+              "cannotChange": "三枚铜签交出两枚后剩一枚；不增加人物或关键往事。",
+              "reveal": "",
+              "withhold": "信封内文及寄信人尚未揭示，任何段落均不得揭示或猜成事实。",
+              "writingGuidance": "全章约2400字，每段约800字。通过具体动作、对话和手续核对展开，避免重复清点凑字数。"
+            },
+            "style": {
+              "pov": "第三人称限知，林宁",
+              "tense": "过去时",
+              "tone": "克制、具体、略有生活幽默",
+              "sentenceLength": {
+                "min": 0,
+                "max": 0
+              },
+              "dialogueRatio": {
+                "min": 0,
+                "max": 0
+              },
+              "bannedPhrases": null,
+              "styleArc": ""
+            },
+            "sceneGoal": "完成夜班交接",
+            "sceneConflict": "手续需要核对，双方都想尽早完成",
+            "sceneOutcome": "铜签交付完毕，登记簿封存",
+            "voices": null
+          },
+          "projectId": "chapter-workflow-evaluation",
+          "characters": null,
+          "facts": [
+            {
+              "id": "tokens",
+              "version": 1,
+              "text": "夜班交接开始时蓝布袋中只有三枚铜签，每枚可领取一盏灯。本章没有其他铜签补入，也没有遗失。"
+            },
+            {
+              "id": "people",
+              "version": 1,
+              "text": "林宁与陈禾都是河堤值班员；林宁负责当晚交接登记，陈禾负责领灯。"
+            }
+          ],
+          "bannedPhrases": null,
+          "protectedTerms": null,
+          "chapterId": "night-shift",
+          "branchId": "isolated",
+          "beat": {
+            "version": 1,
+            "locked": false,
+            "id": "beat-1",
+            "sceneId": "duty-room",
+            "title": "接班清点",
+            "description": "林宁在河堤值班室接夜班，清点蓝布袋里三枚铜签，核对交接手续，陈禾要走，林宁因字迹不清请他留下核对。展开两人的迟疑与协作，最后林宁拿着布袋走向窗口。不要提前交出铜签。"
+          },
+          "pov": "第三人称限知，林宁",
+          "sources": null
+        },
+        "draftVersion": 0,
+        "segments": [],
+        "report": {
+          "draftVersion": 0,
+          "findings": []
+        },
+        "reviews": [],
+        "metrics": [],
+        "revisions": [],
+        "reviseRound": 0,
+        "maxRounds": 2,
+        "status": "failed",
+        "currentNode": "draft",
+        "stopReason": "运行失败；保留最后候选，尚未完成复检",
+        "usage": {
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "known": false
+        }
+      },
+      "checks": [],
+      "calls": [
+        {
+          "thinking": true,
+          "role": "planned_writer",
+          "promptVersion": "planned_writer.v7",
+          "schemaVersion": "chapter_writer.v1",
+          "inputDigest": "58f64276a19a2d3e6695e207144e5bc9827f09421f1467b8d4d59900547dba99",
+          "promptDigest": "900fbe03bc3bbd974968c1cb1d907742db9e2b7659ad0385615f4dfb36329b46",
+          "output": "",
+          "finishReason": "",
+          "usage": {
+            "inputTokens": 0,
+            "outputTokens": 0,
+            "known": false
+          },
+          "elapsedMs": 60060,
+          "error": "context deadline exceeded"
+        }
+      ],
+      "error": "[NodeRunError] planned_writer model call: context deadline exceeded\n------------------------\nnode path: [writer]",
+      "approvalBlock": ""
+    }
+  ],
+  "error": "[NodeRunError] planned_writer model call: context deadline exceeded\n------------------------\nnode path: [writer]"
+}

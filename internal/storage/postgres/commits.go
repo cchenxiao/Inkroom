@@ -96,7 +96,7 @@ func (s *Store) Finalize(ctx context.Context, id string, in app.FinalizeInput) (
 		return app.FinalCommit{}, app.ErrGateBlocked
 	}
 	for _, f := range report.Findings {
-		if f.RequiresHuman || f.PossibleDialogueLie {
+		if (f.RequiresHuman || f.PossibleDialogueLie) && !orchestration.FindingKept(*r.Result, f.ID) {
 			return app.FinalCommit{}, app.ErrFactsUnconfirmed
 		}
 	}

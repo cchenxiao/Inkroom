@@ -27,7 +27,7 @@ func authorRevisionEvaluation(ctx context.Context, selected string) error {
 	ctx, cancel := context.WithTimeout(ctx, 4*time.Minute)
 	defer cancel()
 	// Hard suite ceiling; honor any tighter local limit.
-	limits := model.Limits{Calls: min(cfg.MaxCalls, 14), Tokens: min(cfg.MaxTokens, 128000), OutputTokens: cfg.MaxOutputTokens, Timeout: cfg.CallTimeout, ModelName: cfg.ModelName}
+	limits := model.Limits{Calls: min(cfg.MaxCalls, 14), Tokens: min(cfg.MaxTokens, 128000), OutputTokens: cfg.MaxOutputTokens, ConsistencyOutputTokens: cfg.ConsistencyOutputTokens, ConsistencyTimeout: cfg.ConsistencyTimeout, Timeout: cfg.CallTimeout, ModelName: cfg.ModelName}
 	var ids []string
 	if selected != "" {
 		ids = []string{selected}

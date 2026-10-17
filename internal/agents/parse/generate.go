@@ -20,7 +20,7 @@ const maxResponseBytes = 128 * 1024
 // 最多两次模型调用：初次生成，以及仅针对坏 JSON 的一次格式修复。
 func Generate[T any](ctx context.Context, chat model.ChatModel, in model.Input, validate func(T) error) (T, model.Usage, error) {
 	var zero T
-	var total model.Usage
+	total := model.Usage{Known: true}
 	schema, err := compileSchema(in.OutputSchema)
 	if err != nil {
 		return zero, total, fmt.Errorf("configure output schema: %w", err)
@@ -34,6 +34,7 @@ func Generate[T any](ctx context.Context, chat model.ChatModel, in model.Input, 
 		out, usage, err := chat.Generate(ctx, in)
 		total.InputTokens += usage.InputTokens
 		total.OutputTokens += usage.OutputTokens
+		total.Known = total.Known && usage.Known
 		if err != nil {
 			return zero, total, fmt.Errorf("%s model call: %w", in.Role, err)
 		}

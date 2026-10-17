@@ -1,6 +1,7 @@
 package app
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"inkloom/internal/agents/model"
@@ -11,7 +12,17 @@ import (
 // Only installed for the Fake provider. This is a pipeline sample, not semantic validation.
 type authorReviewFake struct{ next model.ChatModel }
 
-func (f authorReviewFake) Generate(ctx context.Context, in model.Input) (model.Output, model.Usage, error) {
+func (f authorReviewFake) Generate(ctx context.Context, in model.Input) (out model.Output, usage model.Usage, err error) {
+	if bytes.Contains(in.Material, []byte(`"continuityPass":true`)) {
+		var m struct {
+			Targets []string `json:"targets"`
+		}
+		if err = json.Unmarshal(in.Material, &m); err != nil {
+			return
+		}
+		raw, _ := json.Marshal(map[string]any{"checked": m.Targets, "issues": []any{}})
+		return model.Output{Content: string(raw), FinishReason: model.Complete}, model.Usage{Known: true}, nil
+	}
 	var material struct {
 		Request  *manuscript.AuthorRewrite `json:"authorRequest"`
 		Segments []manuscript.Segment      `json:"segments"`

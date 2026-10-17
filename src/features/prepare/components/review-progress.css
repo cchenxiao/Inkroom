@@ -1,0 +1,30 @@
+.writing-review-progress {
+  flex: 0 0 auto;
+  margin: 4px 12px 8px;
+  padding: 10px 14px;
+  border-left: 3px solid var(--ai);
+  border-radius: 4px;
+  background: var(--paper);
+  color: var(--paper-ink);
+  font-size: 13px;
+}
+.writing-review-progress > div,
+.writing-review-progress ul,
+.writing-review-progress li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 16px;
+}
+.writing-review-progress ul {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+}
+.writing-review-progress > div > span,
+.writing-review-progress .review-elapsed {
+  color: var(--paper-dim);
+}
+.review-elapsed {
+  font-variant-numeric: tabular-nums;
+}

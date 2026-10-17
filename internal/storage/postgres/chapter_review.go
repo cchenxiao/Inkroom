@@ -114,6 +114,7 @@ func (s *Store) StartChapterReview(ctx context.Context, scope string, req app.Ch
 	if err != nil {
 		return j, false, err
 	}
+	input.EnhancedContinuity = req.EnhancedContinuity
 	digest, err := manuscript.ContentDigest(input)
 	if err != nil {
 		return j, false, err

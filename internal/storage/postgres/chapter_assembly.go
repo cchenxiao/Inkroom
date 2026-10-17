@@ -148,6 +148,10 @@ func assemblySlot(ctx context.Context, tx pgx.Tx, scope string, p planning.Chapt
 	if err != nil {
 		return slot, err
 	}
+	working, err := workingPassage(ctx, tx, scope, p.ChapterID, beat.ID)
+	if err != nil {
+		return slot, err
+	}
 	chosen, explicit := choices[beat.ID]
 	for _, x := range sources {
 		reason := ""
@@ -158,7 +162,7 @@ func assemblySlot(ctx context.Context, tx pgx.Tx, scope string, p planning.Chapt
 			reason = "本段已有新的采用稿，请重新核对组稿来源"
 		} else if x.running {
 			reason = "本 Beat 正在生成新稿"
-		} else if x.commit.DraftVersion != x.version {
+		} else if !sameNarrative(manuscript.Passage{Segments: beatSegments(x.commit.Segments, beat.ID)}, working) {
 			reason = "正文已有更新，需重新审核提交"
 		}
 		option := app.AssemblyChoice{CommitID: x.commit.ID, DraftVersion: x.commit.DraftVersion, CreatedAt: x.commit.CreatedAt, Eligible: reason == "", Reason: reason}
@@ -251,4 +255,16 @@ func (s *Store) SaveChapterAssembly(ctx context.Context, scope string, req app.A
 		return empty, err
 	}
 	return saved, nil
+}
+
+// A shared chapter version can change because another beat was edited or a
+// review saved identical prose. Compare only this beat's authored content.
+func beatSegments(segments []manuscript.Segment, beat string) []manuscript.Segment {
+	out := []manuscript.Segment{}
+	for _, s := range segments {
+		if s.BeatID == beat {
+			out = append(out, s)
+		}
+	}
+	return out
 }

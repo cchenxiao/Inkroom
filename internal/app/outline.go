@@ -47,7 +47,7 @@ func GenerateOutline(ctx context.Context, cfg config.Config, in planning.Outline
 			return empty, err
 		}
 	}
-	guard := model.NewGuard(chat, model.Limits{Calls: min(cfg.MaxCalls, 3), Tokens: cfg.MaxTokens, OutputTokens: cfg.MaxOutputTokens, Timeout: cfg.CallTimeout, ModelName: cfg.ModelName, OnCall: onCall})
+	guard := model.NewGuard(chat, model.Limits{Calls: min(cfg.MaxCalls, 3), Tokens: cfg.MaxTokens, OutputTokens: cfg.MaxOutputTokens, ConsistencyOutputTokens: cfg.ConsistencyOutputTokens, ConsistencyTimeout: cfg.ConsistencyTimeout, Timeout: cfg.CallTimeout, ModelName: cfg.ModelName, OnCall: onCall})
 	out, _, err := parse.Generate[planning.OutlineContent](ctx, prompts.Bind(guard), model.Input{Role: "story_architect", Task: "提出全书简要章纲与配套章节安排，不写正文或细纲。", Material: material, OutputSchema: contracts.StoryArchitectSchema}, func(out planning.OutlineContent) error {
 		if len(out.Chapters) != in.ChapterCount {
 			return fmt.Errorf("章节数须等于本次请求")

@@ -14,11 +14,16 @@ import (
 	"inkloom/internal/config"
 	"inkloom/internal/contextassembly"
 	"inkloom/internal/demo"
+	"inkloom/internal/domain/review"
 	"inkloom/internal/orchestration"
 )
 
 // 一组真实事务验证：冻结输入 → 自动评审 → 人审 → 定稿，及关键拒绝/回滚窗口。
 func TestFinalCommitFreezesMatchingVersions(t *testing.T) {
+	t.Run("clear", func(t *testing.T) { testFinalCommitFreezesMatchingVersions(t, false) })
+	t.Run("author_decision", func(t *testing.T) { testFinalCommitFreezesMatchingVersions(t, true) })
+}
+func testFinalCommitFreezesMatchingVersions(t *testing.T, withDecision bool) {
 	url := os.Getenv("INKLOOM_TEST_DATABASE_URL")
 	if url == "" {
 		t.Skip("set INKLOOM_TEST_DATABASE_URL")
@@ -71,6 +76,10 @@ func TestFinalCommitFreezesMatchingVersions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if withDecision {
+		state.Report.Findings = append(state.Report.Findings, review.Finding{ID: "author-dialogue", SegmentID: state.Segments[0].ID, Quote: state.Segments[0].Text, Severity: review.P3, RequiresHuman: true, PossibleDialogueLie: true, Critic: "hard_consistency", Reason: "台词是否故意隐瞒", Suggestion: "请作者判断", RepairScope: "segment", EvidenceStatus: "uncertain", EvidenceRefs: []string{}})
+		state.Reviews[len(state.Reviews)-1] = state.Report
+	}
 	r.Result = &state
 	r.DraftVersion = state.DraftVersion
 	before, _ := s.GetRun(ctx, id)
@@ -93,6 +102,16 @@ func TestFinalCommitFreezesMatchingVersions(t *testing.T) {
 	input := app.FinalizeInput{ID: rand.Text(), DraftVersion: 1, InputDigest: pinned.Manifest.Digest, FactsConfirmed: true}
 	if _, err = s.Finalize(ctx, id, input); !errors.Is(err, app.ErrGateBlocked) {
 		t.Fatal("unapproved commit accepted", err)
+	}
+	if withDecision {
+		action := orchestration.HumanAction{ID: rand.Text(), Type: "finding_decision", DraftVersion: 1, FindingID: "author-dialogue", Decision: "keep", Instruction: "此处是人物故意隐瞒，并非既定事实"}
+		claimed, execute, e := s.ClaimAction(ctx, id, action)
+		if e != nil || !execute {
+			t.Fatalf("claim author decision: %v", e)
+		}
+		if e = app.ExecuteHuman(ctx, cfg, claimed, s); e != nil {
+			t.Fatal(e)
+		}
 	}
 	a := orchestration.HumanAction{ID: rand.Text(), Type: "approve", DraftVersion: 1}
 	r, execute, err := s.ClaimAction(ctx, id, a)

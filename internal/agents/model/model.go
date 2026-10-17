@@ -4,15 +4,18 @@ package model
 import (
 	"context"
 	"encoding/json"
+	"time"
 )
 
 type Input struct {
-	Thinking bool // Stateless author correction and its verification only.
-	Tools    []ToolDefinition
-	Messages []Message
-	Role     string
-	Task     string
-	Material json.RawMessage
+	OutputTokens int // Applied by Guard; provider adapter uses the same reserved budget.
+	CallTimeout  time.Duration
+	Thinking     bool // Stateless author correction, verification, or opt-in narrative checks.
+	Tools        []ToolDefinition
+	Messages     []Message
+	Role         string
+	Task         string
+	Material     json.RawMessage
 	// OutputSchema 交给供应商适配器施加结构约束；本地仍要再次校验。
 	OutputSchema  json.RawMessage
 	Purpose       Purpose

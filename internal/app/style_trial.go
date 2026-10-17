@@ -72,7 +72,7 @@ func generateStyleTrials(ctx context.Context, cfg config.Config, input planning.
 	if cfg.Model == "fake" {
 		report.Message = "Fake 流程样例：仅回显临时场景，不评估文风质量，不写入任何正文或事实。"
 	}
-	guard := model.NewGuard(chat, model.Limits{Calls: min(cfg.MaxCalls, 4), Tokens: cfg.MaxTokens, OutputTokens: cfg.MaxOutputTokens, Timeout: cfg.CallTimeout, ModelName: cfg.ModelName, OnCall: func(ctx context.Context, call model.CallRecord) error {
+	guard := model.NewGuard(chat, model.Limits{Calls: min(cfg.MaxCalls, 4), Tokens: cfg.MaxTokens, OutputTokens: cfg.MaxOutputTokens, ConsistencyOutputTokens: cfg.ConsistencyOutputTokens, ConsistencyTimeout: cfg.ConsistencyTimeout, Timeout: cfg.CallTimeout, ModelName: cfg.ModelName, OnCall: func(ctx context.Context, call model.CallRecord) error {
 		report.Calls = append(report.Calls, call)
 		if len(onCall) > 0 && onCall[0] != nil {
 			return onCall[0](ctx, call)

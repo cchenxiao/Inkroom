@@ -42,7 +42,11 @@ func exercisePlannedRun(t *testing.T, s *Store, scope string, p planning.Chapter
 	if err != nil || !ready.Ready {
 		t.Fatal("readiness", err, ready.Reason)
 	}
-	req := app.PlannedRunRequest{BeatID: ready.BeatID, RequestID: rand.Text(), ChapterID: p.ChapterID, Expected: p.Versions, PlanVersion: p.Version, DraftVersion: ready.DraftVersion}
+	if len(target) > 0 {
+		cfg.MaxCalls = 4
+	} // Writer, two base critics, and the opted-in review
+	cfg.ExperimentalContinuity = len(target) == 0 // opposite of the explicit request
+	req := app.PlannedRunRequest{EnhancedContinuity: len(target) > 0, BeatID: ready.BeatID, RequestID: rand.Text(), ChapterID: p.ChapterID, Expected: p.Versions, PlanVersion: p.Version, DraftVersion: ready.DraftVersion}
 	r, created, err := s.StartPlannedRun(ctx, scope, req, cfg)
 	if err != nil || !created {
 		t.Fatal("start", err)
@@ -52,6 +56,11 @@ func exercisePlannedRun(t *testing.T, s *Store, scope string, p planning.Chapter
 		t.Fatal("duplicate execution", err)
 	}
 	bad := req
+	bad.EnhancedContinuity = !req.EnhancedContinuity
+	if _, _, e := s.StartPlannedRun(ctx, scope, bad, cfg); !errors.Is(e, app.ErrActionMismatch) {
+		t.Fatal("changed review option reused request ID", e)
+	}
+	bad = req
 	bad.AutoRevise = true
 	if _, _, err = s.StartPlannedRun(ctx, scope, bad, cfg); !errors.Is(err, app.ErrActionMismatch) {
 		t.Fatal("idempotency mismatch accepted", err)
@@ -60,9 +69,21 @@ func exercisePlannedRun(t *testing.T, s *Store, scope string, p planning.Chapter
 	if err != nil || frozen.Bundle.ChapterID == "ch7" || frozen.Bundle.WritingTask == nil || frozen.Bundle.WritingTask.Knowledge == nil {
 		t.Fatal("missing isolated input", err)
 	}
+	if frozen.Bundle.WritingTask.ExperimentalContinuity != req.EnhancedContinuity || r.Planning.EnhancedContinuity != req.EnhancedContinuity {
+		t.Fatal("request option not frozen", r.Planning)
+	}
 	state, err := app.ExecuteChapter(ctx, cfg, "normal", orchestration.Options{FrozenInput: &frozen, BaseDraftVersion: req.DraftVersion, MaxRounds: 2})
 	if err != nil {
 		t.Fatal(err)
+	}
+	if req.EnhancedContinuity {
+		found := false
+		for _, c := range state.CriticReviews {
+			found = found || len(c.Continuity) > 0
+		}
+		if !found {
+			t.Fatal("enabled check not executed")
+		}
 	}
 	r.Result = &state
 	r.DraftVersion = state.DraftVersion
@@ -74,7 +95,8 @@ func exercisePlannedRun(t *testing.T, s *Store, scope string, p planning.Chapter
 	}
 	r, _, err = s.ClaimAction(ctx, r.ID, orchestration.HumanAction{ID: rand.Text(), Type: "approve", DraftVersion: r.DraftVersion})
 	if err != nil {
-		t.Fatal("approve", err)
+		saved, _ := s.GetRun(ctx, req.RequestID)
+		t.Fatalf("approve: %v; status=%s block=%s result=%s route=%+v", err, saved.Status, saved.ApprovalBlock, saved.Result.Status, saved.Result.Route)
 	}
 	if err = app.ExecuteHuman(ctx, cfg, r, s); err != nil {
 		t.Fatal(err)

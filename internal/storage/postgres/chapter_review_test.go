@@ -14,7 +14,7 @@ func exerciseChapterReview(t *testing.T, s *Store, scope string, a app.ChapterAs
 	t.Helper()
 	ctx := context.Background()
 	cfg.MaxTokens = 120000
-	req := app.ChapterReviewRequest{RequestID: rand.Text(), AssemblyID: a.ID, AssemblyVersion: a.Version, AssemblyDigest: a.Digest}
+	req := app.ChapterReviewRequest{EnhancedContinuity: true, RequestID: rand.Text(), AssemblyID: a.ID, AssemblyVersion: a.Version, AssemblyDigest: a.Digest}
 	job, created, err := s.StartChapterReview(ctx, scope, req, cfg)
 	if err != nil || !created {
 		t.Fatal("start chapter review", err)
@@ -22,7 +22,15 @@ func exerciseChapterReview(t *testing.T, s *Store, scope string, a app.ChapterAs
 	if again, fresh, e := s.StartChapterReview(ctx, scope, req, cfg); e != nil || fresh || again.ID != job.ID {
 		t.Fatal("review retry started twice", e)
 	}
+	if !job.Input.EnhancedContinuity {
+		t.Fatal("chapter option was not frozen")
+	}
 	changed := req
+	changed.EnhancedContinuity = false
+	if _, _, e := s.StartChapterReview(ctx, scope, changed, cfg); !errors.Is(e, app.ErrActionMismatch) {
+		t.Fatal("chapter option mismatch accepted", e)
+	}
+	changed = req
 	changed.AssemblyVersion++
 	if _, _, e := s.StartChapterReview(ctx, scope, changed, cfg); !errors.Is(e, app.ErrActionMismatch) {
 		t.Fatal("changed idempotent request accepted", e)
@@ -49,7 +57,7 @@ func exerciseChapterReview(t *testing.T, s *Store, scope string, a app.ChapterAs
 		t.Fatal("decision retry", e)
 	}
 	listing, err := s.ChapterReviews(ctx, scope, a.ID)
-	if err != nil || len(listing.Jobs) != 1 || len(listing.Jobs[0].Calls) != 2 || !listing.Current {
+	if err != nil || len(listing.Jobs) != 1 || len(listing.Jobs[0].Calls) != 3 || !listing.Current {
 		t.Fatal("trace listing", err, listing)
 	}
 	publication := exerciseChapterPublication(t, s, scope, approved)

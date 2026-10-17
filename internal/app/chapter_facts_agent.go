@@ -44,7 +44,7 @@ func extractChapterFactsWithModel(ctx context.Context, cfg config.Config, in Cha
 		}
 		return nil
 	}
-	guard := model.NewGuard(chat, model.Limits{Calls: cfg.MaxCalls, Tokens: cfg.MaxTokens, OutputTokens: cfg.MaxOutputTokens, Timeout: cfg.CallTimeout, ModelName: cfg.ModelName, OnCall: record})
+	guard := model.NewGuard(chat, model.Limits{Calls: cfg.MaxCalls, Tokens: cfg.MaxTokens, OutputTokens: cfg.MaxOutputTokens, ConsistencyOutputTokens: cfg.ConsistencyOutputTokens, ConsistencyTimeout: cfg.ConsistencyTimeout, Timeout: cfg.CallTimeout, ModelName: cfg.ModelName, OnCall: record})
 	raw, err := json.Marshal(in)
 	if err != nil {
 		return ChapterFactsOutput{}, err

@@ -29,9 +29,10 @@ func Critique(ctx context.Context, chat model.ChatModel, segments []manuscript.S
 		return nil, model.Usage{}, err
 	}
 	result, usage, err := parse.Generate[contracts.CriticOutput](ctx, chat, model.Input{
-		Role: "ai_taste", Task: `检查套话，返回 {"findings":[]}。问题必须引用原文并提供原因和修改建议。`,
+		Role: "ai_taste", Task: `检查套话、重复描写和过度解释。逐项引用原文并给出原因和修改建议；只有未发现可支持问题时才返回空 findings。`,
 		Material: material, OutputSchema: contracts.CriticSchema,
 	}, func(out contracts.CriticOutput) error {
+		normalizeNeighborRefs(out.Findings, segments, context.Neighbors)
 		// Schema 负责字段与枚举；领域规则负责“这句证据是否真的在本稿里”。
 		_, err := review.Aggregate(out.Findings, segments, version, context.ReadingSources()...)
 		return err

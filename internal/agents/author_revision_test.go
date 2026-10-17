@@ -64,3 +64,15 @@ func TestUnchangedTargetCannotPassAuthorCheck(t *testing.T) {
 		t.Fatal("unchanged target passed")
 	}
 }
+
+func TestAuthorRewriteDeletionAndMissingOutput(t *testing.T) {
+	s := manuscript.Segment{ID: "s", Text: "前文。多余总结。后文。"}
+	req := manuscript.AuthorRewrite{SegmentID: s.ID, Original: s.Text, Start: 3, End: 8, Instruction: "删去多余总结"}
+	got, _, err := RewriteAuthor(context.Background(), model.NewFake([]model.Step{{Role: "planned_writer", Content: `{"text":""}`}}), []manuscript.Segment{s}, manuscript.ContextBundle{}, req)
+	if err != nil || got[0].Text != "前文。后文。" {
+		t.Fatalf("explicit empty replacement: %v %v", got, err)
+	}
+	if _, _, err = RewriteAuthor(context.Background(), model.NewFake([]model.Step{{Role: "planned_writer", Content: `{}`}}), []manuscript.Segment{s}, manuscript.ContextBundle{}, req); err == nil {
+		t.Fatal("missing output treated as deletion")
+	}
+}

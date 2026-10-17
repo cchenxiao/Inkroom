@@ -70,6 +70,9 @@ func freezeNeighbors(ctx context.Context, tx pgx.Tx, scope string, p planning.Ch
 
 // Working prose uses saved manuscript heads, including unapproved candidates and direct edits.
 // Never read partially streamed model output or unsaved browser buffers.
+// Rank each head by this beat's last narrative change, not the whole draft save time:
+// saving a different beat in a chapter must not resurrect its older sibling text.
+// Explicit adoption is also author intent and supersedes older unadopted candidates.
 func workingPassage(ctx context.Context, q queryRow, scope, chapter, beat string) (manuscript.Passage, error) {
 	var p manuscript.Passage
 	var raw []byte
@@ -80,8 +83,28 @@ func workingPassage(ctx context.Context, q queryRow, scope, chapter, beat string
         JOIN LATERAL(SELECT r.id FROM runs r JOIN planning_run_inputs b ON b.run_id=r.id
           WHERE r.chapter_id=h.id AND r.branch_id=h.branch_id AND b.scope=$1 AND b.chapter_id=$2
           ORDER BY r.created_at DESC,r.id DESC LIMIT 1) owner ON true
+        JOIN LATERAL (
+          SELECT max(changed.created_at) AS modified_at FROM (
+            SELECT history.created_at, history.narrative,
+                   lag(history.narrative) OVER (ORDER BY history.draft_version) AS previous
+            FROM (
+              SELECT prior.draft_version, prior.created_at,
+                COALESCE((SELECT jsonb_agg(part - 'version' - 'chapterId' - 'order' ORDER BY ordinal)
+                  FROM jsonb_array_elements(prior.segments) WITH ORDINALITY AS pieces(part,ordinal)
+                  WHERE part->>'beatId'=$3),'[]'::jsonb) AS narrative
+              FROM chapter_versions prior
+              WHERE prior.chapter_id=v.chapter_id AND prior.branch_id=v.branch_id
+                AND prior.draft_version<=v.draft_version
+            ) history
+          ) changed WHERE changed.narrative IS DISTINCT FROM changed.previous
+        ) freshness ON true
+        LEFT JOIN LATERAL (
+          SELECT max(c.created_at) AS adopted_at FROM manuscript_commits c
+          WHERE c.chapter_id=v.chapter_id AND c.branch_id=v.branch_id AND c.draft_version<=v.draft_version
+          AND EXISTS(SELECT 1 FROM jsonb_array_elements(c.payload->'segments') s WHERE s->>'beatId'=$3)
+        ) adoption ON true
         WHERE EXISTS(SELECT 1 FROM jsonb_array_elements(v.segments) s WHERE s->>'beatId'=$3)
-        ORDER BY v.created_at DESC,v.chapter_id DESC LIMIT 1`, scope, chapter, beat).Scan(&p.DraftID, &p.RunID, &p.Version, &raw, &adopted)
+        ORDER BY GREATEST(freshness.modified_at,adoption.adopted_at) DESC,v.created_at DESC,v.chapter_id DESC LIMIT 1`, scope, chapter, beat).Scan(&p.DraftID, &p.RunID, &p.Version, &raw, &adopted)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return adoptedPassage(ctx, q, scope, chapter, beat)
 	}
@@ -138,6 +161,11 @@ func neighborsCurrent(ctx context.Context, q queryRow, p *app.PlannedRunSource) 
 			}
 		}
 	}
+	return true, nil
+}
+
+// Adoption of this target is a concurrency boundary; neighboring prose is review evidence.
+func baselineCurrent(ctx context.Context, q queryRow, p *app.PlannedRunSource) (bool, error) {
 	for _, source := range p.Baseline {
 		current, err := adoptedPassage(ctx, q, p.Scope, p.ChapterID, source.BeatID)
 		if err != nil {

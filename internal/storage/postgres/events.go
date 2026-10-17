@@ -19,6 +19,7 @@ const snapshotSQL = `SELECT r.payload,r.event_sequence,
  COALESCE((SELECT sum((record->'usage'->>'outputTokens')::bigint) FROM llm_calls WHERE run_id=r.id),0),
  COALESCE((SELECT bool_and(phase='finished' AND (record->'usage'->>'known')::boolean) FROM llm_calls WHERE run_id=r.id),true),
  ARRAY(SELECT record->>'role' FROM llm_calls WHERE run_id=r.id AND phase='started' ORDER BY call_number),
+ COALESCE((SELECT jsonb_agg(record ORDER BY call_number) FROM llm_calls WHERE run_id=r.id AND phase='started'),'[]'::jsonb),
  COALESCE((SELECT jsonb_agg(payload ORDER BY draft_version) FROM critic_lookups WHERE run_id=r.id),'[]'::jsonb)
  FROM runs r WHERE r.id=$1`
 
@@ -27,9 +28,9 @@ type queryRow interface {
 }
 
 func snapshot(ctx context.Context, q queryRow, id string) (app.Run, error) {
-	var raw, checks []byte
+	var raw, checks, calls []byte
 	var r app.Run
-	err := q.QueryRow(ctx, snapshotSQL, id, orchestration.HumanWorkflowVersion).Scan(&raw, &r.EventSequence, &r.CanResume, &r.Usage.InputTokens, &r.Usage.OutputTokens, &r.Usage.Known, &r.ActiveRoles, &checks)
+	err := q.QueryRow(ctx, snapshotSQL, id, orchestration.HumanWorkflowVersion).Scan(&raw, &r.EventSequence, &r.CanResume, &r.Usage.InputTokens, &r.Usage.OutputTokens, &r.Usage.Known, &r.ActiveRoles, &calls, &checks)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return r, app.ErrNotFound
 	}
@@ -40,7 +41,15 @@ func snapshot(ctx context.Context, q queryRow, id string) (app.Run, error) {
 	if err != nil {
 		return r, err
 	}
+	// Older direct-save code marked committed runs stale when a shared draft changed.
+	// Restore the immutable adoption in the read model; the current candidate stays separate.
+	if stored.CommitID != "" && stored.Status == "stale" {
+		stored.Status, stored.Error = "committed", ""
+	}
 	stored.EventSequence, stored.CanResume, stored.Usage, stored.ActiveRoles = r.EventSequence, r.CanResume, r.Usage, r.ActiveRoles
+	if err = json.Unmarshal(calls, &stored.ActiveCalls); err != nil {
+		return r, err
+	}
 	if err = json.Unmarshal(checks, &stored.CriticLookups); err != nil {
 		return r, err
 	}
@@ -53,7 +62,7 @@ func snapshot(ctx context.Context, q queryRow, id string) (app.Run, error) {
 	if current, e := planningRunCurrent(ctx, q, stored.Planning); e != nil {
 		return stored, e
 	} else if !current && stored.Status != "committed" {
-		stored.ApprovalBlock = "规划或前后文已更新，旧审核失效；请按最新上下文重新复检"
+		stored.ApprovalBlock = "本段采用版本或创作设定已更新，请核对当前稿后复检"
 		stored.InstructionBlock = stored.ApprovalBlock
 		stored.CanResume = false
 		if stored.Status != "running" && stored.Status != "committed" {
@@ -61,6 +70,14 @@ func snapshot(ctx context.Context, q queryRow, id string) (app.Run, error) {
 		}
 	}
 
+	stored.NeighborsChanged = false
+	if stored.Planning != nil {
+		current, e := neighborsCurrent(ctx, q, stored.Planning)
+		if e != nil {
+			return stored, e
+		}
+		stored.NeighborsChanged = !current
+	}
 	return stored, nil
 }
 

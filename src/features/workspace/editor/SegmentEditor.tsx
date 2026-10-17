@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { InlineReview, inlineReviewKey, reviewAnchor } from './inline-review';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { BubbleMenu, EditorContent, useEditor, type JSONContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
@@ -20,6 +21,7 @@ import {
   EntityMention,
   ForeshadowMark,
   ManuscriptAnnotations,
+  manuscriptAnnotationsKey,
   PovMark,
   SegmentBlock,
 } from './extensions';
@@ -111,7 +113,11 @@ export function SegmentEditor({
   onSelection,
   onFinding,
   availableActions,
+  review,
+  editRequest,
 }: {
+  editRequest?: { quote: string; requestId: number };
+  review?: { id: string; quote: string; content: ReactNode };
   availableActions?: SelectionAction[];
   segment: Segment;
   text: string;
@@ -124,10 +130,18 @@ export function SegmentEditor({
   onSelection: (selection: SelectedText) => void;
   onFinding: (id: string) => void;
 }) {
+  const [reviewHost] = useState(() => {
+    const host = document.createElement('div');
+    host.className = 'inline-review-host';
+    host.contentEditable = 'false';
+    return host;
+  });
+  const [reviewLocated, setReviewLocated] = useState(true);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; quote: string } | null>(
     null,
   );
   const menuRef = useRef<HTMLDivElement>(null);
+  const handledEdit = useRef<number>();
   useEffect(() => {
     if (!contextMenu) return;
     menuRef.current?.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus();
@@ -174,17 +188,14 @@ export function SegmentEditor({
         horizontalRule: false,
       }),
       SegmentBlock,
+      InlineReview,
       EntityMention,
       ForeshadowMark,
       PovMark,
       CommentMark,
-      ManuscriptAnnotations.configure({
-        heat,
-        heatmap,
-        findings: JSON.parse(annotationFindings) as Finding[],
-      }),
+      ManuscriptAnnotations,
     ],
-    [heat, heatmap, annotationFindings],
+    [],
   );
   const editor = useEditor(
     {
@@ -220,16 +231,72 @@ export function SegmentEditor({
     editor?.setEditable(editable, false);
   }, [editable, editor]);
   useEffect(() => {
+    if (!editor || editor.isDestroyed) return;
+    const scroll = editor.view.dom.closest('.manuscript-scroll');
+    const top = scroll?.scrollTop;
+    editor.view.dispatch(
+      editor.state.tr.setMeta(manuscriptAnnotationsKey, {
+        heat,
+        heatmap,
+        findings: JSON.parse(annotationFindings),
+      }),
+    );
+    if (scroll && top !== undefined) scroll.scrollTop = top;
+  }, [editor, heat, heatmap, annotationFindings]);
+  useEffect(() => {
+    if (!editor || !editable || !editRequest || handledEdit.current === editRequest.requestId)
+      return;
+    handledEdit.current = editRequest.requestId;
+    const selection = editor.state.selection;
+    if (editor.state.doc.textBetween(selection.from, selection.to, '\n') === editRequest.quote) {
+      editor.commands.focus(undefined, { scrollIntoView: false });
+      return;
+    }
+    const text = editor.getText({ blockSeparator: '\n' });
+    const start = text.indexOf(editRequest.quote);
+    if (start < 0 || !editRequest.quote) return;
+    let offset = 0,
+      from = 0,
+      to = 0;
+    editor.state.doc.descendants((node, pos) => {
+      if (!node.isTextblock) return;
+      if (start >= offset && start < offset + node.content.size) from = pos + 1 + start - offset;
+      const end = start + editRequest.quote.length;
+      if (end > offset && end <= offset + node.content.size) to = pos + 1 + end - offset;
+      offset += node.content.size + 1;
+    });
+    if (!from || !to) return;
+    editor.commands.setTextSelection({ from, to });
+    editor.commands.focus(undefined, { scrollIntoView: false });
+  }, [editor, editable, editRequest]);
+  useEffect(() => {
     if (
       editor &&
       (editor.getText({ blockSeparator: '\n' }) !== text ||
-        annotationRevisionRef.current !== annotationRevision) &&
-      !editor.isFocused
+        annotationRevisionRef.current !== annotationRevision)
     ) {
+      const scroll = editor.view.dom.closest('.manuscript-scroll');
+      const top = scroll?.scrollTop;
+      const { from, to } = editor.state.selection;
       editor.commands.setContent(contentFor(segment, text, bible), false);
+      const end = editor.state.doc.content.size;
+      editor.commands.setTextSelection({ from: Math.min(from, end), to: Math.min(to, end) });
+      if (scroll && top !== undefined) scroll.scrollTop = top;
       annotationRevisionRef.current = annotationRevision;
     }
-  }, [text, editor, bible, segment, annotationRevision]);
+  }, [text, editor, bible, segment, annotationRevision, editable]);
+  const reviewId = review?.id,
+    reviewQuote = review?.quote;
+  useEffect(() => {
+    if (!editor || editor.isDestroyed) return;
+    setReviewLocated(reviewQuote ? reviewAnchor(editor.state.doc, reviewQuote) !== null : false);
+    editor.view.dispatch(
+      editor.state.tr.setMeta(
+        inlineReviewKey,
+        reviewId ? { id: reviewId, quote: reviewQuote ?? '', host: reviewHost } : null,
+      ),
+    );
+  }, [editor, reviewId, reviewQuote, reviewHost, text]);
   const select = (action: SelectionAction) => {
     if (!editor) return;
     const { from, to } = editor.state.selection;
@@ -260,7 +327,7 @@ export function SegmentEditor({
       : !['edit', 'rewrite', 'review'].includes(action),
   );
   const openContext = (event: React.MouseEvent | React.KeyboardEvent) => {
-    if (!editor) return;
+    if (!editor || (event.target as HTMLElement).closest('.inline-review-host')) return;
     event.preventDefault();
     const native = window.getSelection();
     const selected =
@@ -294,6 +361,18 @@ export function SegmentEditor({
       }}
     >
       <EditorContent editor={editor} />
+      {review &&
+        createPortal(
+          <>
+            {!reviewLocated && (
+              <p className="inline-review-missing">
+                原文已变化，暂无法定位这条意见，请先核对引用。
+              </p>
+            )}
+            {review.content}
+          </>,
+          reviewHost,
+        )}
       {contextMenu &&
         createPortal(
           <div

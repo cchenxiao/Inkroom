@@ -74,3 +74,29 @@ func TestRevisionLoop(t *testing.T) {
 		})
 	}
 }
+
+func TestInitialProgressSerializesEmptyCriticReviews(t *testing.T) {
+	ctx := context.Background()
+	bundle, steps, err := demo.Load("p3-only")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var sawInitial bool
+	graph, err := orchestration.NewChapter(ctx, model.NewFake(steps), orchestration.Options{MaxRounds: 2, OnProgress: func(state orchestration.ChapterState) {
+		if state.CurrentNode == "draft" {
+			sawInitial = true
+			if state.CriticReviews == nil {
+				t.Error("draft progress must expose an empty review list before critics start")
+			}
+		}
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = graph.Invoke(ctx, bundle); err != nil {
+		t.Fatal(err)
+	}
+	if !sawInitial {
+		t.Fatal("no draft progress emitted")
+	}
+}

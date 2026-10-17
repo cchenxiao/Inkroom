@@ -13,6 +13,7 @@ export interface ManuscriptPart {
   title: string;
   segments: Segment[];
   accepted: boolean;
+  adoptedVersion?: number;
   loading?: boolean;
   loadError?: boolean;
   onRetry?: () => void;
@@ -29,12 +30,18 @@ export function WritingManuscript({
   localText,
   dirty,
   blocked,
+  reviewNotice,
+  editRequest,
   busy,
   onChange,
   onSelectBeat,
   onFinding,
   onSelection,
   onSave,
+  onDiscard,
+  saveBlockedReason,
+  saveError,
+  onRetrySave,
   onStart,
   onReview,
   startDisabled,
@@ -52,12 +59,18 @@ export function WritingManuscript({
   localText: Record<string, string>;
   dirty: boolean;
   blocked: string;
+  reviewNotice?: ReactNode;
+  editRequest?: { segmentId: string; quote: string; requestId: number };
   busy: boolean;
   onChange: (id: string, text: string) => void;
   onSelectBeat: (id: string) => void;
   onFinding: (id: string) => void;
   onSelection: (selection: SelectedText) => void;
   onSave: () => void;
+  onDiscard?: () => void;
+  saveBlockedReason?: string;
+  saveError?: string;
+  onRetrySave?: () => void;
   onStart: () => void;
   onReview: (beatId?: string) => void;
   startDisabled: boolean;
@@ -65,6 +78,8 @@ export function WritingManuscript({
   onRewrite: (beatId: string) => void;
 }) {
   const [mode, setMode] = useState<EditorMode>('editor');
+  const initialLoading = parts.length > 0 && parts.every((p) => p.loading && !p.segments.length);
+  const incomplete = parts.some((p) => p.loading || p.loadError);
   const scrollRef = useRef<HTMLDivElement>(null);
   const selectedInProse = useRef(false);
   const focus = useUIStore((s) => s.focus),
@@ -84,13 +99,20 @@ export function WritingManuscript({
         ?.querySelector('.writing-beat-heading')
         ?.scrollIntoView({ block: 'nearest' });
   }, [activeBeat]); // Keep scroll still during SSE updates and author input.
+  const selectedSegment = findings.find((f) => f.id === selectedFinding)?.segmentId;
+  const selectedQuote = findings.find((f) => f.id === selectedFinding)?.quote;
+  const findingLocation = useRef({ selectedSegment, selectedQuote });
+  findingLocation.current = { selectedSegment, selectedQuote };
   useEffect(() => {
-    const segment = findings.find((f) => f.id === selectedFinding)?.segmentId;
-    if (segment)
-      scrollRef.current
-        ?.querySelector(`[data-manuscript-segment="${CSS.escape(segment)}"]`)
-        ?.scrollIntoView({ block: 'center', behavior: 'smooth' });
-  }, [selectedFinding, findings]);
+    const segment = findingLocation.current.selectedSegment;
+    if (!segment) return;
+    const row = scrollRef.current?.querySelector(
+      `[data-manuscript-segment="${CSS.escape(segment)}"]`,
+    );
+    const mark =
+      selectedFinding && row?.querySelector(`[data-finding-id="${CSS.escape(selectedFinding)}"]`);
+    (mark || row)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, [selectedFinding]); // Only choosing a different problem is navigation; changed quotes are not.
   return (
     <section
       className={`workspace-center ${mode === 'final' ? 'is-final' : ''}`}
@@ -117,6 +139,7 @@ export function WritingManuscript({
         focus={focus}
         onFocus={() => useUIStore.getState().setFocus(!focus)}
       />
+      {reviewNotice}
       {blocked && (
         <div className="manuscript-alert" role="alert">
           {blocked}
@@ -124,134 +147,153 @@ export function WritingManuscript({
       )}
       <div className="manuscript-region">
         <div className="manuscript-scroll" ref={scrollRef}>
-          <div className="manuscript-page">
-            {parts.map((part) => (
-              <section
-                key={part.id}
-                className={`writing-beat ${part.id === activeBeat ? 'is-active' : ''}`}
-                aria-label={part.title}
-                aria-current={part.id === activeBeat ? 'true' : undefined}
-              >
-                <div className="writing-beat-heading">
-                  <button
-                    aria-pressed={part.id === activeBeat}
-                    onClick={() => onSelectBeat(part.id)}
-                    disabled={dirty || busy}
-                  >
-                    {part.title}
-                  </button>
-                  <div className="beat-actions">
-                    {part.id === activeBeat && (
-                      <span className="beat-selection-mark">
-                        <Check size={12} />
-                        已选中
-                      </span>
-                    )}
-                    <span>
-                      {part.accepted ? t.accepted : part.segments.length ? t.candidate : ''}
-                    </span>
-                    {!!part.segments.length && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        disabled={dirty || busy}
-                        onClick={() => {
-                          onReview(part.id);
-                        }}
-                      >
-                        作者审核
-                      </Button>
-                    )}
-                    {!!part.segments.length && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        disabled={dirty || busy}
-                        onClick={() => onRewrite(part.id)}
-                      >
-                        重写本段
-                      </Button>
-                    )}
-                  </div>
+          <div className="manuscript-page" aria-busy={initialLoading}>
+            {initialLoading && (
+              <div className="manuscript-loading" role="status" aria-label="正在读取章节正文">
+                <p>正在读取章节正文…</p>
+                <div aria-hidden="true" className="manuscript-loading-lines">
+                  <i />
+                  <i />
+                  <i />
                 </div>
-                {!part.segments.length ? (
-                  <div className="writing-empty">
-                    <PenLine size={22} />
-                    <h3>
-                      {part.loading
-                        ? '正在读取本段正文…'
-                        : part.loadError
-                          ? '本段正文暂时无法读取'
-                          : t.empty}
-                    </h3>
-                    <p>
-                      {part.loading
-                        ? '正在查找已生成的候选稿。'
-                        : part.loadError
-                          ? '读取失败不代表正文不存在，请重试。'
-                          : t.emptyHint}
-                    </p>
-                    {part.loadError ? (
-                      <Button onClick={part.onRetry}>重新读取正文</Button>
-                    ) : part.loading ? null : part.id === activeBeat ? (
-                      <Button
-                        disabled={startDisabled}
-                        disabledReason={blocked}
-                        loading={busy}
-                        onClick={onStart}
-                      >
-                        {t.start}
-                      </Button>
-                    ) : (
-                      <Button disabled={dirty || busy} onClick={() => onSelectBeat(part.id)}>
-                        选择这一段
-                      </Button>
-                    )}
-                  </div>
-                ) : (
-                  part.segments.map((segment) => (
-                    <article
-                      className={`manuscript-segment ${part.id === activeBeat ? 'segment-selected' : ''}`}
-                      key={`${part.id}:${segment.id}`}
-                      data-manuscript-segment={segment.id}
-                      data-segment-order={segment.order}
-                      data-beat-title={part.title}
-                      onClick={(event) => {
-                        if (
-                          !dirty &&
-                          !busy &&
-                          part.id !== activeBeat &&
-                          (event.target as HTMLElement).closest('.tiptap') &&
-                          !window.getSelection()?.toString()
-                        ) {
-                          selectedInProse.current = true;
-                          onSelectBeat(part.id);
-                        }
-                      }}
+              </div>
+            )}
+            {!initialLoading &&
+              parts.map((part) => (
+                <section
+                  key={part.id}
+                  className={`writing-beat ${part.id === activeBeat ? 'is-active' : ''}`}
+                  aria-label={part.title}
+                  aria-current={part.id === activeBeat ? 'true' : undefined}
+                >
+                  <div className="writing-beat-heading">
+                    <button
+                      aria-pressed={part.id === activeBeat}
+                      onClick={() => onSelectBeat(part.id)}
+                      disabled={dirty || busy}
                     >
-                      <SegmentEditor
-                        segment={segment}
-                        text={localText[segment.id] ?? segment.text}
-                        findings={findings.filter((f) => f.segmentId === segment.id)}
-                        editable={editable && part.id === activeBeat && mode !== 'final'}
-                        heatmap={heatmap && mode !== 'final'}
-                        onChange={onChange}
-                        onFocus={() => {}}
-                        onFinding={onFinding}
-                        onSelection={(selection) => {
-                          if (selection.action === 'edit') setMode('editor');
-                          onSelection(selection);
+                      {part.title}
+                    </button>
+                    <div className="beat-actions">
+                      {part.id === activeBeat && (
+                        <span className="beat-selection-mark">
+                          <Check size={12} />
+                          已选中
+                        </span>
+                      )}
+                      <span>
+                        {part.accepted
+                          ? t.accepted
+                          : part.segments.length
+                            ? part.adoptedVersion
+                              ? `新候选 · 已采用 v${part.adoptedVersion} 保留`
+                              : t.candidate
+                            : ''}
+                      </span>
+                      {!!part.segments.length && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          disabled={dirty || busy}
+                          onClick={() => {
+                            onReview(part.id);
+                          }}
+                        >
+                          作者审核
+                        </Button>
+                      )}
+                      {!!part.segments.length && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          disabled={dirty || busy}
+                          onClick={() => onRewrite(part.id)}
+                        >
+                          重写本段
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                  {part.loading && !part.segments.length ? (
+                    <p className="manuscript-part-loading" role="status">
+                      正在读取本段正文…
+                    </p>
+                  ) : !part.segments.length ? (
+                    <div className="writing-empty">
+                      <PenLine size={22} />
+                      <h3>{part.loadError ? '本段正文暂时无法读取' : t.empty}</h3>
+                      <p>{part.loadError ? '读取失败不代表正文不存在，请重试。' : t.emptyHint}</p>
+                      {part.loadError ? (
+                        <Button onClick={part.onRetry}>重新读取正文</Button>
+                      ) : part.id === activeBeat ? (
+                        <Button
+                          disabled={startDisabled}
+                          disabledReason={blocked}
+                          loading={busy}
+                          onClick={onStart}
+                        >
+                          {t.start}
+                        </Button>
+                      ) : (
+                        <Button disabled={dirty || busy} onClick={() => onSelectBeat(part.id)}>
+                          选择这一段
+                        </Button>
+                      )}
+                    </div>
+                  ) : (
+                    part.segments.map((segment) => (
+                      <article
+                        className={`manuscript-segment ${part.id === activeBeat ? 'segment-selected' : ''}`}
+                        key={`${part.id}:${segment.id}`}
+                        data-manuscript-segment={segment.id}
+                        data-segment-order={segment.order}
+                        data-beat-title={part.title}
+                        onClick={(event) => {
+                          if (
+                            !dirty &&
+                            !busy &&
+                            part.id !== activeBeat &&
+                            (event.target as HTMLElement).closest('.tiptap') &&
+                            !window.getSelection()?.toString()
+                          ) {
+                            selectedInProse.current = true;
+                            onSelectBeat(part.id);
+                          }
                         }}
-                        availableActions={['edit', 'instruct', 'rewrite', 'review', 'bible']}
-                      />
-                      {selectedFinding &&
-                        findings.find((f) => f.id === selectedFinding)?.segmentId === segment.id &&
-                        children}
-                    </article>
-                  ))
-                )}
-              </section>
-            ))}
+                      >
+                        <SegmentEditor
+                          segment={segment}
+                          editRequest={
+                            editRequest?.segmentId === segment.id ? editRequest : undefined
+                          }
+                          text={localText[segment.id] ?? segment.text}
+                          findings={findings.filter((f) => f.segmentId === segment.id)}
+                          editable={editable && part.id === activeBeat && mode !== 'final'}
+                          heatmap={heatmap && mode !== 'final'}
+                          onChange={onChange}
+                          onFocus={() => {}}
+                          onFinding={onFinding}
+                          onSelection={(selection) => {
+                            selectedInProse.current = part.id !== activeBeat;
+                            if (selection.action === 'edit') setMode('editor');
+                            onSelection(selection);
+                          }}
+                          review={
+                            selectedFinding && selectedSegment === segment.id && children
+                              ? {
+                                  id: selectedFinding,
+                                  quote: selectedQuote ?? '',
+                                  content: children,
+                                }
+                              : undefined
+                          }
+                          availableActions={['edit', 'instruct', 'rewrite', 'review', 'bible']}
+                        />
+                      </article>
+                    ))
+                  )}
+                </section>
+              ))}
           </div>
         </div>
         <ManuscriptGutter
@@ -261,33 +303,67 @@ export function WritingManuscript({
           revision={parts.map((p) => p.segments.map((s) => s.version).join()).join()}
         />
       </div>
+      {dirty && (
+        <section className="manuscript-edit-actions" aria-label="正文修改">
+          <div className="manuscript-edit-summary" role="status">
+            <strong>正文有未保存修改</strong>
+            <span>{parts.find((part) => part.id === activeBeat)?.title} · 已暂存本机</span>
+          </div>
+          <div className="manuscript-edit-buttons">
+            {onDiscard && (
+              <Button size="sm" variant="ghost" disabled={busy} onClick={onDiscard}>
+                放弃修改
+              </Button>
+            )}
+            <Button
+              size="sm"
+              variant="default"
+              disabled={!onRetrySave && (!editable || busy || !!saveBlockedReason)}
+              disabledReason={saveBlockedReason}
+              onClick={onRetrySave ?? onSave}
+            >
+              {onRetrySave ? t.retry : busy ? '正在保存…' : t.recheck}
+            </Button>
+          </div>
+          {(saveError || saveBlockedReason) && (
+            <p className="manuscript-edit-feedback" role={saveError ? 'alert' : 'status'}>
+              {saveError || saveBlockedReason}
+            </p>
+          )}
+        </section>
+      )}
       <footer className="manuscript-status">
         <div role="status">
           {dirty ? <Cloud size={12} /> : <Check size={12} />}
-          <span>{dirty ? t.saveLocal : busy ? '正在处理，完成后更新审核结果' : t.saved}</span>
+          <span>
+            {dirty
+              ? t.saveLocal
+              : incomplete
+                ? '正文尚未完整载入'
+                : busy
+                  ? '正在处理，完成后更新审核结果'
+                  : t.saved}
+          </span>
           {!dirty && (
             <span className="selected-beat-status">
               已选：{parts.find((part) => part.id === activeBeat)?.title}
             </span>
           )}
-          {dirty && (
-            <Button size="sm" disabled={!editable || busy} onClick={onSave}>
-              {t.recheck}
-            </Button>
-          )}
         </div>
         <StatNumber>
-          {parts
-            .reduce(
-              (n, p) =>
-                n +
-                p.segments.reduce(
-                  (v, s) => v + (localText[s.id] ?? s.text).replace(/\s/g, '').length,
+          {incomplete
+            ? '—'
+            : parts
+                .reduce(
+                  (n, p) =>
+                    n +
+                    p.segments.reduce(
+                      (v, s) => v + (localText[s.id] ?? s.text).replace(/\s/g, '').length,
+                      0,
+                    ),
                   0,
-                ),
-              0,
-            )
-            .toLocaleString()}{' '}
+                )
+                .toLocaleString()}{' '}
           字
         </StatNumber>
       </footer>

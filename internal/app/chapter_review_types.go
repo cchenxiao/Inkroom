@@ -26,10 +26,11 @@ type ChapterReviewPart struct {
 	Facts     []ChapterReviewSource `json:"facts"`
 }
 type ChapterReviewInput struct {
-	AssemblyID     string              `json:"assemblyId"`
-	DraftVersion   int                 `json:"draftVersion"` // 此处是整章组稿版本，不能与 Beat draftVersion 混用。
-	AssemblyDigest string              `json:"assemblyDigest"`
-	Parts          []ChapterReviewPart `json:"parts"`
+	EnhancedContinuity bool                `json:"enhancedContinuity,omitempty"`
+	AssemblyID         string              `json:"assemblyId"`
+	DraftVersion       int                 `json:"draftVersion"` // 此处是整章组稿版本，不能与 Beat draftVersion 混用。
+	AssemblyDigest     string              `json:"assemblyDigest"`
+	Parts              []ChapterReviewPart `json:"parts"`
 }
 type ChapterEvidence struct {
 	Ref   string `json:"ref"`
@@ -49,10 +50,11 @@ type ChapterReviewOutput struct {
 	Critics []ChapterCriticResult `json:"critics"`
 }
 type ChapterReviewRequest struct {
-	RequestID       string `json:"requestId"`
-	AssemblyID      string `json:"assemblyId"`
-	AssemblyVersion int    `json:"assemblyVersion"`
-	AssemblyDigest  string `json:"assemblyDigest"`
+	EnhancedContinuity bool   `json:"enhancedContinuity,omitempty"`
+	RequestID          string `json:"requestId"`
+	AssemblyID         string `json:"assemblyId"`
+	AssemblyVersion    int    `json:"assemblyVersion"`
+	AssemblyDigest     string `json:"assemblyDigest"`
 }
 type ChapterReviewDecision struct {
 	RequestID       string    `json:"requestId"`

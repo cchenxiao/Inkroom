@@ -18,8 +18,19 @@ import (
 
 const HumanWorkflowVersion = "human.v1"
 
+// FindingDecision 保留作者对指定稿本版本的判断，不修改原始评审报告。
+type FindingDecision struct {
+	FindingID    string `json:"findingId"`
+	DraftVersion int    `json:"draftVersion"`
+	Decision     string `json:"decision"`
+	Reason       string `json:"reason"`
+}
+
 // ID 是作者一次操作的稳定业务键；网络重试沿用 ID，不是模型 attempt。
 type HumanAction struct {
+	ProposalID   string                    `json:"proposalId,omitempty"`
+	FindingID    string                    `json:"findingId,omitempty"`
+	Decision     string                    `json:"decision,omitempty"`
 	Rewrite      *manuscript.AuthorRewrite `json:"rewrite,omitempty"`
 	ID           string                    `json:"id"`
 	Type         string                    `json:"type"`
@@ -51,6 +62,12 @@ type HumanOptions struct {
 
 // ApprovalReason 是程序门禁，不由模型自报 approved。通过仅表示候选审核，正式 commit 在 I9。
 func ApprovalReason(s ChapterState) string {
+	if s.FindingProposal != nil {
+		return "还有未确认的局部修改预览，请先确认或放弃"
+	}
+	if s.ReviewPending {
+		return "局部修改尚未统一复审，请先复审当前稿"
+	}
 	if s.RewriteRequest() != nil {
 		checked := false
 		for _, c := range s.CriticReviews {
@@ -71,11 +88,23 @@ func ApprovalReason(s ChapterState) string {
 		}
 	}
 	for _, f := range s.Report.Findings {
-		if f.Severity != review.P3 || f.RequiresHuman || f.PossibleDialogueLie {
+		if f.Severity != review.P3 || ((f.RequiresHuman || f.PossibleDialogueLie) && !FindingKept(s, f.ID)) {
 			return "仍有阻断问题或待裁定事实，请先修改并复检"
 		}
 	}
 	return ""
+}
+
+// An author decision applies only to the reviewed manuscript version. P0–P2
+// and incomplete author-request checks still block approval independently.
+func FindingKept(s ChapterState, id string) bool {
+	for i := len(s.FindingDecisions) - 1; i >= 0; i-- {
+		d := s.FindingDecisions[i]
+		if d.FindingID == id && d.DraftVersion == s.DraftVersion {
+			return d.Decision == "keep"
+		}
+	}
+	return false
 }
 func InstructionReason(s ChapterState) string {
 	if s.ReviseRound >= s.MaxRounds {
@@ -94,7 +123,33 @@ func ValidateHumanAction(s ChapterState, a HumanAction) error {
 	if a.ID == "" || len(a.ID) > 100 || a.DraftVersion != s.DraftVersion {
 		return fmt.Errorf("操作标识或稿本版本无效")
 	}
+	if s.FindingProposal != nil && a.Type != "apply_finding" && a.Type != "discard_finding" {
+		return fmt.Errorf("请先确认或放弃当前修改预览")
+	}
+	if isFindingAction(a.Type) {
+		return validateFindingAction(s, a)
+	}
 	switch a.Type {
+	case "review_batch":
+		if !s.ReviewPending {
+			return fmt.Errorf("当前没有待统一复审的修改")
+		}
+	case "finding_decision":
+		if a.Decision != "keep" && a.Decision != "reopen" {
+			return fmt.Errorf("无效的问题处理方式")
+		}
+		if a.Decision == "keep" && utf8.RuneCountInString(a.Instruction) > 1000 {
+			return fmt.Errorf("保留原文的理由不能超过 1000 字")
+		}
+		if s.Report.DraftVersion != s.DraftVersion && !s.ReviewPending {
+			return fmt.Errorf("请先完成当前稿评审")
+		}
+		for _, f := range s.Report.Findings {
+			if f.ID == a.FindingID && f.ID != "author-request-review" {
+				return nil
+			}
+		}
+		return fmt.Errorf("问题不存在或版本已变化")
 	case "approve":
 		if why := ApprovalReason(s); why != "" {
 			return fmt.Errorf("%s", why)
@@ -171,6 +226,36 @@ func RunHuman(ctx context.Context, initial ChapterState, chat model.ChatModel, o
 		}
 		s := in.Chapter
 		expected := s.DraftVersion
+		if in.Action.Type == "review_batch" {
+			return in, nil
+		}
+		if isFindingAction(in.Action.Type) {
+			next, err := applyFindingAction(ctx, s, in.Action, chat)
+			if err != nil {
+				return in, err
+			}
+			next.Status, next.CurrentNode, next.NodePhase = "waiting_human", "human_gate", "finished"
+			next.Usage = opts.Usage()
+			origin := "agent"
+			if in.Action.Type == "edit_finding" {
+				origin = "human_inline"
+			}
+			if err := opts.Save(ctx, key, expected, next, origin); err != nil {
+				return in, err
+			}
+			in.Chapter = next
+			return in, nil
+		}
+		if in.Action.Type == "finding_decision" {
+			s.FindingDecisions = append(append([]FindingDecision{}, s.FindingDecisions...), FindingDecision{FindingID: in.Action.FindingID, DraftVersion: expected, Decision: in.Action.Decision, Reason: strings.TrimSpace(in.Action.Instruction)})
+			s.Status, s.CurrentNode, s.NodePhase = "waiting_human", "human_gate", "finished"
+			s.StopReason = "作者判断已保存，正文保持不变"
+			if err := opts.Save(ctx, key, expected, s, "human_decision"); err != nil {
+				return in, err
+			}
+			in.Chapter = s
+			return in, nil
+		}
 		origin := "agent"
 		s.Segments = append([]manuscript.Segment{}, s.Segments...)
 		if in.Action.Type == "inline_edit" {
@@ -268,6 +353,11 @@ func RunHuman(ctx context.Context, initial ChapterState, chat model.ChatModel, o
 			return in, err
 		}
 		s.Report = report
+		s.ReviewPending = false
+		s.FindingChanges = nil
+		// New reports may reuse model-generated IDs for different findings. Prior
+		// decisions remain in action/artifact history, never authorize a new report.
+		s.FindingDecisions = nil
 		s.Reviews = append(append([]review.Report{}, s.Reviews...), report)
 		s.Route = review.Route(report, s.Segments, s.Context, false, false)
 		s.Status = "waiting_human"
@@ -292,8 +382,11 @@ func RunHuman(ctx context.Context, initial ChapterState, chat model.ChatModel, o
 		if in.Action.Type == "approve" {
 			return compose.END, nil
 		}
+		if in.Action.Type == "finding_decision" || isFindingAction(in.Action.Type) {
+			return "human_gate", nil
+		}
 		return "recheck", nil
-	}, map[string]bool{"recheck": true, compose.END: true})); err != nil {
+	}, map[string]bool{"human_gate": true, "recheck": true, compose.END: true})); err != nil {
 		return initial, err
 	}
 	graph, err := g.Compile(ctx, compose.WithCheckPointStore(opts.Checkpoints), compose.WithGraphName(HumanWorkflowVersion), compose.WithMaxRunSteps(8))

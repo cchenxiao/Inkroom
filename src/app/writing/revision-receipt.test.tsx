@@ -46,3 +46,16 @@ it('does not describe a running request as already verified', () => {
   render(<RevisionReceipt run={{ ...run, status: 'running' }} />);
   expect(screen.getByText('正在修改与核对')).toBeInTheDocument();
 });
+it('keeps rechecks readable before critic results exist, without implying success', () => {
+  const view = render(
+    <RevisionReceipt
+      run={{ ...run, status: 'running', result: { ...run.result!, criticReviews: null } }}
+    />,
+  );
+  expect(screen.getByText('正在修改与核对')).toBeVisible();
+  expect(screen.queryByText('修改已核对，待你确认')).not.toBeInTheDocument();
+  view.rerender(
+    <RevisionReceipt run={{ ...run, result: { ...run.result!, criticReviews: null } }} />,
+  );
+  expect(screen.getByText('尚未核对修改要求')).toBeVisible();
+});

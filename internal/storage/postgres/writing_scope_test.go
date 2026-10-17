@@ -3,7 +3,6 @@ package postgres
 import (
 	"context"
 	"crypto/rand"
-	"errors"
 	"reflect"
 	"testing"
 
@@ -159,10 +158,10 @@ func exerciseWritingScopes(t *testing.T, s *Store, scope string, p planning.Chap
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Changing unadopted prose invalidates the neighboring draft before any adoption.
+	// Neighboring edits are advisory; the target remains available for author approval.
 	staleBeforeAdoption, e := s.GetRun(ctx, left.ID)
-	if e != nil || staleBeforeAdoption.Status != "stale" {
-		t.Fatal("unadopted change did not invalidate neighbor", e)
+	if e != nil || staleBeforeAdoption.Status != "waiting_human" || !staleBeforeAdoption.NeighborsChanged {
+		t.Fatal("neighbor edit blocked target approval or lost advisory", e)
 	}
 	adopt(right)
 	obsolete, e := s.PreviewChapterAssembly(ctx, scope, app.AssemblyPreviewRequest{ChapterID: p.ChapterID, Choices: map[string]string{first: commit.ID, second: commit.ID}})
@@ -170,11 +169,14 @@ func exerciseWritingScopes(t *testing.T, s *Store, scope string, p planning.Chap
 		t.Fatal("old chapter commit bypassed new beat adoption", e)
 	}
 	outdated, err := s.GetRun(ctx, left.ID)
-	if err != nil || outdated.Status != "stale" {
-		t.Fatal("changed neighbor not stale", err, outdated.Status)
+	if err != nil || outdated.Status != "waiting_human" || !outdated.NeighborsChanged {
+		t.Fatal("neighbor change must remain advisory", err, outdated.Status)
 	}
-	if _, _, err = s.ClaimAction(ctx, left.ID, orchestration.HumanAction{ID: rand.Text(), Type: "approve", DraftVersion: left.DraftVersion}); !errors.Is(err, app.ErrVersionMismatch) {
-		t.Fatal("stale neighbor approval accepted", err)
+	// The author can adopt left immediately after adopting right: no recheck cycle.
+	leftCommit := adopt(left)
+	leftSaved, err := s.GetRun(ctx, left.ID)
+	if err != nil || leftSaved.Status != "committed" || leftSaved.CommitID != leftCommit.ID {
+		t.Fatal("adoption lost", err)
 	}
 	refreshed := start("beat", first, &left, nil)
 	if refreshed.Result.Segments[0].Text != left.Result.Segments[0].Text {
@@ -207,4 +209,35 @@ func exerciseWritingScopes(t *testing.T, s *Store, scope string, p planning.Chap
 	if err != nil || !reflect.DeepEqual(old.Segments, commit.Segments) {
 		t.Fatal("old adopted chapter mutated", err)
 	}
+	// Adoption and review-only saves are separate: a version bump without a prose
+	// change still assembles; editing the second beat must not revoke the first.
+	finalChapter := start("chapter", "", nil, nil)
+	finalCommit := adopt(finalChapter)
+	secondPart := finalCommit.Segments[1]
+	same := start("chapter", "", &finalChapter, nil)
+	samePreview, err := s.PreviewChapterAssembly(ctx, scope, app.AssemblyPreviewRequest{ChapterID: p.ChapterID})
+	if err != nil || !samePreview.Ready {
+		t.Fatalf("same prose needs adoption again: %v %#v", err, samePreview.Slots)
+	}
+	_, err = s.EditSegment(ctx, finalCommit.ChapterID, "main", secondPart.ID, same.DraftVersion, secondPart.Text+" 后段新增动作。")
+	if err != nil {
+		t.Fatal(err)
+	}
+	next, err := s.PreviewChapterAssembly(ctx, scope, app.AssemblyPreviewRequest{ChapterID: p.ChapterID})
+	if err != nil || next.Ready || next.Slots[0].Part.CommitID != finalCommit.ID || next.Slots[0].Reason != "" || next.Slots[1].Reason == "" {
+		t.Fatal("editing second beat revoked the unchanged first beat or accepted unreviewed edits", err, next)
+	}
+	retained, err := s.GetRun(ctx, finalChapter.ID)
+	if err != nil || retained.Status != "committed" || retained.CommitID != finalCommit.ID {
+		t.Fatal("shared-head edit revoked immutable commit", err)
+	}
+	firstGate, err := s.PlannedRunReadiness(ctx, scope, p.ChapterID, cfg, first)
+	if err != nil || firstGate.Adopted == nil || !firstGate.Adopted.MatchesWorking || firstGate.Working.State != "adopted" {
+		t.Fatal("unchanged adoption badge lost", err, firstGate.Adopted)
+	}
+	secondGate, err := s.PlannedRunReadiness(ctx, scope, p.ChapterID, cfg, second)
+	if err != nil || secondGate.Adopted == nil || secondGate.Adopted.MatchesWorking {
+		t.Fatal("new candidate confused with adopted prose", err)
+	}
+
 }

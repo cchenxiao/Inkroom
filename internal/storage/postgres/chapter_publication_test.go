@@ -112,7 +112,11 @@ func exerciseChapterPublication(t *testing.T, s *Store, scope string, j app.Chap
 	if !reflect.DeepEqual(results[0], results[1]) || p.Version != 1 || p.Review.Decision.RequestID != req.ApprovalID || !p.FactConfirmation.NoPendingFacts || len(p.Assembly.Parts) != 2 || p.Assembly.Digest != j.Input.AssemblyDigest {
 		t.Fatal("incomplete immutable publication", results)
 	}
-	if p.Review.InputDigest != j.InputDigest || len(p.Review.Calls) != 2 || p.CreatedAt.IsZero() {
+	expectedCalls := 2
+	if j.Input.EnhancedContinuity {
+		expectedCalls++ // This fixture is short enough for one combined continuity call.
+	}
+	if p.Review.InputDigest != j.InputDigest || len(p.Review.Calls) != expectedCalls || p.CreatedAt.IsZero() {
 		t.Fatal("missing audit trail")
 	}
 	if p.FactSelection == nil || len(p.FactSelection.Package.Facts) != 1 || p.FactReview == nil || len(p.FactReview.Calls) != 0 || p.FactReview.Provider != "human" {

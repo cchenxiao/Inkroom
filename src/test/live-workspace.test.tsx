@@ -204,7 +204,10 @@ it('uses Go chapter IDs from the outline and keeps empty/error states separate f
   await user.click(screen.getByRole('button', { name: '刷新规划' }));
   await screen.findByRole('region', { name: '正文创作台' });
   await user.click(screen.getAllByRole('button', { name: '生成本段' })[0]);
-  await user.click(screen.getByRole('button', { name: '审核本段' }));
+  expect(await screen.findByRole('tab', { name: '审核本段' })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
   expect(posted).toMatchObject({
     chapterId: 'first-real',
     beatId: 'beat-real',

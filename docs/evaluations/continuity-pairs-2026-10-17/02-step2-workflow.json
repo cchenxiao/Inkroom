@@ -1,0 +1,1860 @@
+{
+  "dataset": "chapter-workflow-v1",
+  "datasetDigest": "81907e78ba42c67dce93dcbc8ac3767a2cbeffe5e1c5ee474278788968db7d00",
+  "provider": "deepseek",
+  "model": "deepseek-flash",
+  "startedAt": "2026-10-17T11:47:46.165115Z",
+  "total": 3,
+  "attempted": 2,
+  "passed": 0,
+  "usage": {
+    "inputTokens": 38140,
+    "outputTokens": 13097,
+    "known": true
+  },
+  "stages": [
+    {
+      "name": "generate-chapter",
+      "input": {
+        "targets": [
+          {
+            "writingTask": {
+              "experimentalContinuity": true,
+              "chapterTargetWords": 2400,
+              "beatTargetWords": 800,
+              "scope": "isolated",
+              "chapterId": "night-shift",
+              "versions": {
+                "bindings": 1,
+                "core": 1,
+                "direction": 1,
+                "input": 1,
+                "outline": 1,
+                "style": 1
+              },
+              "planVersion": 1,
+              "sourceDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "opening": true,
+              "storyTime": 0,
+              "genre": "现实生活",
+              "brief": {
+                "selectedBeatId": "beat-1",
+                "mustHappen": "林宁在河堤值班室接夜班，清点蓝布袋里三枚铜签，核对交接手续，陈禾要走，林宁因字迹不清请他留下核对。展开两人的迟疑与协作，最后林宁拿着布袋走向窗口。不要提前交出铜签。",
+                "cannotChange": "三枚铜签交出两枚后剩一枚；不增加人物或关键往事。",
+                "reveal": "",
+                "withhold": "信封内文及寄信人尚未揭示，任何段落均不得揭示或猜成事实。",
+                "writingGuidance": "全章约2400字，每段约800字。通过具体动作、对话和手续核对展开，避免重复清点凑字数。"
+              },
+              "style": {
+                "pov": "第三人称限知，林宁",
+                "tense": "过去时",
+                "tone": "克制、具体、略有生活幽默",
+                "sentenceLength": {
+                  "min": 0,
+                  "max": 0
+                },
+                "dialogueRatio": {
+                  "min": 0,
+                  "max": 0
+                },
+                "bannedPhrases": null,
+                "styleArc": ""
+              },
+              "sceneGoal": "完成夜班交接",
+              "sceneConflict": "手续需要核对，双方都想尽早完成",
+              "sceneOutcome": "铜签交付完毕，登记簿封存",
+              "voices": null
+            },
+            "projectId": "chapter-workflow-evaluation",
+            "characters": null,
+            "facts": [
+              {
+                "id": "tokens",
+                "version": 1,
+                "text": "夜班交接开始时蓝布袋中只有三枚铜签，每枚可领取一盏灯。本章没有其他铜签补入，也没有遗失。"
+              },
+              {
+                "id": "people",
+                "version": 1,
+                "text": "林宁与陈禾都是河堤值班员；林宁负责当晚交接登记，陈禾负责领灯。"
+              }
+            ],
+            "bannedPhrases": null,
+            "protectedTerms": null,
+            "chapterId": "night-shift",
+            "branchId": "isolated",
+            "beat": {
+              "version": 1,
+              "locked": false,
+              "id": "beat-1",
+              "sceneId": "duty-room",
+              "title": "接班清点",
+              "description": "林宁在河堤值班室接夜班，清点蓝布袋里三枚铜签，核对交接手续，陈禾要走，林宁因字迹不清请他留下核对。展开两人的迟疑与协作，最后林宁拿着布袋走向窗口。不要提前交出铜签。"
+            },
+            "pov": "第三人称限知，林宁",
+            "sources": null
+          },
+          {
+            "writingTask": {
+              "experimentalContinuity": true,
+              "chapterTargetWords": 2400,
+              "beatTargetWords": 800,
+              "scope": "isolated",
+              "chapterId": "night-shift",
+              "versions": {
+                "bindings": 1,
+                "core": 1,
+                "direction": 1,
+                "input": 1,
+                "outline": 1,
+                "style": 1
+              },
+              "planVersion": 1,
+              "sourceDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "opening": true,
+              "storyTime": 1,
+              "genre": "现实生活",
+              "brief": {
+                "selectedBeatId": "beat-2",
+                "mustHappen": "承接前段，林宁在窗口将蓝布袋中的两枚铜签交给陈禾，用于领取两盏巡堤灯；陈禾当面核对数量，林宁把剩余一枚放回袋内，双方核对交付登记并签名。不要提前封存登记簿，不猜测第三段才出现的信封内容。",
+                "cannotChange": "三枚铜签交出两枚后剩一枚；不增加人物或关键往事。",
+                "reveal": "",
+                "withhold": "信封内文及寄信人尚未揭示，任何段落均不得揭示或猜成事实。",
+                "writingGuidance": "全章约2400字，每段约800字。通过具体动作、对话和手续核对展开，避免重复清点凑字数。"
+              },
+              "style": {
+                "pov": "第三人称限知，林宁",
+                "tense": "过去时",
+                "tone": "克制、具体、略有生活幽默",
+                "sentenceLength": {
+                  "min": 0,
+                  "max": 0
+                },
+                "dialogueRatio": {
+                  "min": 0,
+                  "max": 0
+                },
+                "bannedPhrases": null,
+                "styleArc": ""
+              },
+              "sceneGoal": "完成夜班交接",
+              "sceneConflict": "手续需要核对，双方都想尽早完成",
+              "sceneOutcome": "铜签交付完毕，登记簿封存",
+              "voices": null
+            },
+            "projectId": "chapter-workflow-evaluation",
+            "characters": null,
+            "facts": [
+              {
+                "id": "tokens",
+                "version": 1,
+                "text": "夜班交接开始时蓝布袋中只有三枚铜签，每枚可领取一盏灯。本章没有其他铜签补入，也没有遗失。"
+              },
+              {
+                "id": "people",
+                "version": 1,
+                "text": "林宁与陈禾都是河堤值班员；林宁负责当晚交接登记，陈禾负责领灯。"
+              }
+            ],
+            "bannedPhrases": null,
+            "protectedTerms": null,
+            "chapterId": "night-shift",
+            "branchId": "isolated",
+            "beat": {
+              "version": 1,
+              "locked": false,
+              "id": "beat-2",
+              "sceneId": "duty-room",
+              "title": "交付铜签",
+              "description": "承接前段，林宁在窗口将蓝布袋中的两枚铜签交给陈禾，用于领取两盏巡堤灯；陈禾当面核对数量，林宁把剩余一枚放回袋内，双方核对交付登记并签名。不要提前封存登记簿，不猜测第三段才出现的信封内容。"
+            },
+            "pov": "第三人称限知，林宁",
+            "sources": null
+          },
+          {
+            "writingTask": {
+              "experimentalContinuity": true,
+              "chapterTargetWords": 2400,
+              "beatTargetWords": 800,
+              "scope": "isolated",
+              "chapterId": "night-shift",
+              "versions": {
+                "bindings": 1,
+                "core": 1,
+                "direction": 1,
+                "input": 1,
+                "outline": 1,
+                "style": 1
+              },
+              "planVersion": 1,
+              "sourceDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "opening": true,
+              "storyTime": 2,
+              "genre": "现实生活",
+              "brief": {
+                "selectedBeatId": "beat-3",
+                "mustHappen": "承接交付和签名，林宁把登记簿放进抽屉再封好，收妥余下铜签；陈禾带着两枚铜签离开去领灯。林宁在值班桌下面发现一个封口完好的信封，只看见封面写着次日交站长，不拆封，不猜寄信人，以等待次日交接收尾。",
+                "cannotChange": "三枚铜签交出两枚后剩一枚；不增加人物或关键往事。",
+                "reveal": "",
+                "withhold": "信封内文及寄信人尚未揭示，任何段落均不得揭示或猜成事实。",
+                "writingGuidance": "全章约2400字，每段约800字。通过具体动作、对话和手续核对展开，避免重复清点凑字数。"
+              },
+              "style": {
+                "pov": "第三人称限知，林宁",
+                "tense": "过去时",
+                "tone": "克制、具体、略有生活幽默",
+                "sentenceLength": {
+                  "min": 0,
+                  "max": 0
+                },
+                "dialogueRatio": {
+                  "min": 0,
+                  "max": 0
+                },
+                "bannedPhrases": null,
+                "styleArc": ""
+              },
+              "sceneGoal": "完成夜班交接",
+              "sceneConflict": "手续需要核对，双方都想尽早完成",
+              "sceneOutcome": "铜签交付完毕，登记簿封存",
+              "voices": null
+            },
+            "projectId": "chapter-workflow-evaluation",
+            "characters": null,
+            "facts": [
+              {
+                "id": "tokens",
+                "version": 1,
+                "text": "夜班交接开始时蓝布袋中只有三枚铜签，每枚可领取一盏灯。本章没有其他铜签补入，也没有遗失。"
+              },
+              {
+                "id": "people",
+                "version": 1,
+                "text": "林宁与陈禾都是河堤值班员；林宁负责当晚交接登记，陈禾负责领灯。"
+              }
+            ],
+            "bannedPhrases": null,
+            "protectedTerms": null,
+            "chapterId": "night-shift",
+            "branchId": "isolated",
+            "beat": {
+              "version": 1,
+              "locked": false,
+              "id": "beat-3",
+              "sceneId": "duty-room",
+              "title": "封存登记簿",
+              "description": "承接交付和签名，林宁把登记簿放进抽屉再封好，收妥余下铜签；陈禾带着两枚铜签离开去领灯。林宁在值班桌下面发现一个封口完好的信封，只看见封面写着次日交站长，不拆封，不猜寄信人，以等待次日交接收尾。"
+            },
+            "pov": "第三人称限知，林宁",
+            "sources": null
+          }
+        ],
+        "writingTask": {
+          "experimentalContinuity": true,
+          "chapterTargetWords": 2400,
+          "beatTargetWords": 800,
+          "scope": "isolated",
+          "chapterId": "night-shift",
+          "versions": {
+            "bindings": 1,
+            "core": 1,
+            "direction": 1,
+            "input": 1,
+            "outline": 1,
+            "style": 1
+          },
+          "planVersion": 1,
+          "sourceDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "opening": true,
+          "storyTime": 0,
+          "genre": "现实生活",
+          "brief": {
+            "selectedBeatId": "beat-1",
+            "mustHappen": "林宁在河堤值班室接夜班，清点蓝布袋里三枚铜签，核对交接手续，陈禾要走，林宁因字迹不清请他留下核对。展开两人的迟疑与协作，最后林宁拿着布袋走向窗口。不要提前交出铜签。",
+            "cannotChange": "三枚铜签交出两枚后剩一枚；不增加人物或关键往事。",
+            "reveal": "",
+            "withhold": "信封内文及寄信人尚未揭示，任何段落均不得揭示或猜成事实。",
+            "writingGuidance": "全章约2400字，每段约800字。通过具体动作、对话和手续核对展开，避免重复清点凑字数。"
+          },
+          "style": {
+            "pov": "第三人称限知，林宁",
+            "tense": "过去时",
+            "tone": "克制、具体、略有生活幽默",
+            "sentenceLength": {
+              "min": 0,
+              "max": 0
+            },
+            "dialogueRatio": {
+              "min": 0,
+              "max": 0
+            },
+            "bannedPhrases": null,
+            "styleArc": ""
+          },
+          "sceneGoal": "完成夜班交接",
+          "sceneConflict": "手续需要核对，双方都想尽早完成",
+          "sceneOutcome": "铜签交付完毕，登记簿封存",
+          "voices": null
+        },
+        "projectId": "chapter-workflow-evaluation",
+        "characters": null,
+        "facts": [
+          {
+            "id": "tokens",
+            "version": 1,
+            "text": "夜班交接开始时蓝布袋中只有三枚铜签，每枚可领取一盏灯。本章没有其他铜签补入，也没有遗失。"
+          },
+          {
+            "id": "people",
+            "version": 1,
+            "text": "林宁与陈禾都是河堤值班员；林宁负责当晚交接登记，陈禾负责领灯。"
+          }
+        ],
+        "bannedPhrases": null,
+        "protectedTerms": null,
+        "chapterId": "night-shift",
+        "branchId": "isolated",
+        "beat": {
+          "version": 1,
+          "locked": false,
+          "id": "beat-1",
+          "sceneId": "duty-room",
+          "title": "接班清点",
+          "description": "林宁在河堤值班室接夜班，清点蓝布袋里三枚铜签，核对交接手续，陈禾要走，林宁因字迹不清请他留下核对。展开两人的迟疑与协作，最后林宁拿着布袋走向窗口。不要提前交出铜签。"
+        },
+        "pov": "第三人称限知，林宁",
+        "sources": null
+      },
+      "state": {
+        "nodePhase": "finished",
+        "criticReviews": [
+          {
+            "continuity": [
+              {
+                "segmentId": "beat-1-seg-1",
+                "status": "conflict",
+                "openingQuote": "林宁拿着布袋站起来，走到窗口。窗口的玻璃上有一层水汽，他用手背擦出一块，把布袋放在窗台上，回头去取空白的交接单。",
+                "closingQuote": "林宁拿着布袋走向窗口，白绳垂在袋外，三枚铜签在袋底轻轻碰了一下。",
+                "reason": "林宁已在p44把布袋放到窗台并回头去取交接单，p47又写他拿着布袋走向窗口，同一动作重复且物件位置回退。"
+              },
+              {
+                "segmentId": "beat-2-seg-1",
+                "status": "conflict",
+                "openingQuote": "“一枚。”林宁应道，把袋口的白绳收拢，打了个活结，没有系死。",
+                "closingQuote": "陈禾走到门口，又停下，回头看了一眼窗台上的蓝布袋。袋口还敞着，白绳搭在袋外。",
+                "reason": "p62林宁已把袋口白绳收拢打活结，p80却写袋口还敞着、白绳搭在袋外，中间无解绳动作。"
+              },
+              {
+                "segmentId": "beat-3-seg-1",
+                "status": "conflict",
+                "openingQuote": "袋里还剩一枚铜签。他解开双扣，把铜签倒在掌心，看了一眼编号，又放回袋里。袋子不能留在窗台上，他把它放进值班柜最上层，柜门关上，钥匙插在锁孔里转了一圈。",
+                "closingQuote": "他回到桌边，把交接单放在封条旁边，没有塞进抽屉。桌面上还摊着陈禾留下的那支笔，笔帽没有盖。他把笔帽盖上，放进笔筒。",
+                "reason": "p94蓝布袋已放入值班柜最上层并锁好，p110之后桌面描写未涉及袋子，但p116称桌上东西都在原位；需确认袋子不在桌面即可，当前无直接冲突。"
+              }
+            ],
+            "critic": "hard_consistency",
+            "draftVersion": 1,
+            "status": "completed",
+            "findings": [
+              {
+                "ruleRef": "beat-1-seg-1",
+                "ruleQuote": "林宁拿着布袋站起来，走到窗口。窗口的玻璃上有一层水汽，他用手背擦出一块，把布袋放在窗台上，回头去取空白的交接单。",
+                "evidenceStatus": "confirmed",
+                "id": "continuity-pair-1",
+                "critic": "hard_consistency",
+                "severity": "P1",
+                "segmentId": "beat-1-seg-1",
+                "quote": "林宁拿着布袋走向窗口，白绳垂在袋外，三枚铜签在袋底轻轻碰了一下。",
+                "evidenceRefs": [
+                  "beat-1-seg-1",
+                  "beat-1-seg-1"
+                ],
+                "reason": "林宁已在p44把布袋放到窗台并回头去取交接单，p47又写他拿着布袋走向窗口，同一动作重复且物件位置回退。",
+                "suggestion": "删去或改写p47，使其只承接取单动作，不再重复拿袋走向窗口。",
+                "repairScope": "segment",
+                "draftVersion": 1
+              },
+              {
+                "ruleRef": "beat-2-seg-1",
+                "ruleQuote": "“一枚。”林宁应道，把袋口的白绳收拢，打了个活结，没有系死。",
+                "evidenceStatus": "confirmed",
+                "id": "continuity-pair-2",
+                "critic": "hard_consistency",
+                "severity": "P1",
+                "segmentId": "beat-2-seg-1",
+                "quote": "陈禾走到门口，又停下，回头看了一眼窗台上的蓝布袋。袋口还敞着，白绳搭在袋外。",
+                "evidenceRefs": [
+                  "beat-2-seg-1",
+                  "beat-2-seg-1"
+                ],
+                "reason": "p62林宁已把袋口白绳收拢打活结，p80却写袋口还敞着、白绳搭在袋外，中间无解绳动作。",
+                "suggestion": "在p80前补一句袋口被重新解开，或改p80为袋口已收拢、活结仍在。",
+                "repairScope": "segment",
+                "draftVersion": 1
+              },
+              {
+                "ruleRef": "beat-3-seg-1",
+                "ruleQuote": "袋里还剩一枚铜签。他解开双扣，把铜签倒在掌心，看了一眼编号，又放回袋里。袋子不能留在窗台上，他把它放进值班柜最上层，柜门关上，钥匙插在锁孔里转了一圈。",
+                "evidenceStatus": "confirmed",
+                "id": "continuity-pair-3",
+                "critic": "hard_consistency",
+                "severity": "P1",
+                "segmentId": "beat-3-seg-1",
+                "quote": "他回到桌边，把交接单放在封条旁边，没有塞进抽屉。桌面上还摊着陈禾留下的那支笔，笔帽没有盖。他把笔帽盖上，放进笔筒。",
+                "evidenceRefs": [
+                  "beat-3-seg-1",
+                  "beat-3-seg-1"
+                ],
+                "reason": "p94蓝布袋已放入值班柜最上层并锁好，p110之后桌面描写未涉及袋子，但p116称桌上东西都在原位；需确认袋子不在桌面即可，当前无直接冲突。",
+                "suggestion": "无需修改；若后续让袋子回桌，须写取回。",
+                "repairScope": "segment",
+                "draftVersion": 1
+              }
+            ]
+          },
+          {
+            "length": {
+              "scope": "chapter",
+              "actual": 4550,
+              "target": 2400,
+              "lower": 1800,
+              "upper": 3200,
+              "status": "long"
+            },
+            "critic": "ai_taste",
+            "draftVersion": 1,
+            "status": "completed",
+            "findings": [
+              {
+                "id": "ai-taste-1",
+                "critic": "ai_taste",
+                "severity": "P3",
+                "segmentId": "beat-1-seg-1",
+                "quote": "林宁拿着布袋走向窗口，白绳垂在袋外，三枚铜签在袋底轻轻碰了一下。",
+                "evidenceRefs": [
+                  "beat-1-seg-1"
+                ],
+                "reason": "本段前文已有“他把三枚铜签拢到一起，一枚一枚放回蓝布袋，白绳穿过袋口，暂时没有收紧”和“林宁拿着布袋站起来，走到窗口”，结尾又用几乎相同的动作与声音再收一次，属于同段内重复描写，且“轻轻碰了一下”与前文“铜签在袋底轻轻一响”意象重复。",
+                "suggestion": "删去或压缩结尾这一句，避免与前面放签、走向窗口的动作重复；若保留声音细节，只留一处即可。",
+                "repairScope": "phrase",
+                "draftVersion": 1
+              },
+              {
+                "id": "ai-taste-2",
+                "critic": "ai_taste",
+                "severity": "P3",
+                "segmentId": "beat-2-seg-1",
+                "quote": "“领到了。”他低声说了一句，也不知道是说给谁听。",
+                "evidenceRefs": [
+                  "beat-2-seg-1"
+                ],
+                "reason": "“也不知道是说给谁听”是常见的内心补白套话，替读者解释自言自语的性质，属于过度解释；前文已通过他站在窗口、听见铁门声交代了情境。",
+                "suggestion": "删去“也不知道是说给谁听”这半句，只保留低声说的动作，让语气自己成立。",
+                "repairScope": "phrase",
+                "draftVersion": 1
+              },
+              {
+                "id": "ai-taste-3",
+                "critic": "ai_taste",
+                "severity": "P3",
+                "segmentId": "beat-3-seg-1",
+                "quote": "“明天谁来开，谁就看得见。”他对自己说。",
+                "evidenceRefs": [
+                  "beat-3-seg-1"
+                ],
+                "reason": "“他对自己说”是对自言自语行为的直接标注，与前文贴封条、压胶边的动作重复表意，属于过度解释。",
+                "suggestion": "去掉“他对自己说”，让引语直接跟在贴封条动作之后，或改为不点明说话对象的短句。",
+                "repairScope": "phrase",
+                "draftVersion": 1
+              },
+              {
+                "id": "ai-taste-4",
+                "critic": "ai_taste",
+                "severity": "P3",
+                "segmentId": "beat-3-seg-1",
+                "quote": "信封是刚才没有的，或者说，是他刚才没有看见的。",
+                "evidenceRefs": [
+                  "beat-3-seg-1"
+                ],
+                "reason": "“或者说，是他刚才没有看见的”是对前一句的自我修正式解释，把叙述者的推断过程直接摊开，削弱了发现信封的现场感，属于过度解释。",
+                "suggestion": "删去“或者说”后的补充，只保留一个判断，让读者自行理解他此前没注意到。",
+                "repairScope": "phrase",
+                "draftVersion": 1
+              },
+              {
+                "id": "ai-taste-5",
+                "critic": "ai_taste",
+                "severity": "P3",
+                "segmentId": "beat-3-seg-1",
+                "quote": "林宁把台灯的角度调低了些，光落在信封上，那行字清清楚楚。他没有再动它，只是坐着，听河风一下一下地撞着窗框。",
+                "evidenceRefs": [
+                  "beat-3-seg-1"
+                ],
+                "reason": "结尾连续用“光落在信封上，那行字清清楚楚”“没有再动它”“只是坐着，听河风”收束，意象和句式与前文“推到台灯照得到的地方”“把两只手放在膝盖上”重复，属于同段内反复渲染同一静止状态。",
+                "suggestion": "压缩结尾，保留一个动作或一个声音即可，删去与前文重复的“光落在信封上”或“听河风”之一。",
+                "repairScope": "phrase",
+                "draftVersion": 1
+              }
+            ]
+          }
+        ],
+        "route": {
+          "kind": "scene",
+          "targetIds": [
+            "beat-1-seg-1",
+            "beat-2-seg-1",
+            "beat-3-seg-1"
+          ],
+          "findingIds": [
+            "continuity-pair-1",
+            "continuity-pair-2",
+            "continuity-pair-3"
+          ],
+          "needsHuman": true,
+          "reason": "尚未授权本场/Beat 内局部重写；保留原稿和修复建议"
+        },
+        "context": {
+          "targets": [
+            {
+              "writingTask": {
+                "experimentalContinuity": true,
+                "chapterTargetWords": 2400,
+                "beatTargetWords": 800,
+                "scope": "isolated",
+                "chapterId": "night-shift",
+                "versions": {
+                  "bindings": 1,
+                  "core": 1,
+                  "direction": 1,
+                  "input": 1,
+                  "outline": 1,
+                  "style": 1
+                },
+                "planVersion": 1,
+                "sourceDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "opening": true,
+                "storyTime": 0,
+                "genre": "现实生活",
+                "brief": {
+                  "selectedBeatId": "beat-1",
+                  "mustHappen": "林宁在河堤值班室接夜班，清点蓝布袋里三枚铜签，核对交接手续，陈禾要走，林宁因字迹不清请他留下核对。展开两人的迟疑与协作，最后林宁拿着布袋走向窗口。不要提前交出铜签。",
+                  "cannotChange": "三枚铜签交出两枚后剩一枚；不增加人物或关键往事。",
+                  "reveal": "",
+                  "withhold": "信封内文及寄信人尚未揭示，任何段落均不得揭示或猜成事实。",
+                  "writingGuidance": "全章约2400字，每段约800字。通过具体动作、对话和手续核对展开，避免重复清点凑字数。"
+                },
+                "style": {
+                  "pov": "第三人称限知，林宁",
+                  "tense": "过去时",
+                  "tone": "克制、具体、略有生活幽默",
+                  "sentenceLength": {
+                    "min": 0,
+                    "max": 0
+                  },
+                  "dialogueRatio": {
+                    "min": 0,
+                    "max": 0
+                  },
+                  "bannedPhrases": null,
+                  "styleArc": ""
+                },
+                "sceneGoal": "完成夜班交接",
+                "sceneConflict": "手续需要核对，双方都想尽早完成",
+                "sceneOutcome": "铜签交付完毕，登记簿封存",
+                "voices": null
+              },
+              "projectId": "chapter-workflow-evaluation",
+              "characters": null,
+              "facts": [
+                {
+                  "id": "tokens",
+                  "version": 1,
+                  "text": "夜班交接开始时蓝布袋中只有三枚铜签，每枚可领取一盏灯。本章没有其他铜签补入，也没有遗失。"
+                },
+                {
+                  "id": "people",
+                  "version": 1,
+                  "text": "林宁与陈禾都是河堤值班员；林宁负责当晚交接登记，陈禾负责领灯。"
+                }
+              ],
+              "bannedPhrases": null,
+              "protectedTerms": null,
+              "chapterId": "night-shift",
+              "branchId": "isolated",
+              "beat": {
+                "version": 1,
+                "locked": false,
+                "id": "beat-1",
+                "sceneId": "duty-room",
+                "title": "接班清点",
+                "description": "林宁在河堤值班室接夜班，清点蓝布袋里三枚铜签，核对交接手续，陈禾要走，林宁因字迹不清请他留下核对。展开两人的迟疑与协作，最后林宁拿着布袋走向窗口。不要提前交出铜签。"
+              },
+              "pov": "第三人称限知，林宁",
+              "sources": null
+            },
+            {
+              "writingTask": {
+                "experimentalContinuity": true,
+                "chapterTargetWords": 2400,
+                "beatTargetWords": 800,
+                "scope": "isolated",
+                "chapterId": "night-shift",
+                "versions": {
+                  "bindings": 1,
+                  "core": 1,
+                  "direction": 1,
+                  "input": 1,
+                  "outline": 1,
+                  "style": 1
+                },
+                "planVersion": 1,
+                "sourceDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "opening": true,
+                "storyTime": 1,
+                "genre": "现实生活",
+                "brief": {
+                  "selectedBeatId": "beat-2",
+                  "mustHappen": "承接前段，林宁在窗口将蓝布袋中的两枚铜签交给陈禾，用于领取两盏巡堤灯；陈禾当面核对数量，林宁把剩余一枚放回袋内，双方核对交付登记并签名。不要提前封存登记簿，不猜测第三段才出现的信封内容。",
+                  "cannotChange": "三枚铜签交出两枚后剩一枚；不增加人物或关键往事。",
+                  "reveal": "",
+                  "withhold": "信封内文及寄信人尚未揭示，任何段落均不得揭示或猜成事实。",
+                  "writingGuidance": "全章约2400字，每段约800字。通过具体动作、对话和手续核对展开，避免重复清点凑字数。"
+                },
+                "style": {
+                  "pov": "第三人称限知，林宁",
+                  "tense": "过去时",
+                  "tone": "克制、具体、略有生活幽默",
+                  "sentenceLength": {
+                    "min": 0,
+                    "max": 0
+                  },
+                  "dialogueRatio": {
+                    "min": 0,
+                    "max": 0
+                  },
+                  "bannedPhrases": null,
+                  "styleArc": ""
+                },
+                "sceneGoal": "完成夜班交接",
+                "sceneConflict": "手续需要核对，双方都想尽早完成",
+                "sceneOutcome": "铜签交付完毕，登记簿封存",
+                "voices": null
+              },
+              "projectId": "chapter-workflow-evaluation",
+              "characters": null,
+              "facts": [
+                {
+                  "id": "tokens",
+                  "version": 1,
+                  "text": "夜班交接开始时蓝布袋中只有三枚铜签，每枚可领取一盏灯。本章没有其他铜签补入，也没有遗失。"
+                },
+                {
+                  "id": "people",
+                  "version": 1,
+                  "text": "林宁与陈禾都是河堤值班员；林宁负责当晚交接登记，陈禾负责领灯。"
+                }
+              ],
+              "bannedPhrases": null,
+              "protectedTerms": null,
+              "chapterId": "night-shift",
+              "branchId": "isolated",
+              "beat": {
+                "version": 1,
+                "locked": false,
+                "id": "beat-2",
+                "sceneId": "duty-room",
+                "title": "交付铜签",
+                "description": "承接前段，林宁在窗口将蓝布袋中的两枚铜签交给陈禾，用于领取两盏巡堤灯；陈禾当面核对数量，林宁把剩余一枚放回袋内，双方核对交付登记并签名。不要提前封存登记簿，不猜测第三段才出现的信封内容。"
+              },
+              "pov": "第三人称限知，林宁",
+              "sources": null
+            },
+            {
+              "writingTask": {
+                "experimentalContinuity": true,
+                "chapterTargetWords": 2400,
+                "beatTargetWords": 800,
+                "scope": "isolated",
+                "chapterId": "night-shift",
+                "versions": {
+                  "bindings": 1,
+                  "core": 1,
+                  "direction": 1,
+                  "input": 1,
+                  "outline": 1,
+                  "style": 1
+                },
+                "planVersion": 1,
+                "sourceDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "opening": true,
+                "storyTime": 2,
+                "genre": "现实生活",
+                "brief": {
+                  "selectedBeatId": "beat-3",
+                  "mustHappen": "承接交付和签名，林宁把登记簿放进抽屉再封好，收妥余下铜签；陈禾带着两枚铜签离开去领灯。林宁在值班桌下面发现一个封口完好的信封，只看见封面写着次日交站长，不拆封，不猜寄信人，以等待次日交接收尾。",
+                  "cannotChange": "三枚铜签交出两枚后剩一枚；不增加人物或关键往事。",
+                  "reveal": "",
+                  "withhold": "信封内文及寄信人尚未揭示，任何段落均不得揭示或猜成事实。",
+                  "writingGuidance": "全章约2400字，每段约800字。通过具体动作、对话和手续核对展开，避免重复清点凑字数。"
+                },
+                "style": {
+                  "pov": "第三人称限知，林宁",
+                  "tense": "过去时",
+                  "tone": "克制、具体、略有生活幽默",
+                  "sentenceLength": {
+                    "min": 0,
+                    "max": 0
+                  },
+                  "dialogueRatio": {
+                    "min": 0,
+                    "max": 0
+                  },
+                  "bannedPhrases": null,
+                  "styleArc": ""
+                },
+                "sceneGoal": "完成夜班交接",
+                "sceneConflict": "手续需要核对，双方都想尽早完成",
+                "sceneOutcome": "铜签交付完毕，登记簿封存",
+                "voices": null
+              },
+              "projectId": "chapter-workflow-evaluation",
+              "characters": null,
+              "facts": [
+                {
+                  "id": "tokens",
+                  "version": 1,
+                  "text": "夜班交接开始时蓝布袋中只有三枚铜签，每枚可领取一盏灯。本章没有其他铜签补入，也没有遗失。"
+                },
+                {
+                  "id": "people",
+                  "version": 1,
+                  "text": "林宁与陈禾都是河堤值班员；林宁负责当晚交接登记，陈禾负责领灯。"
+                }
+              ],
+              "bannedPhrases": null,
+              "protectedTerms": null,
+              "chapterId": "night-shift",
+              "branchId": "isolated",
+              "beat": {
+                "version": 1,
+                "locked": false,
+                "id": "beat-3",
+                "sceneId": "duty-room",
+                "title": "封存登记簿",
+                "description": "承接交付和签名，林宁把登记簿放进抽屉再封好，收妥余下铜签；陈禾带着两枚铜签离开去领灯。林宁在值班桌下面发现一个封口完好的信封，只看见封面写着次日交站长，不拆封，不猜寄信人，以等待次日交接收尾。"
+              },
+              "pov": "第三人称限知，林宁",
+              "sources": null
+            }
+          ],
+          "writingTask": {
+            "experimentalContinuity": true,
+            "chapterTargetWords": 2400,
+            "beatTargetWords": 800,
+            "scope": "isolated",
+            "chapterId": "night-shift",
+            "versions": {
+              "bindings": 1,
+              "core": 1,
+              "direction": 1,
+              "input": 1,
+              "outline": 1,
+              "style": 1
+            },
+            "planVersion": 1,
+            "sourceDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "opening": true,
+            "storyTime": 0,
+            "genre": "现实生活",
+            "brief": {
+              "selectedBeatId": "beat-1",
+              "mustHappen": "林宁在河堤值班室接夜班，清点蓝布袋里三枚铜签，核对交接手续，陈禾要走，林宁因字迹不清请他留下核对。展开两人的迟疑与协作，最后林宁拿着布袋走向窗口。不要提前交出铜签。",
+              "cannotChange": "三枚铜签交出两枚后剩一枚；不增加人物或关键往事。",
+              "reveal": "",
+              "withhold": "信封内文及寄信人尚未揭示，任何段落均不得揭示或猜成事实。",
+              "writingGuidance": "全章约2400字，每段约800字。通过具体动作、对话和手续核对展开，避免重复清点凑字数。"
+            },
+            "style": {
+              "pov": "第三人称限知，林宁",
+              "tense": "过去时",
+              "tone": "克制、具体、略有生活幽默",
+              "sentenceLength": {
+                "min": 0,
+                "max": 0
+              },
+              "dialogueRatio": {
+                "min": 0,
+                "max": 0
+              },
+              "bannedPhrases": null,
+              "styleArc": ""
+            },
+            "sceneGoal": "完成夜班交接",
+            "sceneConflict": "手续需要核对，双方都想尽早完成",
+            "sceneOutcome": "铜签交付完毕，登记簿封存",
+            "voices": null
+          },
+          "projectId": "chapter-workflow-evaluation",
+          "characters": null,
+          "facts": [
+            {
+              "id": "tokens",
+              "version": 1,
+              "text": "夜班交接开始时蓝布袋中只有三枚铜签，每枚可领取一盏灯。本章没有其他铜签补入，也没有遗失。"
+            },
+            {
+              "id": "people",
+              "version": 1,
+              "text": "林宁与陈禾都是河堤值班员；林宁负责当晚交接登记，陈禾负责领灯。"
+            }
+          ],
+          "bannedPhrases": null,
+          "protectedTerms": null,
+          "chapterId": "night-shift",
+          "branchId": "isolated",
+          "beat": {
+            "version": 1,
+            "locked": false,
+            "id": "beat-1",
+            "sceneId": "duty-room",
+            "title": "接班清点",
+            "description": "林宁在河堤值班室接夜班，清点蓝布袋里三枚铜签，核对交接手续，陈禾要走，林宁因字迹不清请他留下核对。展开两人的迟疑与协作，最后林宁拿着布袋走向窗口。不要提前交出铜签。"
+          },
+          "pov": "第三人称限知，林宁",
+          "sources": null
+        },
+        "draftVersion": 1,
+        "segments": [
+          {
+            "id": "beat-1-seg-1",
+            "chapterId": "night-shift",
+            "sceneId": "duty-room",
+            "beatId": "beat-1",
+            "order": 1,
+            "text": "河堤值班室的日光灯管有一头接触不良，每隔几分钟就暗一下，又自己亮回来。林宁把饭盒放在桌角，拉开椅子坐下时，椅脚在水泥地上刮出一声短响。窗外是河面，黑得看不出水在往哪边走，只有堤上路灯的倒影被风揉碎，又慢慢拼回去。\n\n陈禾已经站起来了，外衣搭在手臂上，帽檐压得低。桌上摊着交接登记簿，旁边一只蓝布袋，袋口用白绳穿着，绳结打得很紧。\n\n“你先看东西。”陈禾说，“看完签字，我下去领灯。”\n\n林宁把布袋提到面前，先看袋口的绳结。结是双扣，扣得规整，不像临时系上的。他解开白绳，把袋口翻下去，铜签在袋底轻轻一响。\n\n三枚。\n\n他伸手进去，一枚一枚摸出来，摊在桌面的旧报纸上。铜签长短一样，边缘磨得发亮，正面的编号刻得浅，要凑近才看得清。他把三枚并排摆好，确认没有第四枚卡在袋角，也没有哪一枚的编号重复。\n\n“三枚。”他说。\n\n“三枚。”陈禾应了一声，没有回头。\n\n林宁翻开登记簿。前一班的记录占了大半页，蓝黑墨水，写到后面颜色淡了些。陈禾的字他认得，平时还算清楚，就是收笔爱拖，写得快了，竖和撇就黏到一处。\n\n“这一行，”林宁用指甲点着其中一格，“交班数量这里。是‘三’，还是‘二’？”\n\n陈禾把外衣从手臂上换到另一只手上，走回来半步，低头看了一眼。\n\n“三。”\n\n“这上头这一撇，是笔尖劈了？”\n\n“铅笔写的，我描过一遍。”陈禾说，“数字是三。旁边那格是灯数，写的是‘两盏’，不是‘二盏’。这地方我写得快，横拖长了。”\n\n林宁没有立刻落笔。他把登记簿往灯下挪了挪，纸面斜着反光，那一笔更看不清了。陈禾的手已经搭在门把上，门缝里漏进来的风带着水腥气。\n\n“你先别走。”林宁说，“这一处我得跟你核对清楚。不是不信你，明天有人翻本子，我总不能说‘反正是三’。”\n\n陈禾站住，回头看了看他，又看了看桌上摊开的铜签。他把外衣重新搭回椅背，帽檐往上推了推。\n\n“行。你问。”\n\n“交班时袋里是几枚？”\n\n“三枚。我接手的时候就是三枚，一枚没动。”\n\n“这三枚的编号你记不记得？”\n\n陈禾俯身，把三枚铜签逐一转过来，念出后四位数。林宁在登记簿空白的备注栏里先写了个草稿，写到第二枚时停了一下。\n\n“你念慢点。”\n\n“零四一七。”\n\n林宁写完，抬头看他：“你刚才念的是零四一七，还是零七一四？”\n\n陈禾把那一枚拿起来，凑到灯下，自己也皱了皱眉。\n\n“零四一七。”他把铜签放回去，指腹在数字上按了一下，“这个‘一’刻得窄，看着像竖线。”\n\n林宁把草稿划掉，重写。划掉的地方他留了道斜线，没有涂黑。登记簿是公家的，改错了要看得见改过的痕迹，这是前一任值班员教他的，他一直照办。\n\n两人凑在灯下，一个念，一个写。林宁的字小而挤，陈禾念到第三枚时，外头堤上有一辆自行车过去，车铃响了两声，声音被风吹得散开。陈禾偏头听了一下，又转回来。\n\n“你急着走？”林宁问。\n\n“领灯的地方九点半关门。”陈禾看了眼墙上的钟，“现在九点一刻。”\n\n“还有一刻钟。这一页核完就放你走。”\n\n陈禾没再催，把椅子拉过来，隔着桌角坐下。他坐得浅，一条腿还伸在过道上，随时能站起来的样子。\n\n林宁把登记簿翻回正面，逐格往下对。交班时间、值班人数、铜签数量、灯数、堤段情况，一格一格念出来，陈禾跟着应。念到“堤段情况”那格，陈禾写了“无异常”三个字，那个“异”字的上半截写得矮，和下面的“共”几乎连成一片。\n\n“这写的什么？”\n\n“无异常。”\n\n“我看像‘无导常’。”\n\n陈禾探头看了看，自己也笑了一下，很短。“我写‘异’字一直这样。你要不放心，我重描一遍。”\n\n“别描。描了更像涂改。”林宁把笔递给他，“在备注栏写一句：原字为‘异’，笔迹连写。签上你的名字。”\n\n陈禾接过笔，弯腰写。笔尖在纸上走得慢，写完把笔搁下，用指节压了压纸角。\n\n林宁核对完最后一格，合上登记簿，但没有收走。他把三枚铜签拢到一起，一枚一枚放回蓝布袋，白绳穿过袋口，暂时没有收紧。\n\n“数目对上了。”他说，“手续还差一道。你先坐着，我把这页抄到交接单上，两份对过再签。”\n\n陈禾看了眼钟，没说什么，把外衣从椅背上拿下来，抱在怀里。\n\n林宁拿着布袋站起来，走到窗口。窗口的玻璃上有一层水汽，他用手背擦出一块，把布袋放在窗台上，回头去取空白的交接单。\n\n“你在这儿等我。”他说，“别下去。”\n\n陈禾在椅子上应了一声：“我人还在。”\n\n林宁拿着布袋走向窗口，白绳垂在袋外，三枚铜签在袋底轻轻碰了一下。",
+            "pov": "第三人称限知，林宁",
+            "version": 1
+          },
+          {
+            "id": "beat-2-seg-1",
+            "chapterId": "night-shift",
+            "sceneId": "duty-room",
+            "beatId": "beat-2",
+            "order": 2,
+            "text": "窗口的台面窄，林宁把蓝布袋放在靠里的一侧，用镇纸压住袋角。他抽出一张空白交接单，垫上复写纸，把登记簿上的栏目一项一项誊过去。复写纸是旧的，边角起了毛，写重了会透到下面那张纸上。\n\n陈禾坐在桌边没动，怀里还抱着外衣。他看林宁写字，忽然说：“灯数那格，你抄成‘两盏’就行，别写‘贰’。”\n\n“为什么？”\n\n“领灯的人看单子，认阿拉伯数字快。上回有人写‘贰’，窗口那边念成‘一’。”\n\n林宁把已经写下的字看了看，没有改。他写的是“两盏”，笔画清楚，不需要再添说明。\n\n交接单誊完，他把复写纸抽出来，下面那张纸的字迹偏淡，但每个栏目都能认。他把两张单子并排放好，又回身去解蓝布袋的白绳。\n\n“现在交付。”他说，“你领两盏，我留一枚。”\n\n陈禾站起来，走到窗口这一侧。林宁把袋口翻开，三枚铜签在袋底并排躺着。他没有把袋子整个递过去，而是伸手取出靠外的两枚，摊在窗台上。\n\n“你自己数。”\n\n陈禾把外衣放在窗台边，伸出两根手指，把两枚铜签拨开，一枚一枚翻过来看编号。他看得不快，看完正面看背面，背面是光的，什么也没有。\n\n“零四一七。”他念了一声，又拿起另一枚，“零七三二。”\n\n“对。”林宁说，“剩下一枚在袋里。我不动它。”\n\n陈禾往袋里看了一眼。袋口敞着，剩下那枚铜签贴着袋底的布缝，一半被阴影盖住。他伸手进去，用指头碰了碰，确认是一枚，不是两枚叠在一起。\n\n“一枚。”他说。\n\n“一枚。”林宁应道，把袋口的白绳收拢，打了个活结，没有系死。\n\n陈禾把两枚铜签并到掌心，合了合，铜碰铜，响了一声脆的。他没有立刻揣起来，而是把铜签放在交接单旁边，先看单子。\n\n“交付数量这栏，你写的是两枚。”\n\n“是。”\n\n“余存这栏呢？”\n\n林宁指了指下面一行：“一枚。”\n\n陈禾顺着他的手指看下去，又抬头看袋子里那枚。他看得很仔细，像是在心里把两处数字对在一起。林宁没有催他，只把笔帽拔开，搁在单子边上。\n\n“没问题。”陈禾说。\n\n“那你签。”\n\n陈禾先签交付人那一栏。他弯腰写，笔尖在纸上停了一下，把日期补上。林宁接过来，在接收人那一栏签自己的名字，签完把单子转回去，让陈禾再看一遍。\n\n“你名字后面这个‘禾’字，最后一笔往左勾。”陈禾说，“跟上一页不一样。”\n\n“上一页我签得急。”林宁说，“这一页是正式的。”\n\n“那以后都按这个签？”\n\n“以后都按这个签。”\n\n陈禾把两枚铜签拿起来，一枚一枚放进外衣内袋。他放得很慢，放完还隔着布按了按，确认没有滑出来。\n\n“灯在堤下工具房领。”林宁说，“你拿单子去，他们看单子给灯。”\n\n“我知道。”陈禾把交接单折了两折，夹在指间，“你把袋子收好。剩那一枚别跟别的混了。”\n\n“混不了。”\n\n陈禾走到门口，又停下，回头看了一眼窗台上的蓝布袋。袋口还敞着，白绳搭在袋外。\n\n“你那个活结，”他说，“风一吹会开。”\n\n林宁低头看了看，把活结解开，重新系成双扣，跟来时一样。他系的时候，陈禾就站在门口看，等他系完才拉开门。\n\n门开了一条缝，河风灌进来，桌上的复写纸被掀起一角。林宁伸手按住，陈禾已经侧身出去了。\n\n“单子。”林宁在背后说。\n\n陈禾在门外应了一声，脚步声没有停。林宁听着那脚步下了台阶，往堤下去了，才把门带上。\n\n他回到窗口，把剩下的那一枚铜签从袋里拿出来，对着灯看了一眼编号，又放回去。铜签落袋的声音很轻，像指甲敲了一下桌面。\n\n交接单上两个名字都签齐了，日期也补了。林宁把单子压在登记簿上，没有马上收，先伸手把窗玻璃上的水汽又擦了一遍。\n\n外头堤上的灯亮着，工具房那边有一小片光，隔着树影看不真切。他站了一会儿，听见远处有铁门拉开的声音，又合上。\n\n“领到了。”他低声说了一句，也不知道是说给谁听。",
+            "pov": "第三人称限知，林宁",
+            "version": 1
+          },
+          {
+            "id": "beat-3-seg-1",
+            "chapterId": "night-shift",
+            "sceneId": "duty-room",
+            "beatId": "beat-3",
+            "order": 3,
+            "text": "林宁回到桌前，把登记簿翻到刚签完的那一页，从头到尾又看了一遍。两枚交付，一枚余存，交付人和接收人的名字都在，日期也对。他合上簿子，拉开桌下的抽屉。\n\n抽屉里垫着一层旧报纸，报纸上有一圈茶杯留下的水印。他把登记簿平放进去，靠里推到底，又从抽屉角落摸出一小卷封条纸。封条纸是裁好的，背面有胶，他撕下一段，横着贴在抽屉缝上，两头各多出半寸。\n\n“明天谁来开，谁就看得见。”他对自己说。\n\n封条贴好，他用手掌压了一遍，压完把椅子往后推了推，蹲下去看抽屉缝有没有翘边。胶粘得牢，边角服帖。他站起来，把蓝布袋拿在手里。\n\n袋里还剩一枚铜签。他解开双扣，把铜签倒在掌心，看了一眼编号，又放回袋里。袋子不能留在窗台上，他把它放进值班柜最上层，柜门关上，钥匙插在锁孔里转了一圈。\n\n柜门上的漆掉了一块，露出底下的铁色。林宁用拇指按了按那块掉漆的地方，钥匙往左拧了半圈，拔出来，挂回腰间的钥匙环上。\n\n外头有脚步声从堤下上来，走得快，到门口停了。门被推开一条缝，陈禾的声音传进来。\n\n“领到了。”\n\n林宁转头。陈禾站在门外，一手提一盏巡堤灯，灯罩上的灰擦过，露出底下的黄漆。另一只手里还夹着那张交接单，折过的地方压得平平的。\n\n“两盏。”陈禾把灯提起来给他看，“工具房的人问了两遍单子，我给他们看了。”\n\n“单子你留着还是交回去？”\n\n“他们看过了，还给我了。”陈禾把交接单递进门缝，“你收着吧，跟本子一起。”\n\n林宁接过来，走到抽屉前。封条已经贴上了。他站着看了一会儿，没有撕。\n\n“明天早上一起交。”他说。\n\n陈禾在门外应了一声，把两盏灯换到一只手上，腾出手来拉门。门关上前，他又探头进来。\n\n“你晚上一个人？”\n\n“一个人。”\n\n“堤上要是有什么事，按窗口底下那个铃。工具房有人听见。”\n\n“知道了。”\n\n门合上。陈禾的脚步声往堤下去，两盏灯的光在窗玻璃上晃了两下，慢慢远了。林宁站在窗口，看着那两团光沿着堤根走，走到工具房那边拐了个弯，看不见了。\n\n他回到桌边，把交接单放在封条旁边，没有塞进抽屉。桌面上还摊着陈禾留下的那支笔，笔帽没有盖。他把笔帽盖上，放进笔筒。\n\n椅子拉出来的时候，椅脚又刮了一声。他坐下来，弯腰去够桌下那个装杂物的纸箱，想把脚边的报纸归拢一下。\n\n纸箱后面，靠墙的地方，有一个东西。\n\n林宁把手伸进去，摸到一张硬纸的边。他把它抽出来，是一个信封，牛皮纸的，比手掌大一些，封口的胶压得很实，没有拆过的痕迹。\n\n信封上没有邮票，没有地址，只在正面的中间写了一行字：次日交站长。\n\n字是用黑笔写的，笔画很粗，写得不算好看，但每个字都清楚。林宁把信封翻过来，背面是空的。他又翻回正面，对着灯看了一遍。封口完好，边角有些压痕，像是被什么东西在上面搁过。\n\n他把信封放在桌上，退后一步看了看。桌上的东西都在原来的位置，交接单、笔筒、登记簿不在，已经封进抽屉。信封是刚才没有的，或者说，是他刚才没有看见的。\n\n他伸手把信封拿起来，掂了掂，里面像是有纸，不厚。他没有对着灯照，也没有揭封口。他把信封放回桌上，正面朝上，那行字正对着他。\n\n“次日交站长。”他念了一遍，声音很轻。\n\n墙上的钟走到九点四十。河面上有船过去，马达声闷闷的，从窗口传进来。林宁把信封往桌里侧推了推，推到台灯照得到的地方，然后坐下来，把两只手放在膝盖上。\n\n他看了看封好的抽屉，又看了看桌上的信封。\n\n“明天。”他说。\n\n窗外堤上的灯还亮着，工具房那边的光已经灭了。林宁把台灯的角度调低了些，光落在信封上，那行字清清楚楚。他没有再动它，只是坐着，听河风一下一下地撞着窗框。",
+            "pov": "第三人称限知，林宁",
+            "version": 1
+          }
+        ],
+        "report": {
+          "draftVersion": 1,
+          "findings": [
+            {
+              "ruleRef": "beat-1-seg-1",
+              "ruleQuote": "林宁拿着布袋站起来，走到窗口。窗口的玻璃上有一层水汽，他用手背擦出一块，把布袋放在窗台上，回头去取空白的交接单。",
+              "evidenceStatus": "confirmed",
+              "id": "continuity-pair-1",
+              "critic": "hard_consistency",
+              "severity": "P1",
+              "segmentId": "beat-1-seg-1",
+              "quote": "林宁拿着布袋走向窗口，白绳垂在袋外，三枚铜签在袋底轻轻碰了一下。",
+              "evidenceRefs": [
+                "beat-1-seg-1",
+                "beat-1-seg-1"
+              ],
+              "reason": "林宁已在p44把布袋放到窗台并回头去取交接单，p47又写他拿着布袋走向窗口，同一动作重复且物件位置回退。",
+              "suggestion": "删去或改写p47，使其只承接取单动作，不再重复拿袋走向窗口。",
+              "repairScope": "segment",
+              "draftVersion": 1
+            },
+            {
+              "ruleRef": "beat-2-seg-1",
+              "ruleQuote": "“一枚。”林宁应道，把袋口的白绳收拢，打了个活结，没有系死。",
+              "evidenceStatus": "confirmed",
+              "id": "continuity-pair-2",
+              "critic": "hard_consistency",
+              "severity": "P1",
+              "segmentId": "beat-2-seg-1",
+              "quote": "陈禾走到门口，又停下，回头看了一眼窗台上的蓝布袋。袋口还敞着，白绳搭在袋外。",
+              "evidenceRefs": [
+                "beat-2-seg-1",
+                "beat-2-seg-1"
+              ],
+              "reason": "p62林宁已把袋口白绳收拢打活结，p80却写袋口还敞着、白绳搭在袋外，中间无解绳动作。",
+              "suggestion": "在p80前补一句袋口被重新解开，或改p80为袋口已收拢、活结仍在。",
+              "repairScope": "segment",
+              "draftVersion": 1
+            },
+            {
+              "ruleRef": "beat-3-seg-1",
+              "ruleQuote": "袋里还剩一枚铜签。他解开双扣，把铜签倒在掌心，看了一眼编号，又放回袋里。袋子不能留在窗台上，他把它放进值班柜最上层，柜门关上，钥匙插在锁孔里转了一圈。",
+              "evidenceStatus": "confirmed",
+              "id": "continuity-pair-3",
+              "critic": "hard_consistency",
+              "severity": "P1",
+              "segmentId": "beat-3-seg-1",
+              "quote": "他回到桌边，把交接单放在封条旁边，没有塞进抽屉。桌面上还摊着陈禾留下的那支笔，笔帽没有盖。他把笔帽盖上，放进笔筒。",
+              "evidenceRefs": [
+                "beat-3-seg-1",
+                "beat-3-seg-1"
+              ],
+              "reason": "p94蓝布袋已放入值班柜最上层并锁好，p110之后桌面描写未涉及袋子，但p116称桌上东西都在原位；需确认袋子不在桌面即可，当前无直接冲突。",
+              "suggestion": "无需修改；若后续让袋子回桌，须写取回。",
+              "repairScope": "segment",
+              "draftVersion": 1
+            },
+            {
+              "id": "ai-taste-1",
+              "critic": "ai_taste",
+              "severity": "P3",
+              "segmentId": "beat-1-seg-1",
+              "quote": "林宁拿着布袋走向窗口，白绳垂在袋外，三枚铜签在袋底轻轻碰了一下。",
+              "evidenceRefs": [
+                "beat-1-seg-1"
+              ],
+              "reason": "本段前文已有“他把三枚铜签拢到一起，一枚一枚放回蓝布袋，白绳穿过袋口，暂时没有收紧”和“林宁拿着布袋站起来，走到窗口”，结尾又用几乎相同的动作与声音再收一次，属于同段内重复描写，且“轻轻碰了一下”与前文“铜签在袋底轻轻一响”意象重复。",
+              "suggestion": "删去或压缩结尾这一句，避免与前面放签、走向窗口的动作重复；若保留声音细节，只留一处即可。",
+              "repairScope": "phrase",
+              "draftVersion": 1
+            },
+            {
+              "id": "ai-taste-2",
+              "critic": "ai_taste",
+              "severity": "P3",
+              "segmentId": "beat-2-seg-1",
+              "quote": "“领到了。”他低声说了一句，也不知道是说给谁听。",
+              "evidenceRefs": [
+                "beat-2-seg-1"
+              ],
+              "reason": "“也不知道是说给谁听”是常见的内心补白套话，替读者解释自言自语的性质，属于过度解释；前文已通过他站在窗口、听见铁门声交代了情境。",
+              "suggestion": "删去“也不知道是说给谁听”这半句，只保留低声说的动作，让语气自己成立。",
+              "repairScope": "phrase",
+              "draftVersion": 1
+            },
+            {
+              "id": "ai-taste-3",
+              "critic": "ai_taste",
+              "severity": "P3",
+              "segmentId": "beat-3-seg-1",
+              "quote": "“明天谁来开，谁就看得见。”他对自己说。",
+              "evidenceRefs": [
+                "beat-3-seg-1"
+              ],
+              "reason": "“他对自己说”是对自言自语行为的直接标注，与前文贴封条、压胶边的动作重复表意，属于过度解释。",
+              "suggestion": "去掉“他对自己说”，让引语直接跟在贴封条动作之后，或改为不点明说话对象的短句。",
+              "repairScope": "phrase",
+              "draftVersion": 1
+            },
+            {
+              "id": "ai-taste-4",
+              "critic": "ai_taste",
+              "severity": "P3",
+              "segmentId": "beat-3-seg-1",
+              "quote": "信封是刚才没有的，或者说，是他刚才没有看见的。",
+              "evidenceRefs": [
+                "beat-3-seg-1"
+              ],
+              "reason": "“或者说，是他刚才没有看见的”是对前一句的自我修正式解释，把叙述者的推断过程直接摊开，削弱了发现信封的现场感，属于过度解释。",
+              "suggestion": "删去“或者说”后的补充，只保留一个判断，让读者自行理解他此前没注意到。",
+              "repairScope": "phrase",
+              "draftVersion": 1
+            },
+            {
+              "id": "ai-taste-5",
+              "critic": "ai_taste",
+              "severity": "P3",
+              "segmentId": "beat-3-seg-1",
+              "quote": "林宁把台灯的角度调低了些，光落在信封上，那行字清清楚楚。他没有再动它，只是坐着，听河风一下一下地撞着窗框。",
+              "evidenceRefs": [
+                "beat-3-seg-1"
+              ],
+              "reason": "结尾连续用“光落在信封上，那行字清清楚楚”“没有再动它”“只是坐着，听河风”收束，意象和句式与前文“推到台灯照得到的地方”“把两只手放在膝盖上”重复，属于同段内反复渲染同一静止状态。",
+              "suggestion": "压缩结尾，保留一个动作或一个声音即可，删去与前文重复的“光落在信封上”或“听河风”之一。",
+              "repairScope": "phrase",
+              "draftVersion": 1
+            }
+          ],
+          "highestSeverity": "P1"
+        },
+        "reviews": [
+          {
+            "draftVersion": 1,
+            "findings": [
+              {
+                "ruleRef": "beat-1-seg-1",
+                "ruleQuote": "林宁拿着布袋站起来，走到窗口。窗口的玻璃上有一层水汽，他用手背擦出一块，把布袋放在窗台上，回头去取空白的交接单。",
+                "evidenceStatus": "confirmed",
+                "id": "continuity-pair-1",
+                "critic": "hard_consistency",
+                "severity": "P1",
+                "segmentId": "beat-1-seg-1",
+                "quote": "林宁拿着布袋走向窗口，白绳垂在袋外，三枚铜签在袋底轻轻碰了一下。",
+                "evidenceRefs": [
+                  "beat-1-seg-1",
+                  "beat-1-seg-1"
+                ],
+                "reason": "林宁已在p44把布袋放到窗台并回头去取交接单，p47又写他拿着布袋走向窗口，同一动作重复且物件位置回退。",
+                "suggestion": "删去或改写p47，使其只承接取单动作，不再重复拿袋走向窗口。",
+                "repairScope": "segment",
+                "draftVersion": 1
+              },
+              {
+                "ruleRef": "beat-2-seg-1",
+                "ruleQuote": "“一枚。”林宁应道，把袋口的白绳收拢，打了个活结，没有系死。",
+                "evidenceStatus": "confirmed",
+                "id": "continuity-pair-2",
+                "critic": "hard_consistency",
+                "severity": "P1",
+                "segmentId": "beat-2-seg-1",
+                "quote": "陈禾走到门口，又停下，回头看了一眼窗台上的蓝布袋。袋口还敞着，白绳搭在袋外。",
+                "evidenceRefs": [
+                  "beat-2-seg-1",
+                  "beat-2-seg-1"
+                ],
+                "reason": "p62林宁已把袋口白绳收拢打活结，p80却写袋口还敞着、白绳搭在袋外，中间无解绳动作。",
+                "suggestion": "在p80前补一句袋口被重新解开，或改p80为袋口已收拢、活结仍在。",
+                "repairScope": "segment",
+                "draftVersion": 1
+              },
+              {
+                "ruleRef": "beat-3-seg-1",
+                "ruleQuote": "袋里还剩一枚铜签。他解开双扣，把铜签倒在掌心，看了一眼编号，又放回袋里。袋子不能留在窗台上，他把它放进值班柜最上层，柜门关上，钥匙插在锁孔里转了一圈。",
+                "evidenceStatus": "confirmed",
+                "id": "continuity-pair-3",
+                "critic": "hard_consistency",
+                "severity": "P1",
+                "segmentId": "beat-3-seg-1",
+                "quote": "他回到桌边，把交接单放在封条旁边，没有塞进抽屉。桌面上还摊着陈禾留下的那支笔，笔帽没有盖。他把笔帽盖上，放进笔筒。",
+                "evidenceRefs": [
+                  "beat-3-seg-1",
+                  "beat-3-seg-1"
+                ],
+                "reason": "p94蓝布袋已放入值班柜最上层并锁好，p110之后桌面描写未涉及袋子，但p116称桌上东西都在原位；需确认袋子不在桌面即可，当前无直接冲突。",
+                "suggestion": "无需修改；若后续让袋子回桌，须写取回。",
+                "repairScope": "segment",
+                "draftVersion": 1
+              },
+              {
+                "id": "ai-taste-1",
+                "critic": "ai_taste",
+                "severity": "P3",
+                "segmentId": "beat-1-seg-1",
+                "quote": "林宁拿着布袋走向窗口，白绳垂在袋外，三枚铜签在袋底轻轻碰了一下。",
+                "evidenceRefs": [
+                  "beat-1-seg-1"
+                ],
+                "reason": "本段前文已有“他把三枚铜签拢到一起，一枚一枚放回蓝布袋，白绳穿过袋口，暂时没有收紧”和“林宁拿着布袋站起来，走到窗口”，结尾又用几乎相同的动作与声音再收一次，属于同段内重复描写，且“轻轻碰了一下”与前文“铜签在袋底轻轻一响”意象重复。",
+                "suggestion": "删去或压缩结尾这一句，避免与前面放签、走向窗口的动作重复；若保留声音细节，只留一处即可。",
+                "repairScope": "phrase",
+                "draftVersion": 1
+              },
+              {
+                "id": "ai-taste-2",
+                "critic": "ai_taste",
+                "severity": "P3",
+                "segmentId": "beat-2-seg-1",
+                "quote": "“领到了。”他低声说了一句，也不知道是说给谁听。",
+                "evidenceRefs": [
+                  "beat-2-seg-1"
+                ],
+                "reason": "“也不知道是说给谁听”是常见的内心补白套话，替读者解释自言自语的性质，属于过度解释；前文已通过他站在窗口、听见铁门声交代了情境。",
+                "suggestion": "删去“也不知道是说给谁听”这半句，只保留低声说的动作，让语气自己成立。",
+                "repairScope": "phrase",
+                "draftVersion": 1
+              },
+              {
+                "id": "ai-taste-3",
+                "critic": "ai_taste",
+                "severity": "P3",
+                "segmentId": "beat-3-seg-1",
+                "quote": "“明天谁来开，谁就看得见。”他对自己说。",
+                "evidenceRefs": [
+                  "beat-3-seg-1"
+                ],
+                "reason": "“他对自己说”是对自言自语行为的直接标注，与前文贴封条、压胶边的动作重复表意，属于过度解释。",
+                "suggestion": "去掉“他对自己说”，让引语直接跟在贴封条动作之后，或改为不点明说话对象的短句。",
+                "repairScope": "phrase",
+                "draftVersion": 1
+              },
+              {
+                "id": "ai-taste-4",
+                "critic": "ai_taste",
+                "severity": "P3",
+                "segmentId": "beat-3-seg-1",
+                "quote": "信封是刚才没有的，或者说，是他刚才没有看见的。",
+                "evidenceRefs": [
+                  "beat-3-seg-1"
+                ],
+                "reason": "“或者说，是他刚才没有看见的”是对前一句的自我修正式解释，把叙述者的推断过程直接摊开，削弱了发现信封的现场感，属于过度解释。",
+                "suggestion": "删去“或者说”后的补充，只保留一个判断，让读者自行理解他此前没注意到。",
+                "repairScope": "phrase",
+                "draftVersion": 1
+              },
+              {
+                "id": "ai-taste-5",
+                "critic": "ai_taste",
+                "severity": "P3",
+                "segmentId": "beat-3-seg-1",
+                "quote": "林宁把台灯的角度调低了些，光落在信封上，那行字清清楚楚。他没有再动它，只是坐着，听河风一下一下地撞着窗框。",
+                "evidenceRefs": [
+                  "beat-3-seg-1"
+                ],
+                "reason": "结尾连续用“光落在信封上，那行字清清楚楚”“没有再动它”“只是坐着，听河风”收束，意象和句式与前文“推到台灯照得到的地方”“把两只手放在膝盖上”重复，属于同段内反复渲染同一静止状态。",
+                "suggestion": "压缩结尾，保留一个动作或一个声音即可，删去与前文重复的“光落在信封上”或“听河风”之一。",
+                "repairScope": "phrase",
+                "draftVersion": 1
+              }
+            ],
+            "highestSeverity": "P1"
+          }
+        ],
+        "metrics": [
+          {
+            "segmentId": "beat-1-seg-1",
+            "sentenceLengths": [
+              32,
+              29,
+              35,
+              20,
+              29,
+              5,
+              12,
+              16,
+              15,
+              20,
+              2,
+              21,
+              27,
+              30,
+              2,
+              2,
+              2,
+              10,
+              7,
+              24,
+              31,
+              20,
+              5,
+              27,
+              1,
+              11,
+              9,
+              7,
+              16,
+              11,
+              8,
+              25,
+              24,
+              4,
+              14,
+              21,
+              21,
+              17,
+              1,
+              2,
+              8,
+              2,
+              14,
+              11,
+              20,
+              29,
+              4,
+              4,
+              24,
+              20,
+              4,
+              28,
+              9,
+              15,
+              35,
+              12,
+              41,
+              12,
+              4,
+              3,
+              10,
+              15,
+              5,
+              9,
+              17,
+              22,
+              15,
+              30,
+              40,
+              5,
+              3,
+              6,
+              16,
+              8,
+              10,
+              2,
+              6,
+              22,
+              6,
+              8,
+              22,
+              19,
+              31,
+              5,
+              8,
+              20,
+              24,
+              13,
+              37,
+              6,
+              5,
+              14,
+              29
+            ],
+            "mean": 15.075268817204302,
+            "variance": 107.12336686322124,
+            "burstiness": -0.1858473627560388,
+            "calibrated": false,
+            "hits": []
+          },
+          {
+            "segmentId": "beat-2-seg-1",
+            "sentenceLengths": [
+              26,
+              30,
+              23,
+              15,
+              23,
+              3,
+              14,
+              13,
+              15,
+              17,
+              31,
+              21,
+              4,
+              10,
+              12,
+              18,
+              27,
+              4,
+              33,
+              22,
+              4,
+              15,
+              1,
+              10,
+              4,
+              9,
+              24,
+              24,
+              2,
+              2,
+              2,
+              21,
+              23,
+              24,
+              12,
+              1,
+              5,
+              11,
+              20,
+              20,
+              18,
+              3,
+              3,
+              3,
+              10,
+              18,
+              33,
+              16,
+              10,
+              7,
+              10,
+              8,
+              7,
+              20,
+              21,
+              8,
+              15,
+              3,
+              20,
+              10,
+              3,
+              22,
+              11,
+              12,
+              23,
+              21,
+              22,
+              15,
+              2,
+              6,
+              15,
+              21,
+              33,
+              18,
+              17,
+              32,
+              26,
+              21,
+              3,
+              16
+            ],
+            "mean": 14.7125,
+            "variance": 79.32984375000004,
+            "burstiness": -0.24580689922097654,
+            "calibrated": false,
+            "hits": []
+          },
+          {
+            "segmentId": "beat-3-seg-1",
+            "sentenceLengths": [
+              28,
+              24,
+              12,
+              23,
+              28,
+              31,
+              10,
+              5,
+              34,
+              8,
+              12,
+              8,
+              23,
+              35,
+              16,
+              35,
+              19,
+              15,
+              3,
+              4,
+              28,
+              23,
+              2,
+              27,
+              10,
+              9,
+              19,
+              10,
+              7,
+              11,
+              7,
+              2,
+              25,
+              10,
+              6,
+              3,
+              16,
+              7,
+              3,
+              3,
+              28,
+              32,
+              21,
+              19,
+              10,
+              15,
+              29,
+              14,
+              15,
+              36,
+              28,
+              24,
+              13,
+              13,
+              22,
+              15,
+              28,
+              20,
+              20,
+              13,
+              19,
+              5,
+              9,
+              10,
+              19,
+              36,
+              18,
+              2,
+              2,
+              20,
+              25,
+              22
+            ],
+            "mean": 16.708333333333332,
+            "variance": 94.42881944444449,
+            "burstiness": -0.26454785558920235,
+            "calibrated": false,
+            "hits": []
+          }
+        ],
+        "revisions": [],
+        "reviseRound": 0,
+        "maxRounds": 2,
+        "status": "needs_human",
+        "currentNode": "aggregate",
+        "stopReason": "尚未授权本场/Beat 内局部重写；保留原稿和修复建议",
+        "usage": {
+          "inputTokens": 29760,
+          "outputTokens": 4905,
+          "known": false
+        }
+      },
+      "checks": [
+        {
+          "name": "approval-gate-clear",
+          "passed": false,
+          "detail": "仍有阻断问题或待裁定事实，请先修改并复检"
+        },
+        {
+          "name": "part-length/beat-1",
+          "passed": true,
+          "detail": "1713 non-space characters, minimum 400"
+        },
+        {
+          "name": "part-length/beat-2",
+          "passed": true,
+          "detail": "1432 non-space characters, minimum 400"
+        },
+        {
+          "name": "part-length/beat-3",
+          "passed": true,
+          "detail": "1405 non-space characters, minimum 400"
+        },
+        {
+          "name": "ordered-complete-chapter",
+          "passed": true
+        },
+        {
+          "name": "chapter-length",
+          "passed": false,
+          "detail": "4550 non-space characters; target 2400, acceptance 1800–3200"
+        },
+        {
+          "name": "review-completed",
+          "passed": true
+        }
+      ],
+      "calls": [
+        {
+          "thinking": false,
+          "role": "planned_writer",
+          "promptVersion": "planned_chapter.v1",
+          "schemaVersion": "chapter_writer.v1",
+          "inputDigest": "a68c8078d2cc16852f4e002f53cf17779a7e1ee1c414ee3162617fb8238f2076",
+          "promptDigest": "13b7338924af23c2293a0155bb07e47b89e96924b920b72d3d1104bdfc1cfb32",
+          "output": "{\"parts\":[{\"beatId\":\"beat-1\",\"text\":\"河堤值班室的日光灯管有一头接触不良，每隔几分钟就暗一下，又自己亮回来。林宁把饭盒放在桌角，拉开椅子坐下时，椅脚在水泥地上刮出一声短响。窗外是河面，黑得看不出水在往哪边走，只有堤上路灯的倒影被风揉碎，又慢慢拼回去。\\n\\n陈禾已经站起来了，外衣搭在手臂上，帽檐压得低。桌上摊着交接登记簿，旁边一只蓝布袋，袋口用白绳穿着，绳结打得很紧。\\n\\n“你先看东西。”陈禾说，“看完签字，我下去领灯。”\\n\\n林宁把布袋提到面前，先看袋口的绳结。结是双扣，扣得规整，不像临时系上的。他解开白绳，把袋口翻下去，铜签在袋底轻轻一响。\\n\\n三枚。\\n\\n他伸手进去，一枚一枚摸出来，摊在桌面的旧报纸上。铜签长短一样，边缘磨得发亮，正面的编号刻得浅，要凑近才看得清。他把三枚并排摆好，确认没有第四枚卡在袋角，也没有哪一枚的编号重复。\\n\\n“三枚。”他说。\\n\\n“三枚。”陈禾应了一声，没有回头。\\n\\n林宁翻开登记簿。前一班的记录占了大半页，蓝黑墨水，写到后面颜色淡了些。陈禾的字他认得，平时还算清楚，就是收笔爱拖，写得快了，竖和撇就黏到一处。\\n\\n“这一行，”林宁用指甲点着其中一格，“交班数量这里。是‘三’，还是‘二’？”\\n\\n陈禾把外衣从手臂上换到另一只手上，走回来半步，低头看了一眼。\\n\\n“三。”\\n\\n“这上头这一撇，是笔尖劈了？”\\n\\n“铅笔写的，我描过一遍。”陈禾说，“数字是三。旁边那格是灯数，写的是‘两盏’，不是‘二盏’。这地方我写得快，横拖长了。”\\n\\n林宁没有立刻落笔。他把登记簿往灯下挪了挪，纸面斜着反光，那一笔更看不清了。陈禾的手已经搭在门把上，门缝里漏进来的风带着水腥气。\\n\\n“你先别走。”林宁说，“这一处我得跟你核对清楚。不是不信你，明天有人翻本子，我总不能说‘反正是三’。”\\n\\n陈禾站住，回头看了看他，又看了看桌上摊开的铜签。他把外衣重新搭回椅背，帽檐往上推了推。\\n\\n“行。你问。”\\n\\n“交班时袋里是几枚？”\\n\\n“三枚。我接手的时候就是三枚，一枚没动。”\\n\\n“这三枚的编号你记不记得？”\\n\\n陈禾俯身，把三枚铜签逐一转过来，念出后四位数。林宁在登记簿空白的备注栏里先写了个草稿，写到第二枚时停了一下。\\n\\n“你念慢点。”\\n\\n“零四一七。”\\n\\n林宁写完，抬头看他：“你刚才念的是零四一七，还是零七一四？”\\n\\n陈禾把那一枚拿起来，凑到灯下，自己也皱了皱眉。\\n\\n“零四一七。”他把铜签放回去，指腹在数字上按了一下，“这个‘一’刻得窄，看着像竖线。”\\n\\n林宁把草稿划掉，重写。划掉的地方他留了道斜线，没有涂黑。登记簿是公家的，改错了要看得见改过的痕迹，这是前一任值班员教他的，他一直照办。\\n\\n两人凑在灯下，一个念，一个写。林宁的字小而挤，陈禾念到第三枚时，外头堤上有一辆自行车过去，车铃响了两声，声音被风吹得散开。陈禾偏头听了一下，又转回来。\\n\\n“你急着走？”林宁问。\\n\\n“领灯的地方九点半关门。”陈禾看了眼墙上的钟，“现在九点一刻。”\\n\\n“还有一刻钟。这一页核完就放你走。”\\n\\n陈禾没再催，把椅子拉过来，隔着桌角坐下。他坐得浅，一条腿还伸在过道上，随时能站起来的样子。\\n\\n林宁把登记簿翻回正面，逐格往下对。交班时间、值班人数、铜签数量、灯数、堤段情况，一格一格念出来，陈禾跟着应。念到“堤段情况”那格，陈禾写了“无异常”三个字，那个“异”字的上半截写得矮，和下面的“共”几乎连成一片。\\n\\n“这写的什么？”\\n\\n“无异常。”\\n\\n“我看像‘无导常’。”\\n\\n陈禾探头看了看，自己也笑了一下，很短。“我写‘异’字一直这样。你要不放心，我重描一遍。”\\n\\n“别描。描了更像涂改。”林宁把笔递给他，“在备注栏写一句：原字为‘异’，笔迹连写。签上你的名字。”\\n\\n陈禾接过笔，弯腰写。笔尖在纸上走得慢，写完把笔搁下，用指节压了压纸角。\\n\\n林宁核对完最后一格，合上登记簿，但没有收走。他把三枚铜签拢到一起，一枚一枚放回蓝布袋，白绳穿过袋口，暂时没有收紧。\\n\\n“数目对上了。”他说，“手续还差一道。你先坐着，我把这页抄到交接单上，两份对过再签。”\\n\\n陈禾看了眼钟，没说什么，把外衣从椅背上拿下来，抱在怀里。\\n\\n林宁拿着布袋站起来，走到窗口。窗口的玻璃上有一层水汽，他用手背擦出一块，把布袋放在窗台上，回头去取空白的交接单。\\n\\n“你在这儿等我。”他说，“别下去。”\\n\\n陈禾在椅子上应了一声：“我人还在。”\\n\\n林宁拿着布袋走向窗口，白绳垂在袋外，三枚铜签在袋底轻轻碰了一下。\"},{\"beatId\":\"beat-2\",\"text\":\"窗口的台面窄，林宁把蓝布袋放在靠里的一侧，用镇纸压住袋角。他抽出一张空白交接单，垫上复写纸，把登记簿上的栏目一项一项誊过去。复写纸是旧的，边角起了毛，写重了会透到下面那张纸上。\\n\\n陈禾坐在桌边没动，怀里还抱着外衣。他看林宁写字，忽然说：“灯数那格，你抄成‘两盏’就行，别写‘贰’。”\\n\\n“为什么？”\\n\\n“领灯的人看单子，认阿拉伯数字快。上回有人写‘贰’，窗口那边念成‘一’。”\\n\\n林宁把已经写下的字看了看，没有改。他写的是“两盏”，笔画清楚，不需要再添说明。\\n\\n交接单誊完，他把复写纸抽出来，下面那张纸的字迹偏淡，但每个栏目都能认。他把两张单子并排放好，又回身去解蓝布袋的白绳。\\n\\n“现在交付。”他说，“你领两盏，我留一枚。”\\n\\n陈禾站起来，走到窗口这一侧。林宁把袋口翻开，三枚铜签在袋底并排躺着。他没有把袋子整个递过去，而是伸手取出靠外的两枚，摊在窗台上。\\n\\n“你自己数。”\\n\\n陈禾把外衣放在窗台边，伸出两根手指，把两枚铜签拨开，一枚一枚翻过来看编号。他看得不快，看完正面看背面，背面是光的，什么也没有。\\n\\n“零四一七。”他念了一声，又拿起另一枚，“零七三二。”\\n\\n“对。”林宁说，“剩下一枚在袋里。我不动它。”\\n\\n陈禾往袋里看了一眼。袋口敞着，剩下那枚铜签贴着袋底的布缝，一半被阴影盖住。他伸手进去，用指头碰了碰，确认是一枚，不是两枚叠在一起。\\n\\n“一枚。”他说。\\n\\n“一枚。”林宁应道，把袋口的白绳收拢，打了个活结，没有系死。\\n\\n陈禾把两枚铜签并到掌心，合了合，铜碰铜，响了一声脆的。他没有立刻揣起来，而是把铜签放在交接单旁边，先看单子。\\n\\n“交付数量这栏，你写的是两枚。”\\n\\n“是。”\\n\\n“余存这栏呢？”\\n\\n林宁指了指下面一行：“一枚。”\\n\\n陈禾顺着他的手指看下去，又抬头看袋子里那枚。他看得很仔细，像是在心里把两处数字对在一起。林宁没有催他，只把笔帽拔开，搁在单子边上。\\n\\n“没问题。”陈禾说。\\n\\n“那你签。”\\n\\n陈禾先签交付人那一栏。他弯腰写，笔尖在纸上停了一下，把日期补上。林宁接过来，在接收人那一栏签自己的名字，签完把单子转回去，让陈禾再看一遍。\\n\\n“你名字后面这个‘禾’字，最后一笔往左勾。”陈禾说，“跟上一页不一样。”\\n\\n“上一页我签得急。”林宁说，“这一页是正式的。”\\n\\n“那以后都按这个签？”\\n\\n“以后都按这个签。”\\n\\n陈禾把两枚铜签拿起来，一枚一枚放进外衣内袋。他放得很慢，放完还隔着布按了按，确认没有滑出来。\\n\\n“灯在堤下工具房领。”林宁说，“你拿单子去，他们看单子给灯。”\\n\\n“我知道。”陈禾把交接单折了两折，夹在指间，“你把袋子收好。剩那一枚别跟别的混了。”\\n\\n“混不了。”\\n\\n陈禾走到门口，又停下，回头看了一眼窗台上的蓝布袋。袋口还敞着，白绳搭在袋外。\\n\\n“你那个活结，”他说，“风一吹会开。”\\n\\n林宁低头看了看，把活结解开，重新系成双扣，跟来时一样。他系的时候，陈禾就站在门口看，等他系完才拉开门。\\n\\n门开了一条缝，河风灌进来，桌上的复写纸被掀起一角。林宁伸手按住，陈禾已经侧身出去了。\\n\\n“单子。”林宁在背后说。\\n\\n陈禾在门外应了一声，脚步声没有停。林宁听着那脚步下了台阶，往堤下去了，才把门带上。\\n\\n他回到窗口，把剩下的那一枚铜签从袋里拿出来，对着灯看了一眼编号，又放回去。铜签落袋的声音很轻，像指甲敲了一下桌面。\\n\\n交接单上两个名字都签齐了，日期也补了。林宁把单子压在登记簿上，没有马上收，先伸手把窗玻璃上的水汽又擦了一遍。\\n\\n外头堤上的灯亮着，工具房那边有一小片光，隔着树影看不真切。他站了一会儿，听见远处有铁门拉开的声音，又合上。\\n\\n“领到了。”他低声说了一句，也不知道是说给谁听。\"},{\"beatId\":\"beat-3\",\"text\":\"林宁回到桌前，把登记簿翻到刚签完的那一页，从头到尾又看了一遍。两枚交付，一枚余存，交付人和接收人的名字都在，日期也对。他合上簿子，拉开桌下的抽屉。\\n\\n抽屉里垫着一层旧报纸，报纸上有一圈茶杯留下的水印。他把登记簿平放进去，靠里推到底，又从抽屉角落摸出一小卷封条纸。封条纸是裁好的，背面有胶，他撕下一段，横着贴在抽屉缝上，两头各多出半寸。\\n\\n“明天谁来开，谁就看得见。”他对自己说。\\n\\n封条贴好，他用手掌压了一遍，压完把椅子往后推了推，蹲下去看抽屉缝有没有翘边。胶粘得牢，边角服帖。他站起来，把蓝布袋拿在手里。\\n\\n袋里还剩一枚铜签。他解开双扣，把铜签倒在掌心，看了一眼编号，又放回袋里。袋子不能留在窗台上，他把它放进值班柜最上层，柜门关上，钥匙插在锁孔里转了一圈。\\n\\n柜门上的漆掉了一块，露出底下的铁色。林宁用拇指按了按那块掉漆的地方，钥匙往左拧了半圈，拔出来，挂回腰间的钥匙环上。\\n\\n外头有脚步声从堤下上来，走得快，到门口停了。门被推开一条缝，陈禾的声音传进来。\\n\\n“领到了。”\\n\\n林宁转头。陈禾站在门外，一手提一盏巡堤灯，灯罩上的灰擦过，露出底下的黄漆。另一只手里还夹着那张交接单，折过的地方压得平平的。\\n\\n“两盏。”陈禾把灯提起来给他看，“工具房的人问了两遍单子，我给他们看了。”\\n\\n“单子你留着还是交回去？”\\n\\n“他们看过了，还给我了。”陈禾把交接单递进门缝，“你收着吧，跟本子一起。”\\n\\n林宁接过来，走到抽屉前。封条已经贴上了。他站着看了一会儿，没有撕。\\n\\n“明天早上一起交。”他说。\\n\\n陈禾在门外应了一声，把两盏灯换到一只手上，腾出手来拉门。门关上前，他又探头进来。\\n\\n“你晚上一个人？”\\n\\n“一个人。”\\n\\n“堤上要是有什么事，按窗口底下那个铃。工具房有人听见。”\\n\\n“知道了。”\\n\\n门合上。陈禾的脚步声往堤下去，两盏灯的光在窗玻璃上晃了两下，慢慢远了。林宁站在窗口，看着那两团光沿着堤根走，走到工具房那边拐了个弯，看不见了。\\n\\n他回到桌边，把交接单放在封条旁边，没有塞进抽屉。桌面上还摊着陈禾留下的那支笔，笔帽没有盖。他把笔帽盖上，放进笔筒。\\n\\n椅子拉出来的时候，椅脚又刮了一声。他坐下来，弯腰去够桌下那个装杂物的纸箱，想把脚边的报纸归拢一下。\\n\\n纸箱后面，靠墙的地方，有一个东西。\\n\\n林宁把手伸进去，摸到一张硬纸的边。他把它抽出来，是一个信封，牛皮纸的，比手掌大一些，封口的胶压得很实，没有拆过的痕迹。\\n\\n信封上没有邮票，没有地址，只在正面的中间写了一行字：次日交站长。\\n\\n字是用黑笔写的，笔画很粗，写得不算好看，但每个字都清楚。林宁把信封翻过来，背面是空的。他又翻回正面，对着灯看了一遍。封口完好，边角有些压痕，像是被什么东西在上面搁过。\\n\\n他把信封放在桌上，退后一步看了看。桌上的东西都在原来的位置，交接单、笔筒、登记簿不在，已经封进抽屉。信封是刚才没有的，或者说，是他刚才没有看见的。\\n\\n他伸手把信封拿起来，掂了掂，里面像是有纸，不厚。他没有对着灯照，也没有揭封口。他把信封放回桌上，正面朝上，那行字正对着他。\\n\\n“次日交站长。”他念了一遍，声音很轻。\\n\\n墙上的钟走到九点四十。河面上有船过去，马达声闷闷的，从窗口传进来。林宁把信封往桌里侧推了推，推到台灯照得到的地方，然后坐下来，把两只手放在膝盖上。\\n\\n他看了看封好的抽屉，又看了看桌上的信封。\\n\\n“明天。”他说。\\n\\n窗外堤上的灯还亮着，工具房那边的光已经灭了。林宁把台灯的角度调低了些，光落在信封上，那行字清清楚楚。他没有再动它，只是坐着，听河风一下一下地撞着窗框。\"}]}",
+          "finishReason": "complete",
+          "usage": {
+            "inputTokens": 5243,
+            "outputTokens": 3745,
+            "known": true
+          },
+          "elapsedMs": 24566
+        },
+        {
+          "thinking": false,
+          "role": "hard_consistency",
+          "promptVersion": "hard_consistency.v6",
+          "schemaVersion": "hard_consistency.v1",
+          "inputDigest": "00d88a0cb9c257079be6123949cf2f05f4ab0aa19d7a5010239eff6f60e4f8fe",
+          "promptDigest": "5b0b1682116b8aeaff9643f6bbb1dbda2c3b7d71401c1634265207615bd9f129",
+          "output": "{\"findings\":[]}",
+          "finishReason": "complete",
+          "usage": {
+            "inputTokens": 7240,
+            "outputTokens": 6,
+            "known": true
+          },
+          "elapsedMs": 702
+        },
+        {
+          "thinking": false,
+          "role": "hard_consistency",
+          "promptVersion": "hard_consistency.v11",
+          "schemaVersion": "continuity_pairs.v1",
+          "inputDigest": "53dc004ec86df2cdf87e17427f5cd469e004cfd6d1ed3bcaaa333b344c8cb58b",
+          "promptDigest": "0a6e30c2d43ccf8bf93a2cb1fb97b08b7a3474893491d5d98ce251d951d763c7",
+          "output": "{\"checked\":[\"beat-1-seg-1\",\"beat-2-seg-1\",\"beat-3-seg-1\"],\"issues\":[{\"target\":\"beat-1-seg-1\",\"earlier\":\"p44\",\"later\":\"p47\",\"reason\":\"林宁已在p44把布袋放到窗台并回头去取交接单，p47又写他拿着布袋走向窗口，同一动作重复且物件位置回退。\",\"suggestion\":\"删去或改写p47，使其只承接取单动作，不再重复拿袋走向窗口。\",\"needsAuthor\":false},{\"target\":\"beat-2-seg-1\",\"earlier\":\"p62\",\"later\":\"p80\",\"reason\":\"p62林宁已把袋口白绳收拢打活结，p80却写袋口还敞着、白绳搭在袋外，中间无解绳动作。\",\"suggestion\":\"在p80前补一句袋口被重新解开，或改p80为袋口已收拢、活结仍在。\",\"needsAuthor\":false},{\"target\":\"beat-3-seg-1\",\"earlier\":\"p94\",\"later\":\"p110\",\"reason\":\"p94蓝布袋已放入值班柜最上层并锁好，p110之后桌面描写未涉及袋子，但p116称桌上东西都在原位；需确认袋子不在桌面即可，当前无直接冲突。\",\"suggestion\":\"无需修改；若后续让袋子回桌，须写取回。\",\"needsAuthor\":false}]}",
+          "finishReason": "complete",
+          "usage": {
+            "inputTokens": 11520,
+            "outputTokens": 317,
+            "known": true
+          },
+          "elapsedMs": 1896
+        },
+        {
+          "thinking": false,
+          "role": "ai_taste",
+          "promptVersion": "ai_taste.v2",
+          "schemaVersion": "critic.v1",
+          "inputDigest": "376414aae778e22858d4be6ea932e31418511b39d78e383ae1045a7a60984570",
+          "promptDigest": "5f4d81a71a72d1ca30932e4009ef3871a9f431844c763ab49f9d5e22907dea26",
+          "output": "{\"findings\":[{\"id\":\"ai-taste-1\",\"critic\":\"ai_taste\",\"severity\":\"P3\",\"segmentId\":\"beat-1-seg-1\",\"quote\":\"林宁拿着布袋走向窗口，白绳垂在袋外，三枚铜签在袋底轻轻碰了一下。\",\"evidenceRefs\":[\"beat-1-seg-1\"],\"reason\":\"本段前文已有“他把三枚铜签拢到一起，一枚一枚放回蓝布袋，白绳穿过袋口，暂时没有收紧”和“林宁拿着布袋站起来，走到窗口”，结尾又用几乎相同的动作与声音再收一次，属于同段内重复描写，且“轻轻碰了一下”与前文“铜签在袋底轻轻一响”意象重复。\",\"suggestion\":\"删去或压缩结尾这一句，避免与前面放签、走向窗口的动作重复；若保留声音细节，只留一处即可。\",\"repairScope\":\"phrase\",\"draftVersion\":1},{\"id\":\"ai-taste-2\",\"critic\":\"ai_taste\",\"severity\":\"P3\",\"segmentId\":\"beat-2-seg-1\",\"quote\":\"“领到了。”他低声说了一句，也不知道是说给谁听。\",\"evidenceRefs\":[\"beat-2-seg-1\"],\"reason\":\"“也不知道是说给谁听”是常见的内心补白套话，替读者解释自言自语的性质，属于过度解释；前文已通过他站在窗口、听见铁门声交代了情境。\",\"suggestion\":\"删去“也不知道是说给谁听”这半句，只保留低声说的动作，让语气自己成立。\",\"repairScope\":\"phrase\",\"draftVersion\":1},{\"id\":\"ai-taste-3\",\"critic\":\"ai_taste\",\"severity\":\"P3\",\"segmentId\":\"beat-3-seg-1\",\"quote\":\"“明天谁来开，谁就看得见。”他对自己说。\",\"evidenceRefs\":[\"beat-3-seg-1\"],\"reason\":\"“他对自己说”是对自言自语行为的直接标注，与前文贴封条、压胶边的动作重复表意，属于过度解释。\",\"suggestion\":\"去掉“他对自己说”，让引语直接跟在贴封条动作之后，或改为不点明说话对象的短句。\",\"repairScope\":\"phrase\",\"draftVersion\":1},{\"id\":\"ai-taste-4\",\"critic\":\"ai_taste\",\"severity\":\"P3\",\"segmentId\":\"beat-3-seg-1\",\"quote\":\"信封是刚才没有的，或者说，是他刚才没有看见的。\",\"evidenceRefs\":[\"beat-3-seg-1\"],\"reason\":\"“或者说，是他刚才没有看见的”是对前一句的自我修正式解释，把叙述者的推断过程直接摊开，削弱了发现信封的现场感，属于过度解释。\",\"suggestion\":\"删去“或者说”后的补充，只保留一个判断，让读者自行理解他此前没注意到。\",\"repairScope\":\"phrase\",\"draftVersion\":1},{\"id\":\"ai-taste-5\",\"critic\":\"ai_taste\",\"severity\":\"P3\",\"segmentId\":\"beat-3-seg-1\",\"quote\":\"林宁把台灯的角度调低了些，光落在信封上，那行字清清楚楚。他没有再动它，只是坐着，听河风一下一下地撞着窗框。\",\"evidenceRefs\":[\"beat-3-seg-1\"],\"reason\":\"结尾连续用“光落在信封上，那行字清清楚楚”“没有再动它”“只是坐着，听河风”收束，意象和句式与前文“推到台灯照得到的地方”“把两只手放在膝盖上”重复，属于同段内反复渲染同一静止状态。\",\"suggestion\":\"压缩结尾，保留一个动作或一个声音即可，删去与前文重复的“光落在信封上”或“听河风”之一。\",\"repairScope\":\"phrase\",\"draftVersion\":1}]}",
+          "finishReason": "complete",
+          "usage": {
+            "inputTokens": 5757,
+            "outputTokens": 837,
+            "known": true
+          },
+          "elapsedMs": 4705
+        }
+      ],
+      "approvalBlock": "仍有阻断问题或待裁定事实，请先修改并复检"
+    },
+    {
+      "name": "rewrite-middle-with-unadopted-neighbors",
+      "input": {
+        "neighbors": [
+          {
+            "state": "candidate",
+            "beatId": "beat-1",
+            "title": "beat-1",
+            "draftId": "evaluation-working-draft",
+            "runId": "evaluation-working-run",
+            "version": 2,
+            "digest": "4c0971696f9a1b45b756dc4a999c09b66b39e2dc2fae788f714ab29b546c9ed5",
+            "position": "before",
+            "segments": [
+              {
+                "id": "beat-1-seg-1",
+                "chapterId": "night-shift",
+                "sceneId": "duty-room",
+                "beatId": "beat-1",
+                "order": 1,
+                "text": "河堤值班室的日光灯管有一头接触不良，每隔几分钟就暗一下，又自己亮回来。林宁把饭盒放在桌角，拉开椅子坐下时，椅脚在水泥地上刮出一声短响。窗外是河面，黑得看不出水在往哪边走，只有堤上路灯的倒影被风揉碎，又慢慢拼回去。\n\n陈禾已经站起来了，外衣搭在手臂上，帽檐压得低。桌上摊着交接登记簿，旁边一只蓝布袋，袋口用白绳穿着，绳结打得很紧。\n\n“你先看东西。”陈禾说，“看完签字，我下去领灯。”\n\n林宁把布袋提到面前，先看袋口的绳结。结是双扣，扣得规整，不像临时系上的。他解开白绳，把袋口翻下去，铜签在袋底轻轻一响。\n\n三枚。\n\n他伸手进去，一枚一枚摸出来，摊在桌面的旧报纸上。铜签长短一样，边缘磨得发亮，正面的编号刻得浅，要凑近才看得清。他把三枚并排摆好，确认没有第四枚卡在袋角，也没有哪一枚的编号重复。\n\n“三枚。”他说。\n\n“三枚。”陈禾应了一声，没有回头。\n\n林宁翻开登记簿。前一班的记录占了大半页，蓝黑墨水，写到后面颜色淡了些。陈禾的字他认得，平时还算清楚，就是收笔爱拖，写得快了，竖和撇就黏到一处。\n\n“这一行，”林宁用指甲点着其中一格，“交班数量这里。是‘三’，还是‘二’？”\n\n陈禾把外衣从手臂上换到另一只手上，走回来半步，低头看了一眼。\n\n“三。”\n\n“这上头这一撇，是笔尖劈了？”\n\n“铅笔写的，我描过一遍。”陈禾说，“数字是三。旁边那格是灯数，写的是‘两盏’，不是‘二盏’。这地方我写得快，横拖长了。”\n\n林宁没有立刻落笔。他把登记簿往灯下挪了挪，纸面斜着反光，那一笔更看不清了。陈禾的手已经搭在门把上，门缝里漏进来的风带着水腥气。\n\n“你先别走。”林宁说，“这一处我得跟你核对清楚。不是不信你，明天有人翻本子，我总不能说‘反正是三’。”\n\n陈禾站住，回头看了看他，又看了看桌上摊开的铜签。他把外衣重新搭回椅背，帽檐往上推了推。\n\n“行。你问。”\n\n“交班时袋里是几枚？”\n\n“三枚。我接手的时候就是三枚，一枚没动。”\n\n“这三枚的编号你记不记得？”\n\n陈禾俯身，把三枚铜签逐一转过来，念出后四位数。林宁在登记簿空白的备注栏里先写了个草稿，写到第二枚时停了一下。\n\n“你念慢点。”\n\n“零四一七。”\n\n林宁写完，抬头看他：“你刚才念的是零四一七，还是零七一四？”\n\n陈禾把那一枚拿起来，凑到灯下，自己也皱了皱眉。\n\n“零四一七。”他把铜签放回去，指腹在数字上按了一下，“这个‘一’刻得窄，看着像竖线。”\n\n林宁把草稿划掉，重写。划掉的地方他留了道斜线，没有涂黑。登记簿是公家的，改错了要看得见改过的痕迹，这是前一任值班员教他的，他一直照办。\n\n两人凑在灯下，一个念，一个写。林宁的字小而挤，陈禾念到第三枚时，外头堤上有一辆自行车过去，车铃响了两声，声音被风吹得散开。陈禾偏头听了一下，又转回来。\n\n“你急着走？”林宁问。\n\n“领灯的地方九点半关门。”陈禾看了眼墙上的钟，“现在九点一刻。”\n\n“还有一刻钟。这一页核完就放你走。”\n\n陈禾没再催，把椅子拉过来，隔着桌角坐下。他坐得浅，一条腿还伸在过道上，随时能站起来的样子。\n\n林宁把登记簿翻回正面，逐格往下对。交班时间、值班人数、铜签数量、灯数、堤段情况，一格一格念出来，陈禾跟着应。念到“堤段情况”那格，陈禾写了“无异常”三个字，那个“异”字的上半截写得矮，和下面的“共”几乎连成一片。\n\n“这写的什么？”\n\n“无异常。”\n\n“我看像‘无导常’。”\n\n陈禾探头看了看，自己也笑了一下，很短。“我写‘异’字一直这样。你要不放心，我重描一遍。”\n\n“别描。描了更像涂改。”林宁把笔递给他，“在备注栏写一句：原字为‘异’，笔迹连写。签上你的名字。”\n\n陈禾接过笔，弯腰写。笔尖在纸上走得慢，写完把笔搁下，用指节压了压纸角。\n\n林宁核对完最后一格，合上登记簿，但没有收走。他把三枚铜签拢到一起，一枚一枚放回蓝布袋，白绳穿过袋口，暂时没有收紧。\n\n“数目对上了。”他说，“手续还差一道。你先坐着，我把这页抄到交接单上，两份对过再签。”\n\n陈禾看了眼钟，没说什么，把外衣从椅背上拿下来，抱在怀里。\n\n林宁拿着布袋站起来，走到窗口。窗口的玻璃上有一层水汽，他用手背擦出一块，把布袋放在窗台上，回头去取空白的交接单。\n\n“你在这儿等我。”他说，“别下去。”\n\n陈禾在椅子上应了一声：“我人还在。”\n\n林宁拿着布袋走向窗口，白绳垂在袋外，三枚铜签在袋底轻轻碰了一下。\n到窗口前，林宁把装有三枚铜签的蓝布袋系在左腕，右手空着，准备接登记簿。",
+                "pov": "第三人称限知，林宁",
+                "version": 2
+              }
+            ]
+          },
+          {
+            "state": "candidate",
+            "beatId": "beat-3",
+            "title": "beat-3",
+            "draftId": "evaluation-working-draft",
+            "runId": "evaluation-working-run",
+            "version": 1,
+            "digest": "9b0e5e176e3c45a9516c594d26a4c598212b478b4e149ba1ca856315b48f3dfe",
+            "position": "after",
+            "segments": [
+              {
+                "id": "beat-3-seg-1",
+                "chapterId": "night-shift",
+                "sceneId": "duty-room",
+                "beatId": "beat-3",
+                "order": 3,
+                "text": "林宁回到桌前，把登记簿翻到刚签完的那一页，从头到尾又看了一遍。两枚交付，一枚余存，交付人和接收人的名字都在，日期也对。他合上簿子，拉开桌下的抽屉。\n\n抽屉里垫着一层旧报纸，报纸上有一圈茶杯留下的水印。他把登记簿平放进去，靠里推到底，又从抽屉角落摸出一小卷封条纸。封条纸是裁好的，背面有胶，他撕下一段，横着贴在抽屉缝上，两头各多出半寸。\n\n“明天谁来开，谁就看得见。”他对自己说。\n\n封条贴好，他用手掌压了一遍，压完把椅子往后推了推，蹲下去看抽屉缝有没有翘边。胶粘得牢，边角服帖。他站起来，把蓝布袋拿在手里。\n\n袋里还剩一枚铜签。他解开双扣，把铜签倒在掌心，看了一眼编号，又放回袋里。袋子不能留在窗台上，他把它放进值班柜最上层，柜门关上，钥匙插在锁孔里转了一圈。\n\n柜门上的漆掉了一块，露出底下的铁色。林宁用拇指按了按那块掉漆的地方，钥匙往左拧了半圈，拔出来，挂回腰间的钥匙环上。\n\n外头有脚步声从堤下上来，走得快，到门口停了。门被推开一条缝，陈禾的声音传进来。\n\n“领到了。”\n\n林宁转头。陈禾站在门外，一手提一盏巡堤灯，灯罩上的灰擦过，露出底下的黄漆。另一只手里还夹着那张交接单，折过的地方压得平平的。\n\n“两盏。”陈禾把灯提起来给他看，“工具房的人问了两遍单子，我给他们看了。”\n\n“单子你留着还是交回去？”\n\n“他们看过了，还给我了。”陈禾把交接单递进门缝，“你收着吧，跟本子一起。”\n\n林宁接过来，走到抽屉前。封条已经贴上了。他站着看了一会儿，没有撕。\n\n“明天早上一起交。”他说。\n\n陈禾在门外应了一声，把两盏灯换到一只手上，腾出手来拉门。门关上前，他又探头进来。\n\n“你晚上一个人？”\n\n“一个人。”\n\n“堤上要是有什么事，按窗口底下那个铃。工具房有人听见。”\n\n“知道了。”\n\n门合上。陈禾的脚步声往堤下去，两盏灯的光在窗玻璃上晃了两下，慢慢远了。林宁站在窗口，看着那两团光沿着堤根走，走到工具房那边拐了个弯，看不见了。\n\n他回到桌边，把交接单放在封条旁边，没有塞进抽屉。桌面上还摊着陈禾留下的那支笔，笔帽没有盖。他把笔帽盖上，放进笔筒。\n\n椅子拉出来的时候，椅脚又刮了一声。他坐下来，弯腰去够桌下那个装杂物的纸箱，想把脚边的报纸归拢一下。\n\n纸箱后面，靠墙的地方，有一个东西。\n\n林宁把手伸进去，摸到一张硬纸的边。他把它抽出来，是一个信封，牛皮纸的，比手掌大一些，封口的胶压得很实，没有拆过的痕迹。\n\n信封上没有邮票，没有地址，只在正面的中间写了一行字：次日交站长。\n\n字是用黑笔写的，笔画很粗，写得不算好看，但每个字都清楚。林宁把信封翻过来，背面是空的。他又翻回正面，对着灯看了一遍。封口完好，边角有些压痕，像是被什么东西在上面搁过。\n\n他把信封放在桌上，退后一步看了看。桌上的东西都在原来的位置，交接单、笔筒、登记簿不在，已经封进抽屉。信封是刚才没有的，或者说，是他刚才没有看见的。\n\n他伸手把信封拿起来，掂了掂，里面像是有纸，不厚。他没有对着灯照，也没有揭封口。他把信封放回桌上，正面朝上，那行字正对着他。\n\n“次日交站长。”他念了一遍，声音很轻。\n\n墙上的钟走到九点四十。河面上有船过去，马达声闷闷的，从窗口传进来。林宁把信封往桌里侧推了推，推到台灯照得到的地方，然后坐下来，把两只手放在膝盖上。\n\n他看了看封好的抽屉，又看了看桌上的信封。\n\n“明天。”他说。\n\n窗外堤上的灯还亮着，工具房那边的光已经灭了。林宁把台灯的角度调低了些，光落在信封上，那行字清清楚楚。他没有再动它，只是坐着，听河风一下一下地撞着窗框。",
+                "pov": "第三人称限知，林宁",
+                "version": 1
+              }
+            ]
+          }
+        ],
+        "rewrite": {
+          "segmentId": "beat-2-seg-1",
+          "original": "窗口的台面窄，林宁把蓝布袋放在靠里的一侧，用镇纸压住袋角。他抽出一张空白交接单，垫上复写纸，把登记簿上的栏目一项一项誊过去。复写纸是旧的，边角起了毛，写重了会透到下面那张纸上。\n\n陈禾坐在桌边没动，怀里还抱着外衣。他看林宁写字，忽然说：“灯数那格，你抄成‘两盏’就行，别写‘贰’。”\n\n“为什么？”\n\n“领灯的人看单子，认阿拉伯数字快。上回有人写‘贰’，窗口那边念成‘一’。”\n\n林宁把已经写下的字看了看，没有改。他写的是“两盏”，笔画清楚，不需要再添说明。\n\n交接单誊完，他把复写纸抽出来，下面那张纸的字迹偏淡，但每个栏目都能认。他把两张单子并排放好，又回身去解蓝布袋的白绳。\n\n“现在交付。”他说，“你领两盏，我留一枚。”\n\n陈禾站起来，走到窗口这一侧。林宁把袋口翻开，三枚铜签在袋底并排躺着。他没有把袋子整个递过去，而是伸手取出靠外的两枚，摊在窗台上。\n\n“你自己数。”\n\n陈禾把外衣放在窗台边，伸出两根手指，把两枚铜签拨开，一枚一枚翻过来看编号。他看得不快，看完正面看背面，背面是光的，什么也没有。\n\n“零四一七。”他念了一声，又拿起另一枚，“零七三二。”\n\n“对。”林宁说，“剩下一枚在袋里。我不动它。”\n\n陈禾往袋里看了一眼。袋口敞着，剩下那枚铜签贴着袋底的布缝，一半被阴影盖住。他伸手进去，用指头碰了碰，确认是一枚，不是两枚叠在一起。\n\n“一枚。”他说。\n\n“一枚。”林宁应道，把袋口的白绳收拢，打了个活结，没有系死。\n\n陈禾把两枚铜签并到掌心，合了合，铜碰铜，响了一声脆的。他没有立刻揣起来，而是把铜签放在交接单旁边，先看单子。\n\n“交付数量这栏，你写的是两枚。”\n\n“是。”\n\n“余存这栏呢？”\n\n林宁指了指下面一行：“一枚。”\n\n陈禾顺着他的手指看下去，又抬头看袋子里那枚。他看得很仔细，像是在心里把两处数字对在一起。林宁没有催他，只把笔帽拔开，搁在单子边上。\n\n“没问题。”陈禾说。\n\n“那你签。”\n\n陈禾先签交付人那一栏。他弯腰写，笔尖在纸上停了一下，把日期补上。林宁接过来，在接收人那一栏签自己的名字，签完把单子转回去，让陈禾再看一遍。\n\n“你名字后面这个‘禾’字，最后一笔往左勾。”陈禾说，“跟上一页不一样。”\n\n“上一页我签得急。”林宁说，“这一页是正式的。”\n\n“那以后都按这个签？”\n\n“以后都按这个签。”\n\n陈禾把两枚铜签拿起来，一枚一枚放进外衣内袋。他放得很慢，放完还隔着布按了按，确认没有滑出来。\n\n“灯在堤下工具房领。”林宁说，“你拿单子去，他们看单子给灯。”\n\n“我知道。”陈禾把交接单折了两折，夹在指间，“你把袋子收好。剩那一枚别跟别的混了。”\n\n“混不了。”\n\n陈禾走到门口，又停下，回头看了一眼窗台上的蓝布袋。袋口还敞着，白绳搭在袋外。\n\n“你那个活结，”他说，“风一吹会开。”\n\n林宁低头看了看，把活结解开，重新系成双扣，跟来时一样。他系的时候，陈禾就站在门口看，等他系完才拉开门。\n\n门开了一条缝，河风灌进来，桌上的复写纸被掀起一角。林宁伸手按住，陈禾已经侧身出去了。\n\n“单子。”林宁在背后说。\n\n陈禾在门外应了一声，脚步声没有停。林宁听着那脚步下了台阶，往堤下去了，才把门带上。\n\n他回到窗口，把剩下的那一枚铜签从袋里拿出来，对着灯看了一眼编号，又放回去。铜签落袋的声音很轻，像指甲敲了一下桌面。\n\n交接单上两个名字都签齐了，日期也补了。林宁把单子压在登记簿上，没有马上收，先伸手把窗玻璃上的水汽又擦了一遍。\n\n外头堤上的灯亮着，工具房那边有一小片光，隔着树影看不真切。他站了一会儿，听见远处有铁门拉开的声音，又合上。\n\n“领到了。”他低声说了一句，也不知道是说给谁听。",
+          "start": 0,
+          "end": 1514,
+          "instruction": "按最新前段收尾重写本段：蓝布袋已系在左腕，右手空着，请具体写清怎样打开袋口并取出两枚铜签，不能又从桌上或口袋拿袋子。保留交两枚后剩一枚、核对登记签名的结果，接到后段封存登记簿，不提前写信封。保持约800字，只改本段。"
+        },
+        "original": [
+          {
+            "id": "beat-2-seg-1",
+            "chapterId": "night-shift",
+            "sceneId": "duty-room",
+            "beatId": "beat-2",
+            "order": 2,
+            "text": "窗口的台面窄，林宁把蓝布袋放在靠里的一侧，用镇纸压住袋角。他抽出一张空白交接单，垫上复写纸，把登记簿上的栏目一项一项誊过去。复写纸是旧的，边角起了毛，写重了会透到下面那张纸上。\n\n陈禾坐在桌边没动，怀里还抱着外衣。他看林宁写字，忽然说：“灯数那格，你抄成‘两盏’就行，别写‘贰’。”\n\n“为什么？”\n\n“领灯的人看单子，认阿拉伯数字快。上回有人写‘贰’，窗口那边念成‘一’。”\n\n林宁把已经写下的字看了看，没有改。他写的是“两盏”，笔画清楚，不需要再添说明。\n\n交接单誊完，他把复写纸抽出来，下面那张纸的字迹偏淡，但每个栏目都能认。他把两张单子并排放好，又回身去解蓝布袋的白绳。\n\n“现在交付。”他说，“你领两盏，我留一枚。”\n\n陈禾站起来，走到窗口这一侧。林宁把袋口翻开，三枚铜签在袋底并排躺着。他没有把袋子整个递过去，而是伸手取出靠外的两枚，摊在窗台上。\n\n“你自己数。”\n\n陈禾把外衣放在窗台边，伸出两根手指，把两枚铜签拨开，一枚一枚翻过来看编号。他看得不快，看完正面看背面，背面是光的，什么也没有。\n\n“零四一七。”他念了一声，又拿起另一枚，“零七三二。”\n\n“对。”林宁说，“剩下一枚在袋里。我不动它。”\n\n陈禾往袋里看了一眼。袋口敞着，剩下那枚铜签贴着袋底的布缝，一半被阴影盖住。他伸手进去，用指头碰了碰，确认是一枚，不是两枚叠在一起。\n\n“一枚。”他说。\n\n“一枚。”林宁应道，把袋口的白绳收拢，打了个活结，没有系死。\n\n陈禾把两枚铜签并到掌心，合了合，铜碰铜，响了一声脆的。他没有立刻揣起来，而是把铜签放在交接单旁边，先看单子。\n\n“交付数量这栏，你写的是两枚。”\n\n“是。”\n\n“余存这栏呢？”\n\n林宁指了指下面一行：“一枚。”\n\n陈禾顺着他的手指看下去，又抬头看袋子里那枚。他看得很仔细，像是在心里把两处数字对在一起。林宁没有催他，只把笔帽拔开，搁在单子边上。\n\n“没问题。”陈禾说。\n\n“那你签。”\n\n陈禾先签交付人那一栏。他弯腰写，笔尖在纸上停了一下，把日期补上。林宁接过来，在接收人那一栏签自己的名字，签完把单子转回去，让陈禾再看一遍。\n\n“你名字后面这个‘禾’字，最后一笔往左勾。”陈禾说，“跟上一页不一样。”\n\n“上一页我签得急。”林宁说，“这一页是正式的。”\n\n“那以后都按这个签？”\n\n“以后都按这个签。”\n\n陈禾把两枚铜签拿起来，一枚一枚放进外衣内袋。他放得很慢，放完还隔着布按了按，确认没有滑出来。\n\n“灯在堤下工具房领。”林宁说，“你拿单子去，他们看单子给灯。”\n\n“我知道。”陈禾把交接单折了两折，夹在指间，“你把袋子收好。剩那一枚别跟别的混了。”\n\n“混不了。”\n\n陈禾走到门口，又停下，回头看了一眼窗台上的蓝布袋。袋口还敞着，白绳搭在袋外。\n\n“你那个活结，”他说，“风一吹会开。”\n\n林宁低头看了看，把活结解开，重新系成双扣，跟来时一样。他系的时候，陈禾就站在门口看，等他系完才拉开门。\n\n门开了一条缝，河风灌进来，桌上的复写纸被掀起一角。林宁伸手按住，陈禾已经侧身出去了。\n\n“单子。”林宁在背后说。\n\n陈禾在门外应了一声，脚步声没有停。林宁听着那脚步下了台阶，往堤下去了，才把门带上。\n\n他回到窗口，把剩下的那一枚铜签从袋里拿出来，对着灯看了一眼编号，又放回去。铜签落袋的声音很轻，像指甲敲了一下桌面。\n\n交接单上两个名字都签齐了，日期也补了。林宁把单子压在登记簿上，没有马上收，先伸手把窗玻璃上的水汽又擦了一遍。\n\n外头堤上的灯亮着，工具房那边有一小片光，隔着树影看不真切。他站了一会儿，听见远处有铁门拉开的声音，又合上。\n\n“领到了。”他低声说了一句，也不知道是说给谁听。",
+            "pov": "第三人称限知，林宁",
+            "version": 1
+          }
+        ],
+        "writingTask": {
+          "experimentalContinuity": true,
+          "chapterTargetWords": 2400,
+          "beatTargetWords": 800,
+          "scope": "isolated",
+          "chapterId": "night-shift",
+          "versions": {
+            "bindings": 1,
+            "core": 1,
+            "direction": 1,
+            "input": 1,
+            "outline": 1,
+            "style": 1
+          },
+          "planVersion": 1,
+          "sourceDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "opening": true,
+          "storyTime": 1,
+          "genre": "现实生活",
+          "brief": {
+            "selectedBeatId": "beat-2",
+            "mustHappen": "承接前段，林宁在窗口将蓝布袋中的两枚铜签交给陈禾，用于领取两盏巡堤灯；陈禾当面核对数量，林宁把剩余一枚放回袋内，双方核对交付登记并签名。不要提前封存登记簿，不猜测第三段才出现的信封内容。",
+            "cannotChange": "三枚铜签交出两枚后剩一枚；不增加人物或关键往事。",
+            "reveal": "",
+            "withhold": "信封内文及寄信人尚未揭示，任何段落均不得揭示或猜成事实。",
+            "writingGuidance": "全章约2400字，每段约800字。通过具体动作、对话和手续核对展开，避免重复清点凑字数。"
+          },
+          "style": {
+            "pov": "第三人称限知，林宁",
+            "tense": "过去时",
+            "tone": "克制、具体、略有生活幽默",
+            "sentenceLength": {
+              "min": 0,
+              "max": 0
+            },
+            "dialogueRatio": {
+              "min": 0,
+              "max": 0
+            },
+            "bannedPhrases": null,
+            "styleArc": ""
+          },
+          "sceneGoal": "完成夜班交接",
+          "sceneConflict": "手续需要核对，双方都想尽早完成",
+          "sceneOutcome": "铜签交付完毕，登记簿封存",
+          "voices": null
+        },
+        "projectId": "chapter-workflow-evaluation",
+        "characters": null,
+        "facts": [
+          {
+            "id": "tokens",
+            "version": 1,
+            "text": "夜班交接开始时蓝布袋中只有三枚铜签，每枚可领取一盏灯。本章没有其他铜签补入，也没有遗失。"
+          },
+          {
+            "id": "people",
+            "version": 1,
+            "text": "林宁与陈禾都是河堤值班员；林宁负责当晚交接登记，陈禾负责领灯。"
+          }
+        ],
+        "bannedPhrases": null,
+        "protectedTerms": null,
+        "chapterId": "night-shift",
+        "branchId": "isolated",
+        "beat": {
+          "version": 1,
+          "locked": false,
+          "id": "beat-2",
+          "sceneId": "duty-room",
+          "title": "交付铜签",
+          "description": "承接前段，林宁在窗口将蓝布袋中的两枚铜签交给陈禾，用于领取两盏巡堤灯；陈禾当面核对数量，林宁把剩余一枚放回袋内，双方核对交付登记并签名。不要提前封存登记簿，不猜测第三段才出现的信封内容。"
+        },
+        "pov": "第三人称限知，林宁",
+        "sources": null
+      },
+      "state": {
+        "authorRequest": {
+          "segmentId": "beat-2-seg-1",
+          "original": "窗口的台面窄，林宁把蓝布袋放在靠里的一侧，用镇纸压住袋角。他抽出一张空白交接单，垫上复写纸，把登记簿上的栏目一项一项誊过去。复写纸是旧的，边角起了毛，写重了会透到下面那张纸上。\n\n陈禾坐在桌边没动，怀里还抱着外衣。他看林宁写字，忽然说：“灯数那格，你抄成‘两盏’就行，别写‘贰’。”\n\n“为什么？”\n\n“领灯的人看单子，认阿拉伯数字快。上回有人写‘贰’，窗口那边念成‘一’。”\n\n林宁把已经写下的字看了看，没有改。他写的是“两盏”，笔画清楚，不需要再添说明。\n\n交接单誊完，他把复写纸抽出来，下面那张纸的字迹偏淡，但每个栏目都能认。他把两张单子并排放好，又回身去解蓝布袋的白绳。\n\n“现在交付。”他说，“你领两盏，我留一枚。”\n\n陈禾站起来，走到窗口这一侧。林宁把袋口翻开，三枚铜签在袋底并排躺着。他没有把袋子整个递过去，而是伸手取出靠外的两枚，摊在窗台上。\n\n“你自己数。”\n\n陈禾把外衣放在窗台边，伸出两根手指，把两枚铜签拨开，一枚一枚翻过来看编号。他看得不快，看完正面看背面，背面是光的，什么也没有。\n\n“零四一七。”他念了一声，又拿起另一枚，“零七三二。”\n\n“对。”林宁说，“剩下一枚在袋里。我不动它。”\n\n陈禾往袋里看了一眼。袋口敞着，剩下那枚铜签贴着袋底的布缝，一半被阴影盖住。他伸手进去，用指头碰了碰，确认是一枚，不是两枚叠在一起。\n\n“一枚。”他说。\n\n“一枚。”林宁应道，把袋口的白绳收拢，打了个活结，没有系死。\n\n陈禾把两枚铜签并到掌心，合了合，铜碰铜，响了一声脆的。他没有立刻揣起来，而是把铜签放在交接单旁边，先看单子。\n\n“交付数量这栏，你写的是两枚。”\n\n“是。”\n\n“余存这栏呢？”\n\n林宁指了指下面一行：“一枚。”\n\n陈禾顺着他的手指看下去，又抬头看袋子里那枚。他看得很仔细，像是在心里把两处数字对在一起。林宁没有催他，只把笔帽拔开，搁在单子边上。\n\n“没问题。”陈禾说。\n\n“那你签。”\n\n陈禾先签交付人那一栏。他弯腰写，笔尖在纸上停了一下，把日期补上。林宁接过来，在接收人那一栏签自己的名字，签完把单子转回去，让陈禾再看一遍。\n\n“你名字后面这个‘禾’字，最后一笔往左勾。”陈禾说，“跟上一页不一样。”\n\n“上一页我签得急。”林宁说，“这一页是正式的。”\n\n“那以后都按这个签？”\n\n“以后都按这个签。”\n\n陈禾把两枚铜签拿起来，一枚一枚放进外衣内袋。他放得很慢，放完还隔着布按了按，确认没有滑出来。\n\n“灯在堤下工具房领。”林宁说，“你拿单子去，他们看单子给灯。”\n\n“我知道。”陈禾把交接单折了两折，夹在指间，“你把袋子收好。剩那一枚别跟别的混了。”\n\n“混不了。”\n\n陈禾走到门口，又停下，回头看了一眼窗台上的蓝布袋。袋口还敞着，白绳搭在袋外。\n\n“你那个活结，”他说，“风一吹会开。”\n\n林宁低头看了看，把活结解开，重新系成双扣，跟来时一样。他系的时候，陈禾就站在门口看，等他系完才拉开门。\n\n门开了一条缝，河风灌进来，桌上的复写纸被掀起一角。林宁伸手按住，陈禾已经侧身出去了。\n\n“单子。”林宁在背后说。\n\n陈禾在门外应了一声，脚步声没有停。林宁听着那脚步下了台阶，往堤下去了，才把门带上。\n\n他回到窗口，把剩下的那一枚铜签从袋里拿出来，对着灯看了一眼编号，又放回去。铜签落袋的声音很轻，像指甲敲了一下桌面。\n\n交接单上两个名字都签齐了，日期也补了。林宁把单子压在登记簿上，没有马上收，先伸手把窗玻璃上的水汽又擦了一遍。\n\n外头堤上的灯亮着，工具房那边有一小片光，隔着树影看不真切。他站了一会儿，听见远处有铁门拉开的声音，又合上。\n\n“领到了。”他低声说了一句，也不知道是说给谁听。",
+          "start": 0,
+          "end": 1514,
+          "instruction": "按最新前段收尾重写本段：蓝布袋已系在左腕，右手空着，请具体写清怎样打开袋口并取出两枚铜签，不能又从桌上或口袋拿袋子。保留交两枚后剩一枚、核对登记签名的结果，接到后段封存登记簿，不提前写信封。保持约800字，只改本段。"
+        },
+        "nodePhase": "started",
+        "criticReviews": null,
+        "route": {
+          "kind": "",
+          "targetIds": null,
+          "findingIds": null,
+          "needsHuman": false,
+          "reason": ""
+        },
+        "context": {
+          "neighbors": [
+            {
+              "state": "candidate",
+              "beatId": "beat-1",
+              "title": "beat-1",
+              "draftId": "evaluation-working-draft",
+              "runId": "evaluation-working-run",
+              "version": 2,
+              "digest": "4c0971696f9a1b45b756dc4a999c09b66b39e2dc2fae788f714ab29b546c9ed5",
+              "position": "before",
+              "segments": [
+                {
+                  "id": "beat-1-seg-1",
+                  "chapterId": "night-shift",
+                  "sceneId": "duty-room",
+                  "beatId": "beat-1",
+                  "order": 1,
+                  "text": "河堤值班室的日光灯管有一头接触不良，每隔几分钟就暗一下，又自己亮回来。林宁把饭盒放在桌角，拉开椅子坐下时，椅脚在水泥地上刮出一声短响。窗外是河面，黑得看不出水在往哪边走，只有堤上路灯的倒影被风揉碎，又慢慢拼回去。\n\n陈禾已经站起来了，外衣搭在手臂上，帽檐压得低。桌上摊着交接登记簿，旁边一只蓝布袋，袋口用白绳穿着，绳结打得很紧。\n\n“你先看东西。”陈禾说，“看完签字，我下去领灯。”\n\n林宁把布袋提到面前，先看袋口的绳结。结是双扣，扣得规整，不像临时系上的。他解开白绳，把袋口翻下去，铜签在袋底轻轻一响。\n\n三枚。\n\n他伸手进去，一枚一枚摸出来，摊在桌面的旧报纸上。铜签长短一样，边缘磨得发亮，正面的编号刻得浅，要凑近才看得清。他把三枚并排摆好，确认没有第四枚卡在袋角，也没有哪一枚的编号重复。\n\n“三枚。”他说。\n\n“三枚。”陈禾应了一声，没有回头。\n\n林宁翻开登记簿。前一班的记录占了大半页，蓝黑墨水，写到后面颜色淡了些。陈禾的字他认得，平时还算清楚，就是收笔爱拖，写得快了，竖和撇就黏到一处。\n\n“这一行，”林宁用指甲点着其中一格，“交班数量这里。是‘三’，还是‘二’？”\n\n陈禾把外衣从手臂上换到另一只手上，走回来半步，低头看了一眼。\n\n“三。”\n\n“这上头这一撇，是笔尖劈了？”\n\n“铅笔写的，我描过一遍。”陈禾说，“数字是三。旁边那格是灯数，写的是‘两盏’，不是‘二盏’。这地方我写得快，横拖长了。”\n\n林宁没有立刻落笔。他把登记簿往灯下挪了挪，纸面斜着反光，那一笔更看不清了。陈禾的手已经搭在门把上，门缝里漏进来的风带着水腥气。\n\n“你先别走。”林宁说，“这一处我得跟你核对清楚。不是不信你，明天有人翻本子，我总不能说‘反正是三’。”\n\n陈禾站住，回头看了看他，又看了看桌上摊开的铜签。他把外衣重新搭回椅背，帽檐往上推了推。\n\n“行。你问。”\n\n“交班时袋里是几枚？”\n\n“三枚。我接手的时候就是三枚，一枚没动。”\n\n“这三枚的编号你记不记得？”\n\n陈禾俯身，把三枚铜签逐一转过来，念出后四位数。林宁在登记簿空白的备注栏里先写了个草稿，写到第二枚时停了一下。\n\n“你念慢点。”\n\n“零四一七。”\n\n林宁写完，抬头看他：“你刚才念的是零四一七，还是零七一四？”\n\n陈禾把那一枚拿起来，凑到灯下，自己也皱了皱眉。\n\n“零四一七。”他把铜签放回去，指腹在数字上按了一下，“这个‘一’刻得窄，看着像竖线。”\n\n林宁把草稿划掉，重写。划掉的地方他留了道斜线，没有涂黑。登记簿是公家的，改错了要看得见改过的痕迹，这是前一任值班员教他的，他一直照办。\n\n两人凑在灯下，一个念，一个写。林宁的字小而挤，陈禾念到第三枚时，外头堤上有一辆自行车过去，车铃响了两声，声音被风吹得散开。陈禾偏头听了一下，又转回来。\n\n“你急着走？”林宁问。\n\n“领灯的地方九点半关门。”陈禾看了眼墙上的钟，“现在九点一刻。”\n\n“还有一刻钟。这一页核完就放你走。”\n\n陈禾没再催，把椅子拉过来，隔着桌角坐下。他坐得浅，一条腿还伸在过道上，随时能站起来的样子。\n\n林宁把登记簿翻回正面，逐格往下对。交班时间、值班人数、铜签数量、灯数、堤段情况，一格一格念出来，陈禾跟着应。念到“堤段情况”那格，陈禾写了“无异常”三个字，那个“异”字的上半截写得矮，和下面的“共”几乎连成一片。\n\n“这写的什么？”\n\n“无异常。”\n\n“我看像‘无导常’。”\n\n陈禾探头看了看，自己也笑了一下，很短。“我写‘异’字一直这样。你要不放心，我重描一遍。”\n\n“别描。描了更像涂改。”林宁把笔递给他，“在备注栏写一句：原字为‘异’，笔迹连写。签上你的名字。”\n\n陈禾接过笔，弯腰写。笔尖在纸上走得慢，写完把笔搁下，用指节压了压纸角。\n\n林宁核对完最后一格，合上登记簿，但没有收走。他把三枚铜签拢到一起，一枚一枚放回蓝布袋，白绳穿过袋口，暂时没有收紧。\n\n“数目对上了。”他说，“手续还差一道。你先坐着，我把这页抄到交接单上，两份对过再签。”\n\n陈禾看了眼钟，没说什么，把外衣从椅背上拿下来，抱在怀里。\n\n林宁拿着布袋站起来，走到窗口。窗口的玻璃上有一层水汽，他用手背擦出一块，把布袋放在窗台上，回头去取空白的交接单。\n\n“你在这儿等我。”他说，“别下去。”\n\n陈禾在椅子上应了一声：“我人还在。”\n\n林宁拿着布袋走向窗口，白绳垂在袋外，三枚铜签在袋底轻轻碰了一下。\n到窗口前，林宁把装有三枚铜签的蓝布袋系在左腕，右手空着，准备接登记簿。",
+                  "pov": "第三人称限知，林宁",
+                  "version": 2
+                }
+              ]
+            },
+            {
+              "state": "candidate",
+              "beatId": "beat-3",
+              "title": "beat-3",
+              "draftId": "evaluation-working-draft",
+              "runId": "evaluation-working-run",
+              "version": 1,
+              "digest": "9b0e5e176e3c45a9516c594d26a4c598212b478b4e149ba1ca856315b48f3dfe",
+              "position": "after",
+              "segments": [
+                {
+                  "id": "beat-3-seg-1",
+                  "chapterId": "night-shift",
+                  "sceneId": "duty-room",
+                  "beatId": "beat-3",
+                  "order": 3,
+                  "text": "林宁回到桌前，把登记簿翻到刚签完的那一页，从头到尾又看了一遍。两枚交付，一枚余存，交付人和接收人的名字都在，日期也对。他合上簿子，拉开桌下的抽屉。\n\n抽屉里垫着一层旧报纸，报纸上有一圈茶杯留下的水印。他把登记簿平放进去，靠里推到底，又从抽屉角落摸出一小卷封条纸。封条纸是裁好的，背面有胶，他撕下一段，横着贴在抽屉缝上，两头各多出半寸。\n\n“明天谁来开，谁就看得见。”他对自己说。\n\n封条贴好，他用手掌压了一遍，压完把椅子往后推了推，蹲下去看抽屉缝有没有翘边。胶粘得牢，边角服帖。他站起来，把蓝布袋拿在手里。\n\n袋里还剩一枚铜签。他解开双扣，把铜签倒在掌心，看了一眼编号，又放回袋里。袋子不能留在窗台上，他把它放进值班柜最上层，柜门关上，钥匙插在锁孔里转了一圈。\n\n柜门上的漆掉了一块，露出底下的铁色。林宁用拇指按了按那块掉漆的地方，钥匙往左拧了半圈，拔出来，挂回腰间的钥匙环上。\n\n外头有脚步声从堤下上来，走得快，到门口停了。门被推开一条缝，陈禾的声音传进来。\n\n“领到了。”\n\n林宁转头。陈禾站在门外，一手提一盏巡堤灯，灯罩上的灰擦过，露出底下的黄漆。另一只手里还夹着那张交接单，折过的地方压得平平的。\n\n“两盏。”陈禾把灯提起来给他看，“工具房的人问了两遍单子，我给他们看了。”\n\n“单子你留着还是交回去？”\n\n“他们看过了，还给我了。”陈禾把交接单递进门缝，“你收着吧，跟本子一起。”\n\n林宁接过来，走到抽屉前。封条已经贴上了。他站着看了一会儿，没有撕。\n\n“明天早上一起交。”他说。\n\n陈禾在门外应了一声，把两盏灯换到一只手上，腾出手来拉门。门关上前，他又探头进来。\n\n“你晚上一个人？”\n\n“一个人。”\n\n“堤上要是有什么事，按窗口底下那个铃。工具房有人听见。”\n\n“知道了。”\n\n门合上。陈禾的脚步声往堤下去，两盏灯的光在窗玻璃上晃了两下，慢慢远了。林宁站在窗口，看着那两团光沿着堤根走，走到工具房那边拐了个弯，看不见了。\n\n他回到桌边，把交接单放在封条旁边，没有塞进抽屉。桌面上还摊着陈禾留下的那支笔，笔帽没有盖。他把笔帽盖上，放进笔筒。\n\n椅子拉出来的时候，椅脚又刮了一声。他坐下来，弯腰去够桌下那个装杂物的纸箱，想把脚边的报纸归拢一下。\n\n纸箱后面，靠墙的地方，有一个东西。\n\n林宁把手伸进去，摸到一张硬纸的边。他把它抽出来，是一个信封，牛皮纸的，比手掌大一些，封口的胶压得很实，没有拆过的痕迹。\n\n信封上没有邮票，没有地址，只在正面的中间写了一行字：次日交站长。\n\n字是用黑笔写的，笔画很粗，写得不算好看，但每个字都清楚。林宁把信封翻过来，背面是空的。他又翻回正面，对着灯看了一遍。封口完好，边角有些压痕，像是被什么东西在上面搁过。\n\n他把信封放在桌上，退后一步看了看。桌上的东西都在原来的位置，交接单、笔筒、登记簿不在，已经封进抽屉。信封是刚才没有的，或者说，是他刚才没有看见的。\n\n他伸手把信封拿起来，掂了掂，里面像是有纸，不厚。他没有对着灯照，也没有揭封口。他把信封放回桌上，正面朝上，那行字正对着他。\n\n“次日交站长。”他念了一遍，声音很轻。\n\n墙上的钟走到九点四十。河面上有船过去，马达声闷闷的，从窗口传进来。林宁把信封往桌里侧推了推，推到台灯照得到的地方，然后坐下来，把两只手放在膝盖上。\n\n他看了看封好的抽屉，又看了看桌上的信封。\n\n“明天。”他说。\n\n窗外堤上的灯还亮着，工具房那边的光已经灭了。林宁把台灯的角度调低了些，光落在信封上，那行字清清楚楚。他没有再动它，只是坐着，听河风一下一下地撞着窗框。",
+                  "pov": "第三人称限知，林宁",
+                  "version": 1
+                }
+              ]
+            }
+          ],
+          "rewrite": {
+            "segmentId": "beat-2-seg-1",
+            "original": "窗口的台面窄，林宁把蓝布袋放在靠里的一侧，用镇纸压住袋角。他抽出一张空白交接单，垫上复写纸，把登记簿上的栏目一项一项誊过去。复写纸是旧的，边角起了毛，写重了会透到下面那张纸上。\n\n陈禾坐在桌边没动，怀里还抱着外衣。他看林宁写字，忽然说：“灯数那格，你抄成‘两盏’就行，别写‘贰’。”\n\n“为什么？”\n\n“领灯的人看单子，认阿拉伯数字快。上回有人写‘贰’，窗口那边念成‘一’。”\n\n林宁把已经写下的字看了看，没有改。他写的是“两盏”，笔画清楚，不需要再添说明。\n\n交接单誊完，他把复写纸抽出来，下面那张纸的字迹偏淡，但每个栏目都能认。他把两张单子并排放好，又回身去解蓝布袋的白绳。\n\n“现在交付。”他说，“你领两盏，我留一枚。”\n\n陈禾站起来，走到窗口这一侧。林宁把袋口翻开，三枚铜签在袋底并排躺着。他没有把袋子整个递过去，而是伸手取出靠外的两枚，摊在窗台上。\n\n“你自己数。”\n\n陈禾把外衣放在窗台边，伸出两根手指，把两枚铜签拨开，一枚一枚翻过来看编号。他看得不快，看完正面看背面，背面是光的，什么也没有。\n\n“零四一七。”他念了一声，又拿起另一枚，“零七三二。”\n\n“对。”林宁说，“剩下一枚在袋里。我不动它。”\n\n陈禾往袋里看了一眼。袋口敞着，剩下那枚铜签贴着袋底的布缝，一半被阴影盖住。他伸手进去，用指头碰了碰，确认是一枚，不是两枚叠在一起。\n\n“一枚。”他说。\n\n“一枚。”林宁应道，把袋口的白绳收拢，打了个活结，没有系死。\n\n陈禾把两枚铜签并到掌心，合了合，铜碰铜，响了一声脆的。他没有立刻揣起来，而是把铜签放在交接单旁边，先看单子。\n\n“交付数量这栏，你写的是两枚。”\n\n“是。”\n\n“余存这栏呢？”\n\n林宁指了指下面一行：“一枚。”\n\n陈禾顺着他的手指看下去，又抬头看袋子里那枚。他看得很仔细，像是在心里把两处数字对在一起。林宁没有催他，只把笔帽拔开，搁在单子边上。\n\n“没问题。”陈禾说。\n\n“那你签。”\n\n陈禾先签交付人那一栏。他弯腰写，笔尖在纸上停了一下，把日期补上。林宁接过来，在接收人那一栏签自己的名字，签完把单子转回去，让陈禾再看一遍。\n\n“你名字后面这个‘禾’字，最后一笔往左勾。”陈禾说，“跟上一页不一样。”\n\n“上一页我签得急。”林宁说，“这一页是正式的。”\n\n“那以后都按这个签？”\n\n“以后都按这个签。”\n\n陈禾把两枚铜签拿起来，一枚一枚放进外衣内袋。他放得很慢，放完还隔着布按了按，确认没有滑出来。\n\n“灯在堤下工具房领。”林宁说，“你拿单子去，他们看单子给灯。”\n\n“我知道。”陈禾把交接单折了两折，夹在指间，“你把袋子收好。剩那一枚别跟别的混了。”\n\n“混不了。”\n\n陈禾走到门口，又停下，回头看了一眼窗台上的蓝布袋。袋口还敞着，白绳搭在袋外。\n\n“你那个活结，”他说，“风一吹会开。”\n\n林宁低头看了看，把活结解开，重新系成双扣，跟来时一样。他系的时候，陈禾就站在门口看，等他系完才拉开门。\n\n门开了一条缝，河风灌进来，桌上的复写纸被掀起一角。林宁伸手按住，陈禾已经侧身出去了。\n\n“单子。”林宁在背后说。\n\n陈禾在门外应了一声，脚步声没有停。林宁听着那脚步下了台阶，往堤下去了，才把门带上。\n\n他回到窗口，把剩下的那一枚铜签从袋里拿出来，对着灯看了一眼编号，又放回去。铜签落袋的声音很轻，像指甲敲了一下桌面。\n\n交接单上两个名字都签齐了，日期也补了。林宁把单子压在登记簿上，没有马上收，先伸手把窗玻璃上的水汽又擦了一遍。\n\n外头堤上的灯亮着，工具房那边有一小片光，隔着树影看不真切。他站了一会儿，听见远处有铁门拉开的声音，又合上。\n\n“领到了。”他低声说了一句，也不知道是说给谁听。",
+            "start": 0,
+            "end": 1514,
+            "instruction": "按最新前段收尾重写本段：蓝布袋已系在左腕，右手空着，请具体写清怎样打开袋口并取出两枚铜签，不能又从桌上或口袋拿袋子。保留交两枚后剩一枚、核对登记签名的结果，接到后段封存登记簿，不提前写信封。保持约800字，只改本段。"
+          },
+          "original": [
+            {
+              "id": "beat-2-seg-1",
+              "chapterId": "night-shift",
+              "sceneId": "duty-room",
+              "beatId": "beat-2",
+              "order": 2,
+              "text": "窗口的台面窄，林宁把蓝布袋放在靠里的一侧，用镇纸压住袋角。他抽出一张空白交接单，垫上复写纸，把登记簿上的栏目一项一项誊过去。复写纸是旧的，边角起了毛，写重了会透到下面那张纸上。\n\n陈禾坐在桌边没动，怀里还抱着外衣。他看林宁写字，忽然说：“灯数那格，你抄成‘两盏’就行，别写‘贰’。”\n\n“为什么？”\n\n“领灯的人看单子，认阿拉伯数字快。上回有人写‘贰’，窗口那边念成‘一’。”\n\n林宁把已经写下的字看了看，没有改。他写的是“两盏”，笔画清楚，不需要再添说明。\n\n交接单誊完，他把复写纸抽出来，下面那张纸的字迹偏淡，但每个栏目都能认。他把两张单子并排放好，又回身去解蓝布袋的白绳。\n\n“现在交付。”他说，“你领两盏，我留一枚。”\n\n陈禾站起来，走到窗口这一侧。林宁把袋口翻开，三枚铜签在袋底并排躺着。他没有把袋子整个递过去，而是伸手取出靠外的两枚，摊在窗台上。\n\n“你自己数。”\n\n陈禾把外衣放在窗台边，伸出两根手指，把两枚铜签拨开，一枚一枚翻过来看编号。他看得不快，看完正面看背面，背面是光的，什么也没有。\n\n“零四一七。”他念了一声，又拿起另一枚，“零七三二。”\n\n“对。”林宁说，“剩下一枚在袋里。我不动它。”\n\n陈禾往袋里看了一眼。袋口敞着，剩下那枚铜签贴着袋底的布缝，一半被阴影盖住。他伸手进去，用指头碰了碰，确认是一枚，不是两枚叠在一起。\n\n“一枚。”他说。\n\n“一枚。”林宁应道，把袋口的白绳收拢，打了个活结，没有系死。\n\n陈禾把两枚铜签并到掌心，合了合，铜碰铜，响了一声脆的。他没有立刻揣起来，而是把铜签放在交接单旁边，先看单子。\n\n“交付数量这栏，你写的是两枚。”\n\n“是。”\n\n“余存这栏呢？”\n\n林宁指了指下面一行：“一枚。”\n\n陈禾顺着他的手指看下去，又抬头看袋子里那枚。他看得很仔细，像是在心里把两处数字对在一起。林宁没有催他，只把笔帽拔开，搁在单子边上。\n\n“没问题。”陈禾说。\n\n“那你签。”\n\n陈禾先签交付人那一栏。他弯腰写，笔尖在纸上停了一下，把日期补上。林宁接过来，在接收人那一栏签自己的名字，签完把单子转回去，让陈禾再看一遍。\n\n“你名字后面这个‘禾’字，最后一笔往左勾。”陈禾说，“跟上一页不一样。”\n\n“上一页我签得急。”林宁说，“这一页是正式的。”\n\n“那以后都按这个签？”\n\n“以后都按这个签。”\n\n陈禾把两枚铜签拿起来，一枚一枚放进外衣内袋。他放得很慢，放完还隔着布按了按，确认没有滑出来。\n\n“灯在堤下工具房领。”林宁说，“你拿单子去，他们看单子给灯。”\n\n“我知道。”陈禾把交接单折了两折，夹在指间，“你把袋子收好。剩那一枚别跟别的混了。”\n\n“混不了。”\n\n陈禾走到门口，又停下，回头看了一眼窗台上的蓝布袋。袋口还敞着，白绳搭在袋外。\n\n“你那个活结，”他说，“风一吹会开。”\n\n林宁低头看了看，把活结解开，重新系成双扣，跟来时一样。他系的时候，陈禾就站在门口看，等他系完才拉开门。\n\n门开了一条缝，河风灌进来，桌上的复写纸被掀起一角。林宁伸手按住，陈禾已经侧身出去了。\n\n“单子。”林宁在背后说。\n\n陈禾在门外应了一声，脚步声没有停。林宁听着那脚步下了台阶，往堤下去了，才把门带上。\n\n他回到窗口，把剩下的那一枚铜签从袋里拿出来，对着灯看了一眼编号，又放回去。铜签落袋的声音很轻，像指甲敲了一下桌面。\n\n交接单上两个名字都签齐了，日期也补了。林宁把单子压在登记簿上，没有马上收，先伸手把窗玻璃上的水汽又擦了一遍。\n\n外头堤上的灯亮着，工具房那边有一小片光，隔着树影看不真切。他站了一会儿，听见远处有铁门拉开的声音，又合上。\n\n“领到了。”他低声说了一句，也不知道是说给谁听。",
+              "pov": "第三人称限知，林宁",
+              "version": 1
+            }
+          ],
+          "writingTask": {
+            "experimentalContinuity": true,
+            "chapterTargetWords": 2400,
+            "beatTargetWords": 800,
+            "scope": "isolated",
+            "chapterId": "night-shift",
+            "versions": {
+              "bindings": 1,
+              "core": 1,
+              "direction": 1,
+              "input": 1,
+              "outline": 1,
+              "style": 1
+            },
+            "planVersion": 1,
+            "sourceDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "opening": true,
+            "storyTime": 1,
+            "genre": "现实生活",
+            "brief": {
+              "selectedBeatId": "beat-2",
+              "mustHappen": "承接前段，林宁在窗口将蓝布袋中的两枚铜签交给陈禾，用于领取两盏巡堤灯；陈禾当面核对数量，林宁把剩余一枚放回袋内，双方核对交付登记并签名。不要提前封存登记簿，不猜测第三段才出现的信封内容。",
+              "cannotChange": "三枚铜签交出两枚后剩一枚；不增加人物或关键往事。",
+              "reveal": "",
+              "withhold": "信封内文及寄信人尚未揭示，任何段落均不得揭示或猜成事实。",
+              "writingGuidance": "全章约2400字，每段约800字。通过具体动作、对话和手续核对展开，避免重复清点凑字数。"
+            },
+            "style": {
+              "pov": "第三人称限知，林宁",
+              "tense": "过去时",
+              "tone": "克制、具体、略有生活幽默",
+              "sentenceLength": {
+                "min": 0,
+                "max": 0
+              },
+              "dialogueRatio": {
+                "min": 0,
+                "max": 0
+              },
+              "bannedPhrases": null,
+              "styleArc": ""
+            },
+            "sceneGoal": "完成夜班交接",
+            "sceneConflict": "手续需要核对，双方都想尽早完成",
+            "sceneOutcome": "铜签交付完毕，登记簿封存",
+            "voices": null
+          },
+          "projectId": "chapter-workflow-evaluation",
+          "characters": null,
+          "facts": [
+            {
+              "id": "tokens",
+              "version": 1,
+              "text": "夜班交接开始时蓝布袋中只有三枚铜签，每枚可领取一盏灯。本章没有其他铜签补入，也没有遗失。"
+            },
+            {
+              "id": "people",
+              "version": 1,
+              "text": "林宁与陈禾都是河堤值班员；林宁负责当晚交接登记，陈禾负责领灯。"
+            }
+          ],
+          "bannedPhrases": null,
+          "protectedTerms": null,
+          "chapterId": "night-shift",
+          "branchId": "isolated",
+          "beat": {
+            "version": 1,
+            "locked": false,
+            "id": "beat-2",
+            "sceneId": "duty-room",
+            "title": "交付铜签",
+            "description": "承接前段，林宁在窗口将蓝布袋中的两枚铜签交给陈禾，用于领取两盏巡堤灯；陈禾当面核对数量，林宁把剩余一枚放回袋内，双方核对交付登记并签名。不要提前封存登记簿，不猜测第三段才出现的信封内容。"
+          },
+          "pov": "第三人称限知，林宁",
+          "sources": null
+        },
+        "draftVersion": 1,
+        "segments": [],
+        "report": {
+          "draftVersion": 0,
+          "findings": []
+        },
+        "reviews": [],
+        "metrics": [],
+        "revisions": [],
+        "reviseRound": 0,
+        "maxRounds": 2,
+        "status": "failed",
+        "currentNode": "draft",
+        "stopReason": "运行失败；保留最后候选，尚未完成复检",
+        "usage": {
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "known": false
+        }
+      },
+      "checks": [],
+      "calls": [
+        {
+          "thinking": true,
+          "role": "planned_writer",
+          "promptVersion": "planned_writer.v6",
+          "schemaVersion": "writer.v1",
+          "inputDigest": "c540999539212c8aecb290594fe79c08bc44a20745b6cf37c298db0c46ccbd4d",
+          "promptDigest": "441af6f26965e0d4d7a00ff035ab2bd957d3bf55b3b0b9c24daea9e31a7a02bd",
+          "output": "",
+          "finishReason": "truncated",
+          "usage": {
+            "inputTokens": 8380,
+            "outputTokens": 8192,
+            "known": true
+          },
+          "elapsedMs": 40162
+        }
+      ],
+      "error": "[NodeRunError] model_truncated: provider stopped before completion\n------------------------\nnode path: [writer]",
+      "approvalBlock": ""
+    }
+  ],
+  "error": "[NodeRunError] model_truncated: provider stopped before completion\n------------------------\nnode path: [writer]"
+}

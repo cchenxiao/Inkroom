@@ -15,7 +15,8 @@ func TestThinkingWireFlagAndHiddenReasoningBoundary(t *testing.T) {
 	for _, enabled := range []bool{false, true} {
 		t.Run(map[bool]string{true: "enabled", false: "disabled"}[enabled], func(t *testing.T) {
 			var got struct {
-				Thinking struct {
+				MaxTokens int `json:"max_tokens"`
+				Thinking  struct {
 					Type string `json:"type"`
 				} `json:"thinking"`
 			}
@@ -31,12 +32,12 @@ func TestThinkingWireFlagAndHiddenReasoningBoundary(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			out, u, err := chat.Generate(context.Background(), model.Input{Thinking: enabled, SystemPrompt: "test", UserPrompt: "test"})
+			out, u, err := chat.Generate(context.Background(), model.Input{OutputTokens: 30000, CallTimeout: 2 * time.Second, Thinking: enabled, SystemPrompt: "test", UserPrompt: "test"})
 			want := "disabled"
 			if enabled {
 				want = "enabled"
 			}
-			if err != nil || got.Thinking.Type != want || out.Content != `{"text":"正确正文"}` || u.OutputTokens != 250 {
+			if err != nil || got.MaxTokens != 30000 || got.Thinking.Type != want || out.Content != `{"text":"正确正文"}` || u.OutputTokens != 250 {
 				t.Fatalf("wire=%+v out=%+v usage=%+v err=%v", got, out, u, err)
 			}
 		})

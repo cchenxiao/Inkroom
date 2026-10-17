@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 
+	"inkloom/internal/agents"
 	"inkloom/internal/agents/adapters"
 	"inkloom/internal/agents/contracts"
 	"inkloom/internal/agents/model"
@@ -15,6 +16,7 @@ import (
 	"inkloom/internal/agents/prompts"
 	"inkloom/internal/config"
 	"inkloom/internal/domain/manuscript"
+	"inkloom/internal/domain/review"
 )
 
 // BuildChapterReviewInput names every segment within the assembly, preserving original IDs and commit provenance.
@@ -75,7 +77,7 @@ func ReviewChapter(ctx context.Context, cfg config.Config, in ChapterReviewInput
 	var chat model.ChatModel
 	var err error
 	if cfg.Model == "fake" {
-		chat = model.NewFake([]model.Step{{Role: "chapter_consistency", Content: `{"findings":[]}`}, {Role: "chapter_language", Content: `{"findings":[]}`}})
+		chat = authorReviewFake{next: model.NewFake([]model.Step{{Role: "chapter_consistency", Content: `{"findings":[]}`}, {Role: "chapter_language", Content: `{"findings":[]}`}})}
 	} else {
 		chat, err = adapters.NewDeepSeek(cfg)
 		if err != nil {
@@ -93,12 +95,16 @@ func ReviewChapter(ctx context.Context, cfg config.Config, in ChapterReviewInput
 		if e != nil {
 			return ChapterReviewOutput{}, e
 		}
-		estimate += len(rendered.SystemPrompt) + len(rendered.UserPrompt) + cfg.MaxOutputTokens + 136
+		output := cfg.MaxOutputTokens
+		if rendered.Role == "chapter_consistency" && cfg.ConsistencyOutputTokens > 0 {
+			output = cfg.ConsistencyOutputTokens
+		}
+		estimate += len(rendered.SystemPrompt) + len(rendered.UserPrompt) + output + 136
 	}
 	if cfg.MaxCalls < 2 || estimate > cfg.MaxTokens {
 		return ChapterReviewOutput{}, fmt.Errorf("整章双路复审预估需 %d tokens 调用预算，当前上限 %d；未发起模型调用。请调整 INKLOOM_MAX_TOKENS 或拆分过长章稿", estimate, cfg.MaxTokens)
 	}
-	guard := model.NewGuard(chat, model.Limits{Calls: cfg.MaxCalls, Tokens: cfg.MaxTokens, OutputTokens: cfg.MaxOutputTokens, Timeout: cfg.CallTimeout, ModelName: cfg.ModelName, OnCall: onCall})
+	guard := model.NewGuard(chat, model.Limits{Calls: cfg.MaxCalls, Tokens: cfg.MaxTokens, OutputTokens: cfg.MaxOutputTokens, ConsistencyOutputTokens: cfg.ConsistencyOutputTokens, ConsistencyTimeout: cfg.ConsistencyTimeout, Timeout: cfg.CallTimeout, ModelName: cfg.ModelName, OnCall: onCall})
 	return reviewChapterWith(ctx, prompts.Bind(guard), in)
 }
 func reviewChapterWith(ctx context.Context, chat model.ChatModel, in ChapterReviewInput) (ChapterReviewOutput, error) {
@@ -123,6 +129,17 @@ func reviewChapterWith(ctx context.Context, chat model.ChatModel, in ChapterRevi
 			}) error {
 				return ValidateChapterFindings(in, role, x.Findings)
 			})
+			if e == nil && i == 0 && in.EnhancedContinuity {
+				var extra []ChapterFinding
+				extra, e = reviewChapterContinuity(ctx, chat, in)
+				if e == nil {
+					for n := range extra {
+						extra[n].ID = fmt.Sprintf("enhanced-continuity-%d", len(result.Findings)+n+1)
+					}
+					result.Findings = append(result.Findings, extra...)
+					e = ValidateChapterFindings(in, role, result.Findings)
+				}
+			}
 			c := ChapterCriticResult{Critic: role, Status: "completed", Findings: result.Findings}
 			if e != nil {
 				c.Status = "failed"
@@ -149,4 +166,36 @@ func chapterReviewModelInput(in ChapterReviewInput, i int) (model.Input, error) 
 	raw, err := json.Marshal(material)
 	roles := []string{"chapter_consistency", "chapter_language"}
 	return model.Input{Role: roles[i], Task: "只审本次冻结的完整章稿；保留段落顺序，返回可核对的审稿意见。", Material: raw, OutputSchema: contracts.ChapterReviewSchema}, err
+}
+
+// Reuses the writing reviewer and restores chapter evidence from immutable sources.
+func reviewChapterContinuity(ctx context.Context, chat model.ChatModel, in ChapterReviewInput) ([]ChapterFinding, error) {
+	segments := []manuscript.Segment{}
+	for _, p := range in.Parts {
+		for _, s := range p.Segments {
+			segments = append(segments, manuscript.Segment{ID: s.ID, BeatID: p.BeatID, Text: s.Text, Version: in.DraftVersion, Order: len(segments) + 1})
+		}
+	}
+	assessment, _, err := agents.CheckNarrativeContinuity(ctx, chat, segments, in.DraftVersion, manuscript.ContextBundle{})
+	if err != nil {
+		return nil, err
+	}
+	out := []ChapterFinding{}
+	for _, f := range assessment.Findings {
+		evidence := []ChapterEvidence{{Ref: f.SegmentID, Quote: f.Quote}, {Ref: f.RuleRef, Quote: f.RuleQuote}}
+		if f.SegmentID == f.RuleRef {
+			// One source cannot pretend to be two independent chapter evidence refs.
+			// Keep the within-passage concern as a human-review suggestion.
+			f.Severity, f.EvidenceStatus, f.RequiresHuman = review.P3, "uncertain", true
+			f.EvidenceRefs = []string{f.SegmentID}
+			for _, s := range segments {
+				if s.ID == f.SegmentID {
+					evidence = []ChapterEvidence{{Ref: s.ID, Quote: s.Text}}
+					break
+				}
+			}
+		}
+		out = append(out, ChapterFinding{Finding: f, Evidence: evidence})
+	}
+	return out, nil
 }

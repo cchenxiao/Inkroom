@@ -82,15 +82,16 @@ export function PendingWritingProvider({ children }: { children: ReactNode }) {
     </Context.Provider>
   );
 }
-export function useWritingPending(value: boolean) {
+export function useWritingPending(value: boolean, ownerId?: string) {
   const { set, entries } = useContext(Context),
-    id = useId();
+    generatedId = useId();
+  const id = ownerId ?? generatedId;
   useEffect(() => {
     set(id, value);
     return () => set(id, false);
   }, [set, id, value]);
   return Object.keys(entries).some((entry) => entry !== id);
 }
-export function useWritingLocked() {
-  return useContext(Context).pending;
+export function useWritingLocked(exceptOwner?: string) {
+  return Object.keys(useContext(Context).entries).some((id) => id !== exceptOwner);
 }

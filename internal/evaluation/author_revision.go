@@ -44,6 +44,8 @@ func AuthorRevisionCases() ([]AuthorRevisionCase, error) {
 }
 
 type RevisionCall struct {
+	OutputLimit   int                `json:"outputLimit,omitempty"`
+	TimeoutMS     int64              `json:"timeoutMs,omitempty"`
 	Thinking      bool               `json:"thinking"`
 	Role          string             `json:"role"`
 	PromptVersion string             `json:"promptVersion"`
@@ -96,7 +98,7 @@ func (c *revisionCapture) Generate(ctx context.Context, in model.Input) (model.O
 	out, usage, err := c.next.Generate(ctx, in)
 	digest, _ := manuscript.ContentDigest(json.RawMessage(in.Material))
 	promptDigest, _ := manuscript.ContentDigest([]string{in.SystemPrompt, in.UserPrompt})
-	call := RevisionCall{Thinking: in.Thinking, Role: in.Role, PromptVersion: in.PromptVersion, SchemaVersion: in.SchemaVersion, InputDigest: digest, PromptDigest: promptDigest, Output: out.Content, FinishReason: out.FinishReason, Usage: usage, ElapsedMS: time.Since(started).Milliseconds()}
+	call := RevisionCall{OutputLimit: in.OutputTokens, TimeoutMS: in.CallTimeout.Milliseconds(), Thinking: in.Thinking, Role: in.Role, PromptVersion: in.PromptVersion, SchemaVersion: in.SchemaVersion, InputDigest: digest, PromptDigest: promptDigest, Output: out.Content, FinishReason: out.FinishReason, Usage: usage, ElapsedMS: time.Since(started).Milliseconds()}
 	if err != nil {
 		call.Error = err.Error()
 	}

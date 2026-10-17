@@ -20,7 +20,36 @@ func CheckConsistency(ctx context.Context, chat model.ChatModel, segments []manu
 }
 
 // CheckConsistencyRevision checks the author's request independently of the writer.
+type ConsistencyAssessment struct {
+	Findings    []review.Finding         `json:"findings"`
+	AuthorCheck *review.AuthorCheck      `json:"authorCheck,omitempty"`
+	Continuity  []review.ContinuityCheck `json:"continuity,omitempty"`
+}
+
 func CheckConsistencyRevision(ctx context.Context, chat model.ChatModel, segments []manuscript.Segment, version int, bundle manuscript.ContextBundle, request *manuscript.AuthorRewrite) ([]review.Finding, *review.AuthorCheck, model.Usage, error) {
+	result, usage, err := AssessConsistency(ctx, chat, segments, version, bundle, request)
+	return result.Findings, result.AuthorCheck, usage, err
+}
+func AssessConsistency(ctx context.Context, chat model.ChatModel, segments []manuscript.Segment, version int, bundle manuscript.ContextBundle, request *manuscript.AuthorRewrite) (ConsistencyAssessment, model.Usage, error) {
+	result, usage, err := assessFacts(ctx, chat, segments, version, bundle, request)
+	if err != nil || bundle.WritingTask == nil || !bundle.WritingTask.ExperimentalContinuity {
+		return result, usage, err
+	}
+	extra, u, err := CheckNarrativeContinuity(ctx, chat, segments, version, bundle)
+	usage.InputTokens += u.InputTokens
+	usage.OutputTokens += u.OutputTokens
+	usage.Known = usage.Known && u.Known
+	if err != nil {
+		return result, usage, err
+	}
+	result.Continuity = extra.Continuity
+	for _, f := range extra.Findings {
+		result.Findings = append(result.Findings, f)
+	}
+	_, err = review.Aggregate(result.Findings, segments, version, bundle.ReadingSources()...)
+	return result, usage, err
+}
+func assessFacts(ctx context.Context, chat model.ChatModel, segments []manuscript.Segment, version int, bundle manuscript.ContextBundle, request *manuscript.AuthorRewrite) (ConsistencyAssessment, model.Usage, error) {
 	type targetFacts struct {
 		BeatID     string                      `json:"beatId"`
 		POV        string                      `json:"pov"`
@@ -41,33 +70,34 @@ func CheckConsistencyRevision(ctx context.Context, chat model.ChatModel, segment
 		Targets       []targetFacts               `json:"targets,omitempty"`
 	}{request, version, segments, bundle.Characters, bundle.ExplicitFacts(), bundle.Neighbors, targets})
 	if err != nil {
-		return nil, nil, model.Usage{}, err
+		return ConsistencyAssessment{}, model.Usage{}, err
 	}
 	schema := contracts.ConsistencySchema
 	if request != nil {
 		var object map[string]any
 		if err := json.Unmarshal(schema, &object); err != nil {
-			return nil, nil, model.Usage{}, err
+			return ConsistencyAssessment{}, model.Usage{}, err
 		}
-		object["properties"].(map[string]any)["authorCheck"] = map[string]any{
-			"type": "object", "additionalProperties": false,
-			"properties": map[string]any{
-				"status": map[string]any{"type": "string", "enum": []string{"addressed", "unresolved", "needs_clarification"}},
-				"reason": map[string]any{"type": "string", "minLength": 1, "maxLength": 1000},
-				"quote":  map[string]any{"type": "string", "minLength": 1, "maxLength": 20000},
-			}, "required": []string{"status", "reason", "quote"},
+		if request != nil {
+			object["properties"].(map[string]any)["authorCheck"] = map[string]any{
+				"type": "object", "additionalProperties": false,
+				"properties": map[string]any{
+					"status": map[string]any{"type": "string", "enum": []string{"addressed", "unresolved", "needs_clarification"}},
+					"reason": map[string]any{"type": "string", "minLength": 1, "maxLength": 1000},
+					"quote":  map[string]any{"type": "string", "minLength": 1, "maxLength": 20000},
+				}, "required": []string{"status", "reason", "quote"},
+			}
+			object["required"] = append(object["required"].([]any), "authorCheck")
 		}
-		object["required"] = append(object["required"].([]any), "authorCheck")
 		schema, err = json.Marshal(object)
 		if err != nil {
-			return nil, nil, model.Usage{}, err
+			return ConsistencyAssessment{}, model.Usage{}, err
 		}
 	}
-	type output struct {
-		Findings    []review.Finding    `json:"findings"`
-		AuthorCheck *review.AuthorCheck `json:"authorCheck,omitempty"`
-	}
-	result, usage, err := parse.Generate[output](ctx, chat, model.Input{Role: "hard_consistency", Task: "核对本轮正文与明确事实；证据不足不判硬伤；需要事实裁决或越界修改时标记交人。", Material: material, OutputSchema: schema}, func(out output) error {
+	type output = ConsistencyAssessment
+	task := "核对本轮正文与明确事实；证据不足不判硬伤；需要事实裁决或越界修改时标记交人。"
+	result, usage, err := parse.Generate[output](ctx, chat, model.Input{Role: "hard_consistency", Task: task, Material: material, OutputSchema: schema}, func(out output) error {
+		normalizeNeighborRefs(out.Findings, segments, bundle.Neighbors)
 		if request != nil {
 			if out.AuthorCheck == nil || strings.TrimSpace(out.AuthorCheck.Reason) == "" || strings.TrimSpace(out.AuthorCheck.Quote) == "" {
 				return fmt.Errorf("missing author request assessment")
@@ -102,7 +132,7 @@ func CheckConsistencyRevision(ctx context.Context, chat model.ChatModel, segment
 		return err
 	})
 	if err != nil {
-		return nil, nil, usage, fmt.Errorf("consistency critic: %w", err)
+		return ConsistencyAssessment{}, usage, fmt.Errorf("consistency critic: %w", err)
 	}
 	if request != nil && result.AuthorCheck.Status != "addressed" {
 		result.Findings = append(result.Findings, review.Finding{
@@ -113,5 +143,5 @@ func CheckConsistencyRevision(ctx context.Context, chat model.ChatModel, segment
 			RepairScope: "segment", DraftVersion: version, EvidenceStatus: "uncertain", RequiresHuman: true,
 		})
 	}
-	return result.Findings, result.AuthorCheck, usage, nil
+	return result, usage, nil
 }

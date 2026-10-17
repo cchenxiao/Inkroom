@@ -706,3 +706,125 @@
   display: block;
   font-size: 12px;
 }
+
+.writing-quality-summary {
+  padding-block: 0.65rem;
+  border-block: 1px solid var(--border);
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+.writing-quality-summary p {
+  margin: 0.35rem 0;
+}
+.writing-length-notice {
+  font-weight: 600;
+}
+.writing-quality-summary summary {
+  cursor: pointer;
+  padding-block: 0.35rem;
+}
+.writing-continuity-item {
+  padding-block: 0.5rem;
+}
+.writing-continuity-item blockquote {
+  margin: 0.5rem 0;
+  padding-inline-start: 0.75rem;
+  border-inline-start: 2px solid var(--border);
+  color: var(--text-dim);
+}
+
+/* Review panes follow the task, with compact disclosures for supporting records. */
+.writing-panel-scroll .chapter-workflow details {
+  padding: 4px 0;
+}
+.writing-panel-scroll .chapter-workflow summary {
+  padding: 6px 0;
+}
+.chapter-workflow .writing-next-step {
+  padding: 0;
+  gap: 4px;
+}
+.chapter-review-run {
+  display: grid;
+  gap: 8px;
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+}
+
+/* Review freshness belongs beside the manuscript, including when the panel is closed. */
+.context-review-notice {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  padding: 10px 16px;
+  flex-shrink: 0;
+  color: var(--text);
+  background: var(--paper);
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.context-review-notice > div {
+  flex: 1 1 240px;
+}
+.context-review-notice p {
+  margin: 2px 0 0;
+}
+.context-review-notice > button {
+  flex-shrink: 0;
+}
+.context-review-notice [role='alert'] {
+  color: var(--p0);
+}
+
+.writing-operation-progress {
+  flex-shrink: 0;
+  padding: 10px 16px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text);
+  background: var(--paper);
+  border-bottom: 1px solid var(--border);
+}
+
+/* One current task, with past snapshots kept below the workflow. */
+.chapter-workflow-progress {
+  display: flex;
+  gap: 12px;
+  padding: 0 0 14px;
+  margin: 0;
+  list-style: none;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.chapter-workflow-progress li + li::before {
+  content: '›';
+  margin-right: 12px;
+}
+.chapter-workflow-progress [aria-current='step'] {
+  color: var(--ai);
+  font-weight: 600;
+}
+.chapter-workflow-history {
+  margin-top: 20px;
+}
+.finding-recovery {
+  display: grid;
+  gap: 10px;
+}
+.finding-recovery .button {
+  justify-self: start;
+}
+
+.workspace-center > .writing-run-failure {
+  margin: 0;
+  padding: 12px 20px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--paper);
+  font-size: 13px;
+}
+.writing-run-failure > strong {
+  color: var(--p0);
+}

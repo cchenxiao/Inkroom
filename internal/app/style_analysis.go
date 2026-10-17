@@ -31,7 +31,7 @@ func AnalyzeReferenceStyle(ctx context.Context, cfg config.Config, input plannin
 			return planning.StyleAnalysisOutput{}, err
 		}
 	}
-	guard := model.NewGuard(chat, model.Limits{OnCall: onCall, Calls: min(cfg.MaxCalls, 3), Tokens: cfg.MaxTokens, OutputTokens: cfg.MaxOutputTokens, Timeout: cfg.CallTimeout, ModelName: cfg.ModelName})
+	guard := model.NewGuard(chat, model.Limits{OnCall: onCall, Calls: min(cfg.MaxCalls, 3), Tokens: cfg.MaxTokens, OutputTokens: cfg.MaxOutputTokens, ConsistencyOutputTokens: cfg.ConsistencyOutputTokens, ConsistencyTimeout: cfg.ConsistencyTimeout, Timeout: cfg.CallTimeout, ModelName: cfg.ModelName})
 	// 全文明确从 prompt 中剔除；样本之外的人物、事件不会进入模型材料。
 	material, _ := json.Marshal(struct {
 		Title    string                  `json:"title"`

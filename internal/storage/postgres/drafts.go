@@ -109,10 +109,11 @@ func (s *Store) EditSegment(ctx context.Context, chapter, branch, id string, exp
 	if err = writeVersion(ctx, tx, chapter, branch, current, segments, "human_inline", ""); err != nil {
 		return app.Draft{}, err
 	}
-	// 与人稿落库同事务作废本章所有旧运行结果；正在返回的 Agent 会在 CAS 处被拦截。
+	// 作废可继续的旧候选；采用记录是冻结历史，不因共享章稿中的其他段修改而撤销。
+	// 正在返回的 Agent 仍会在 CAS 处被拦截。
 	rows, err := tx.Query(ctx, `UPDATE runs SET status='stale',
  payload=jsonb_set(jsonb_set(payload,'{status}','"stale"'),'{error}','"稿本已被作者更新，旧评审与候选修订失效"'),updated_at=now()
- WHERE chapter_id=$1 AND branch_id=$2 AND status NOT IN ('stale','interrupted','failed') RETURNING id`, chapter, branch)
+ WHERE chapter_id=$1 AND branch_id=$2 AND status NOT IN ('stale','interrupted','failed','committed') RETURNING id`, chapter, branch)
 	if err != nil {
 		return app.Draft{}, err
 	}

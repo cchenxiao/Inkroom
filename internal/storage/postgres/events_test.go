@@ -7,6 +7,7 @@ import (
 	"os"
 	"sync"
 	"testing"
+	"time"
 
 	"inkloom/internal/agents/model"
 	"inkloom/internal/app"
@@ -119,5 +120,59 @@ func TestEventTransactionsAndReplay(t *testing.T) {
 	latest, err := s.GetRun(ctx, id)
 	if err != nil || latest.EventSequence != 13 || latest.Tokens != 12 {
 		t.Fatal("snapshot/cursor mismatch", err)
+	}
+}
+
+func TestActiveCheckProgressSurvivesSnapshotAndReplay(t *testing.T) {
+	url := os.Getenv("INKLOOM_TEST_DATABASE_URL")
+	if url == "" {
+		t.Skip("set INKLOOM_TEST_DATABASE_URL")
+	}
+	ctx := context.Background()
+	s, err := Open(ctx, url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	id := rand.Text()
+	chapter := "progress-test-" + id
+	defer func() {
+		s.pool.Exec(ctx, "DELETE FROM llm_calls WHERE run_id=$1", id)
+		s.pool.Exec(ctx, "DELETE FROM runs WHERE id=$1", id)
+		s.pool.Exec(ctx, "DELETE FROM chapters WHERE id=$1", chapter)
+		s.Close()
+	}()
+	if err = s.CreateRun(ctx, app.Run{ID: id, ChapterID: chapter, BranchID: "main", Status: "running"}); err != nil {
+		t.Fatal(err)
+	}
+	start := time.Now().UTC().Truncate(time.Millisecond).Add(-80 * time.Second)
+	call := model.CallRecord{Number: 1, Role: "hard_consistency", Phase: "started", StartedAt: start, TimeoutMs: 90000, Activity: "continuity_objects"}
+	if err = s.RecordCall(ctx, id, call); err != nil {
+		t.Fatal(err)
+	}
+	second := call
+	second.Number = 2
+	second.Activity = "continuity_characters"
+	if err = s.RecordCall(ctx, id, second); err != nil {
+		t.Fatal(err)
+	}
+	snapshot, err := s.GetRun(ctx, id)
+	if err != nil || len(snapshot.ActiveCalls) != 2 || !snapshot.ActiveCalls[0].StartedAt.Equal(start) {
+		t.Fatal(snapshot.ActiveCalls, err)
+	}
+	call.Phase = "finished"
+	if err = s.RecordCall(ctx, id, call); err != nil {
+		t.Fatal(err)
+	}
+	snapshot, err = s.GetRun(ctx, id)
+	if err != nil || len(snapshot.ActiveCalls) != 1 || snapshot.ActiveCalls[0].Number != 2 {
+		t.Fatal(snapshot.ActiveCalls, err)
+	}
+	page, err := s.Events(ctx, id, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	last := page.Events[len(page.Events)-1].Run
+	if len(last.ActiveCalls) != 1 || !last.ActiveCalls[0].StartedAt.Equal(start) || last.ActiveCalls[0].Activity != "continuity_characters" {
+		t.Fatal(last.ActiveCalls)
 	}
 }

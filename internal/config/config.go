@@ -11,20 +11,23 @@ import (
 )
 
 type Config struct {
-	Embedder            string
-	EmbeddingKey        string
-	EmbeddingDimensions int
-	EmbeddingRevision   string
-	ContextTokens       int
-	DatabaseURL         string
-	Model               string
-	APIKey              string
-	ModelName           string
-	BaseURL             string
-	CallTimeout         time.Duration
-	MaxCalls            int
-	MaxTokens           int
-	MaxOutputTokens     int
+	ExperimentalContinuity  bool
+	ConsistencyOutputTokens int
+	ConsistencyTimeout      time.Duration
+	Embedder                string
+	EmbeddingKey            string
+	EmbeddingDimensions     int
+	EmbeddingRevision       string
+	ContextTokens           int
+	DatabaseURL             string
+	Model                   string
+	APIKey                  string
+	ModelName               string
+	BaseURL                 string
+	CallTimeout             time.Duration
+	MaxCalls                int
+	MaxTokens               int
+	MaxOutputTokens         int
 }
 
 func Load() (Config, error) {
@@ -58,6 +61,10 @@ func Load() (Config, error) {
 		return Config{}, fmt.Errorf("ZHIPU_API_KEY is required")
 	}
 	var err error
+	cfg.ExperimentalContinuity, err = strconv.ParseBool(env("INKLOOM_EXPERIMENTAL_CONTINUITY", "false"))
+	if err != nil {
+		return Config{}, fmt.Errorf("INKLOOM_EXPERIMENTAL_CONTINUITY must be true or false")
+	}
 	if cfg.EmbeddingDimensions, err = positive("INKLOOM_EMBEDDING_DIMENSIONS", 1024); err != nil {
 		return Config{}, err
 	}
@@ -73,6 +80,14 @@ func Load() (Config, error) {
 	if cfg.MaxOutputTokens, err = positive("INKLOOM_MAX_OUTPUT_TOKENS", 8192); err != nil {
 		return Config{}, err
 	}
+	if cfg.ConsistencyOutputTokens, err = positive("INKLOOM_CONSISTENCY_OUTPUT_TOKENS", 30000); err != nil {
+		return Config{}, err
+	}
+	cfg.ConsistencyTimeout, err = time.ParseDuration(env("INKLOOM_CONSISTENCY_TIMEOUT", "90s"))
+	if err != nil || cfg.ConsistencyTimeout <= 0 {
+		return Config{}, fmt.Errorf("INKLOOM_CONSISTENCY_TIMEOUT must be a positive duration")
+	}
+
 	if raw := os.Getenv("INKLOOM_CALL_TIMEOUT"); raw != "" {
 		cfg.CallTimeout, err = time.ParseDuration(raw)
 		if err != nil || cfg.CallTimeout <= 0 {

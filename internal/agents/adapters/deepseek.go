@@ -43,12 +43,19 @@ func (d *DeepSeek) Generate(ctx context.Context, in model.Input) (model.Output, 
 	if len(in.Tools) > 0 || len(in.Messages) > 0 {
 		format = deepseek.ResponseFormatTypeText
 	}
+	output, timeout := d.cfg.MaxOutputTokens, d.cfg.CallTimeout
+	if in.OutputTokens > 0 {
+		output = in.OutputTokens
+	}
+	if in.CallTimeout > 0 {
+		timeout = in.CallTimeout
+	}
 	cm, err := deepseek.NewChatModel(ctx, &deepseek.ChatModelConfig{
 		APIKey: d.cfg.APIKey, BaseURL: d.cfg.BaseURL, Model: d.cfg.ModelName,
-		Timeout: d.cfg.CallTimeout, MaxTokens: d.cfg.MaxOutputTokens, Temperature: in.Temperature,
+		Timeout: timeout, MaxTokens: output, Temperature: in.Temperature,
 		ThinkingConfig:     &deepseek.ThinkingConfig{Type: thinking},
 		ResponseFormatType: format,
-		HTTPClient:         &http.Client{Timeout: d.cfg.CallTimeout, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }},
+		HTTPClient:         &http.Client{Timeout: timeout, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }},
 	})
 	if err != nil {
 		return model.Output{}, model.Usage{}, fmt.Errorf("cannot initialize DeepSeek adapter")

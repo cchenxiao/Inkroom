@@ -29,7 +29,7 @@ func GenerateDirections(ctx context.Context, cfg config.Config, input planning.I
 			return planning.Output{}, err
 		}
 	}
-	guard := model.NewGuard(chat, model.Limits{OnCall: onCall, Calls: min(cfg.MaxCalls, 3), Tokens: cfg.MaxTokens, OutputTokens: cfg.MaxOutputTokens, Timeout: cfg.CallTimeout, ModelName: cfg.ModelName})
+	guard := model.NewGuard(chat, model.Limits{OnCall: onCall, Calls: min(cfg.MaxCalls, 3), Tokens: cfg.MaxTokens, OutputTokens: cfg.MaxOutputTokens, ConsistencyOutputTokens: cfg.ConsistencyOutputTokens, ConsistencyTimeout: cfg.ConsistencyTimeout, Timeout: cfg.CallTimeout, ModelName: cfg.ModelName})
 	raw, err := json.Marshal(input)
 	if err != nil {
 		return planning.Output{}, err

@@ -158,7 +158,7 @@ func (s *Store) ClaimAction(ctx context.Context, id string, a orchestration.Huma
 	r.Error = ""
 	r.PendingAction = &a
 	r.CurrentNode = "human_edit"
-	if a.Type == "approve" {
+	if a.Type == "approve" || a.Type == "finding_decision" {
 		r.CurrentNode = "human_gate"
 	}
 	r.Result.CurrentNode = r.CurrentNode

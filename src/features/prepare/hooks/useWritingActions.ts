@@ -84,6 +84,15 @@ export function useWritingActions(run: BackendRun | undefined, currentVersion?: 
     mutation,
     busy: !!pending || mutation.isPending,
     approve: () => action({ type: 'approve' }),
+    proposeFinding: (findingId: string, rewrite: AuthorRewrite) =>
+      action({ type: 'propose_finding', findingId, rewrite }),
+    applyFinding: (proposalId: string) => action({ type: 'apply_finding', proposalId }),
+    discardFinding: (proposalId: string) => action({ type: 'discard_finding', proposalId }),
+    editFinding: (findingId: string, rewrite: AuthorRewrite, text: string) =>
+      action({ type: 'edit_finding', findingId, rewrite, text }),
+    reviewBatch: () => action({ type: 'review_batch' }),
+    decideFinding: (findingId: string, decision: 'keep' | 'reopen', instruction: string) =>
+      action({ type: 'finding_decision', findingId, decision, instruction }),
     rewrite: (rewrite: AuthorRewrite) => action({ type: 'rewrite', rewrite }),
     edit: (segmentId: string, text: string) => action({ type: 'inline_edit', segmentId, text }),
     instruct: (instruction: string) => action({ type: 'instruct', instruction }),

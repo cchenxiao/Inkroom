@@ -59,3 +59,50 @@ func TestChapterReviewParallelFailureAndBudget(t *testing.T) {
 		t.Fatal("insufficient whole-review budget started paid calls", err, calls)
 	}
 }
+
+func TestChapterContinuityOptInMapsEvidenceAndFailsClosed(t *testing.T) {
+	for _, tc := range []struct {
+		name               string
+		enabled, truncated bool
+	}{{"default", false, false}, {"enabled", true, false}, {"incomplete", true, true}} {
+		t.Run(tc.name, func(t *testing.T) {
+			in := reviewInputFixture()
+			in.EnhancedContinuity = tc.enabled
+			steps := []model.Step{{Role: "chapter_consistency", Content: `{"findings":[]}`}, {Role: "chapter_language", Content: `{"findings":[]}`}}
+			if tc.enabled {
+				reason := model.Complete
+				if tc.truncated {
+					reason = model.Truncated
+				}
+				steps = append(steps, model.Step{Role: "hard_consistency", FinishReason: reason, Content: `{"checked":["s-1","s-2"],"issues":[{"earlier":"p1","later":"p2","reason":"铁锁已剪断却又完好出现","suggestion":"核对铁锁状态","needsAuthor":true}]}`})
+			}
+			out, err := reviewChapterWith(context.Background(), model.NewFake(steps), in)
+			if tc.truncated {
+				if err == nil || out.Critics[0].Status != "failed" || len(out.Critics[0].Findings) != 0 {
+					t.Fatal("incomplete check accepted", out, err)
+				}
+				return
+			}
+			want := 0
+			if tc.enabled {
+				want = 1
+			}
+			if err != nil || len(out.Critics[0].Findings) != want {
+				t.Fatal(out, err)
+			}
+			if tc.enabled && (len(out.Critics[0].Findings[0].Evidence) != 2 || ChapterReviewBlock(ChapterReviewJob{Current: true, Status: "completed", Output: &out}) == "") {
+				t.Fatal("grounded conflict not sent to author", out)
+			}
+		})
+	}
+}
+func TestWithinPassageContinuityRequiresAuthor(t *testing.T) {
+	in := reviewInputFixture()
+	in.Parts = in.Parts[:1]
+	in.Parts[0].Segments[0].Text = "她把袋子放进柜子。\n袋子却在桌上。"
+	chat := model.NewFake([]model.Step{{Role: "hard_consistency", Content: `{"checked":["s-1"],"issues":[{"earlier":"p1","later":"p2","reason":"袋子位置变化","suggestion":"核对取回动作","needsAuthor":false}]}`}})
+	findings, err := reviewChapterContinuity(context.Background(), chat, in)
+	if err != nil || ValidateChapterFindings(in, "hard_consistency", findings) != nil || len(findings) != 1 || !findings[0].RequiresHuman {
+		t.Fatal(findings, err)
+	}
+}

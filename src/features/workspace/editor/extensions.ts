@@ -107,6 +107,7 @@ export interface AnnotationOptions {
   heatmap: boolean;
   findings: { id: string; quote: string; severity: string }[];
 }
+export const manuscriptAnnotationsKey = new PluginKey<AnnotationOptions>('manuscript-annotations');
 export const ManuscriptAnnotations = Extension.create<AnnotationOptions>({
   name: 'manuscriptAnnotations',
   addOptions() {
@@ -115,10 +116,15 @@ export const ManuscriptAnnotations = Extension.create<AnnotationOptions>({
   addProseMirrorPlugins() {
     const options = this.options;
     return [
-      new Plugin({
-        key: new PluginKey('manuscript-annotations'),
+      new Plugin<AnnotationOptions>({
+        key: manuscriptAnnotationsKey,
+        state: {
+          init: () => options,
+          apply: (tr, previous) => tr.getMeta(manuscriptAnnotationsKey) ?? previous,
+        },
         props: {
           decorations(state) {
+            const options = manuscriptAnnotationsKey.getState(state)!;
             const decorations: Decoration[] = [];
             const blocks: { from: number; text: string; offset: number }[] = [];
             let text = '';

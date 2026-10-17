@@ -5,7 +5,11 @@ interface Backup {
   version: number;
   texts: Record<string, string>;
 }
-export function useAuthorDraft(runId: string | undefined, version: number | undefined) {
+export function useAuthorDraft(
+  runId: string | undefined,
+  version: number | undefined,
+  ownerId?: string,
+) {
   const [backup, setBackup] = useState<Backup | null>(null);
   const key = runId ? `inkloom-author:${runId}` : '';
   useEffect(() => {
@@ -30,7 +34,7 @@ export function useAuthorDraft(runId: string | undefined, version: number | unde
   }, [key, runId]);
   const active = backup?.runId === runId ? backup : null;
   const dirty = !!active && Object.keys(active.texts).length > 0;
-  useWritingPending(dirty);
+  useWritingPending(dirty, ownerId);
   const change = (id: string, text: string) => {
     if (!runId || version === undefined) return;
     setBackup((old) => {
@@ -57,7 +61,29 @@ export function useAuthorDraft(runId: string | undefined, version: number | unde
     sessionStorage.removeItem(key);
     setBackup(null);
   };
+  const acknowledgeInstruction = (
+    sourceRunId: string,
+    sourceVersion: number,
+    instruction: string,
+  ) => {
+    const sourceKey = `inkloom-author:instruction:${sourceRunId}`;
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(sourceKey) ?? 'null') as Backup | null;
+      if (saved?.version !== sourceVersion || saved.texts.instruction !== instruction) return;
+      sessionStorage.removeItem(sourceKey);
+      setBackup((old) =>
+        old?.runId === saved.runId &&
+        old.version === sourceVersion &&
+        old.texts.instruction === instruction
+          ? null
+          : old,
+      );
+    } catch {
+      /* A damaged backup must not block receipt handling. */
+    }
+  };
   return {
+    acknowledgeInstruction,
     texts: active?.texts ?? {},
     dirty,
     change,

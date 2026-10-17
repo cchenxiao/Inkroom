@@ -1,8 +1,12 @@
+import { findingRewrite, replaceFindingQuote } from './finding-actions';
+import { ContinuityOption } from '@/features/prepare/components/continuity-option';
+import { ReviewProgress } from '@/features/prepare/components/review-progress';
+import { ReviewFailure, reviewFailureInfo } from './review-failure';
 import { readableMessage } from '@/shared/lib/business-labels';
 import type { SelectedText } from '@/features/workspace/editor/SegmentEditor';
 import type { ManuscriptInspection } from '@/types/domain/manuscript-view';
 import { usePanelDialog } from '@/shared/lib/use-panel-dialog';
-import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
+import { useEffect, useMemo, useState, useCallback, useRef, useId } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -17,6 +21,7 @@ import {
   PanelLeftOpen,
   Play,
   ShieldCheck,
+  Settings2,
   RefreshCw,
   Users,
   X,
@@ -25,7 +30,7 @@ import { PendingWritingProvider, useWritingLocked } from '@/shared/lib/pending-w
 import { useUIStore } from '@/shared/lib/ui-store';
 import { livePreparePath, liveWorkspacePath } from '@/shared/lib/writing-mode';
 import { writingDesk as t } from '@/shared/lib/messages-writing-desk';
-import { AsyncState, Badge, Button, Modal, DangerButton } from '@/shared/ui';
+import { AsyncState, Badge, Button, Modal } from '@/shared/ui';
 import {
   usePlanning,
   usePlannedWriting,
@@ -42,11 +47,13 @@ import { WritingManuscript, type ManuscriptPart } from '@/features/workspace';
 import type { Segment, Finding } from '@/types/domain';
 import { ErrorBoundary } from '../error-boundary';
 import { NavRail } from '../components/nav-rail';
-import { WritingBible, WritingGate, WritingFinding } from './writing-panels';
+import { WritingBible, WritingGate, WritingFinding, findingDecision } from './writing-panels';
 import { WritingDrawer } from './writing-drawer';
 import { useAuthorDraft } from './author-draft';
 import './writing.css';
 import { RevisionReceipt } from './revision-receipt';
+import { ContextReviewNotice } from './context-review-notice';
+import { QualitySummary } from './quality-summary';
 import { rewriteRequest } from './rewrite-request';
 
 type Panel = 'review' | 'bible' | 'assembly' | null;
@@ -122,7 +129,8 @@ function Desk({
     chapterPlanReady(planning) &&
     !!plan?.confirmed &&
     sameChapterPlanVersions(plan.versions, chapterPlanVersions(planning));
-  const writer = usePlannedWriting(chapterId, beatId, !ready || planningError);
+  const instructionOwner = useId();
+  const writer = usePlannedWriting(chapterId, beatId, !ready || planningError, instructionOwner);
   const chapterBeats = plan?.content.scenes.flatMap((scene) => scene.beats) ?? [];
   const candidates = useChapterCandidates(
     chapterId,
@@ -139,7 +147,20 @@ function Desk({
     (SelectedText & { beatId: string }) | null
   >(null);
   const [selectionNotice, setSelectionNotice] = useState('');
+  const [editRequest, setEditRequest] = useState<{
+    segmentId: string;
+    quote: string;
+    requestId: number;
+  }>();
   const [selectedFinding, setSelectedFinding] = useState<string | null>(null);
+  const [rewriteFeedback, setRewriteFeedback] = useState('');
+  const [resumeFinding, setResumeFinding] = useState<{
+    runId: string;
+    beatId: string;
+    quote: string;
+    segmentId: string;
+  } | null>(null);
+  const [editOnOpen, setEditOnOpen] = useState<string | null>(null);
   const [inspection, setInspection] = useState<ManuscriptInspection | null>(null);
   const inspect = (view: ManuscriptInspection) => {
     if (draft.dirty) return;
@@ -164,6 +185,7 @@ function Desk({
   const instructionDraft = useAuthorDraft(
     run ? 'instruction:' + run.id : undefined,
     run?.draftVersion,
+    instructionOwner,
   );
   const instruction = instructionDraft.texts.instruction ?? '';
   const quote = instructionDraft.texts.quote;
@@ -191,6 +213,20 @@ function Desk({
     )
       instructionDraft.clear();
   }, [acknowledged, run?.id, draft, instructionDraft, selection, instruction]);
+  useEffect(() => {
+    const request = writer.start.variables;
+    if (
+      writer.start.isSuccess &&
+      request?.rewrite &&
+      request.fromRunId &&
+      request.sourceVersion !== undefined
+    )
+      instructionDraft.acknowledgeInstruction(
+        request.fromRunId,
+        request.sourceVersion,
+        request.rewrite.instruction,
+      );
+  }, [writer.start.isSuccess, writer.start.variables, instructionDraft]);
   const [confirmed, setConfirmed] = useState('');
   const [compact, setCompact] = useState(window.innerWidth < 1200);
   useEffect(() => {
@@ -199,10 +235,11 @@ function Desk({
     return () => window.removeEventListener('resize', resize);
   }, []);
   const [command, setCommand] = useState(false);
-  const [regenerate, setRegenerate] = useState(false);
+  const [checkSettings, setCheckSettings] = useState(false);
   const focus = useUIStore((s) => s.focus),
     leftOpen = useUIStore((s) => s.leftOpen);
   const locked = useWritingLocked();
+  const otherRewriteLocks = useWritingLocked(instructionOwner);
   const reviewPanel = useRef<HTMLElement>(null);
   usePanelDialog(reviewPanel, compact && !focus && !!side, () => setSide(null));
   useEffect(() => {
@@ -224,6 +261,9 @@ function Desk({
   }, [chapterId, beatId, params, setParams]);
   useEffect(() => {
     setSelectedFinding(null);
+    setEditOnOpen(null);
+    setResumeFinding(null);
+    setRewriteFeedback('');
     setConfirmed('');
   }, [beatId]);
   const assembly = useQuery({
@@ -241,11 +281,24 @@ function Desk({
       : !ready
         ? t.prerequisite
         : (writer.block ?? '');
+  // During a run the draft head and SSE snapshot arrive separately. This is
+  // normal progress, not evidence that a completed review became obsolete.
+  // A lower cached head is catching up; only a newer head invalidates this run.
   const stale =
-    draft.stale ||
-    run?.status === 'stale' ||
-    (!!run && currentVersion !== undefined && currentVersion !== run.draftVersion);
-  const editable = actions.waiting && !busy && !stale;
+    run?.status !== 'running' &&
+    (draft.stale ||
+      run?.status === 'stale' ||
+      (!!run &&
+        !run.commitId &&
+        currentVersion !== undefined &&
+        currentVersion > run.draftVersion));
+  const adoptedCurrent =
+    !!run?.commitId ||
+    (!!writer.gate.data?.adopted?.matchesWorking &&
+      writer.gate.data?.working?.runId === run?.id &&
+      writer.gate.data?.working?.version === run?.draftVersion);
+  const adoptedVersion = run?.commitId ? run.draftVersion : writer.gate.data?.adopted?.version;
+  const editable = actions.waiting && !busy && !stale && !run?.result?.findingProposal;
   const sourceSegments = (run?.result?.segments ?? []).map((segment) =>
     run?.pendingAction?.type === 'inline_edit' && run.pendingAction.segmentId === segment.id
       ? { ...segment, text: run.pendingAction.text ?? segment.text }
@@ -253,8 +306,13 @@ function Desk({
   );
   const findings: Finding[] = (run?.result?.report.findings ?? []).map((f) => ({
     ...f,
-    draftVersion: run!.draftVersion,
-    status: 'open',
+    draftVersion: run!.result!.report.draftVersion,
+    quote: run?.result?.findingChanges?.find((c) => c.findingId === f.id)?.after || f.quote,
+    status: run?.result?.findingChanges?.some((c) => c.findingId === f.id)
+      ? 'resolved'
+      : findingDecision(run, f.id)?.decision === 'keep'
+        ? 'ignored'
+        : 'open',
     replacement: '',
   }));
   let order = 0;
@@ -299,15 +357,23 @@ function Desk({
           id: b.id,
           title: b.title,
           segments,
+          adoptedVersion: candidateQuery?.data?.adopted?.version,
           accepted:
             current && sourceSegments.length
-              ? !!run.commitId
+              ? !!run.commitId ||
+                (!!candidateQuery?.data?.adopted?.matchesWorking &&
+                  working?.runId === run.id &&
+                  working?.version === run.draftVersion)
               : working
                 ? working.state === 'adopted'
                 : candidate
                   ? !!candidate.commitId
                   : !!stored?.commitId,
-          loading: !texts.length && candidateQuery?.isPending,
+          loading:
+            !texts.length &&
+            (candidateQuery?.isPending ||
+              assembly.isLoading ||
+              (b.id === beatId && writer.loading)),
           loadError: !texts.length && candidateQuery?.isError,
           onRetry: () => {
             void candidateQuery?.refetch();
@@ -345,6 +411,7 @@ function Desk({
     })),
   }));
   const selectFinding = (id: string) => {
+    setEditOnOpen(null);
     setSelectedFinding(id);
   };
   const showReview = (targetBeat?: string) => {
@@ -377,12 +444,25 @@ function Desk({
       return;
     }
     setPendingSelection({ ...value, beatId: part.id });
-    showReview(part.id);
+    if (value.action === 'edit') {
+      setParams(
+        (current) => {
+          const next = new URLSearchParams(current);
+          next.set('beatId', part.id);
+          if (compact) next.set('panel', 'closed');
+          return next;
+        },
+        { replace: true },
+      );
+    } else showReview(part.id);
   };
   useEffect(() => {
     if (!pendingSelection || pendingSelection.beatId !== beatId || !run) return;
     const segment = sourceSegments.find((s) => s.id === pendingSelection.segmentId);
-    if (writer.runQuery.isFetching) return;
+    // Switching beats loads the candidate and its saved draft independently.
+    // Keep the user's selection until both are ready, before deciding whether editing is allowed.
+    if (writer.runQuery.isFetching || writer.draft.isPending) return;
+    if (run.planning?.mode === 'beat' && run.planning.beatId !== beatId) return;
     setPendingSelection(null);
     if (!segment) {
       setSelectionNotice('所选正文不属于当前候选，请核对候选历史后重新选择。');
@@ -401,7 +481,7 @@ function Desk({
     }
     if (
       (pendingSelection.action === 'edit' ? !editable : busy || run.status === 'running') ||
-      instructionDraft.stale
+      (pendingSelection.action !== 'edit' && instructionDraft.stale)
     ) {
       setSelectionNotice(
         run.commitId
@@ -416,9 +496,11 @@ function Desk({
     }
     setSelectionNotice('');
     if (pendingSelection.action === 'edit') {
-      document
-        .querySelector<HTMLElement>(`[data-testid="editor-${CSS.escape(segment.id)}"]`)
-        ?.focus();
+      setEditRequest((old) => ({
+        segmentId: segment.id,
+        quote: pendingSelection.quote,
+        requestId: (old?.requestId ?? 0) + 1,
+      }));
       return;
     }
     instructionDraft.change('segmentId', segment.id);
@@ -438,19 +520,13 @@ function Desk({
     run,
     sourceSegments,
     writer.runQuery.isFetching,
+    writer.draft.isPending,
     editable,
     busy,
     instructionDraft,
     draft.dirty,
   ]);
-  const autoOpened = useRef('');
-  useEffect(() => {
-    const key = `${run?.id}:${run?.draftVersion}`;
-    if (run?.status === 'waiting_human' && autoOpened.current !== key) {
-      autoOpened.current = key;
-      setSide((current) => current ?? 'review');
-    }
-  }, [run?.id, run?.draftVersion, run?.status, setSide]);
+  // Model completion updates data, not the author's reading position or panel.
   const saveEdit = async () => {
     const entry = Object.entries(draft.texts)[0];
     if (!entry || !editable || draft.stale) return;
@@ -459,12 +535,9 @@ function Desk({
   const startDisabled =
     !!block || !writer.gate.data?.ready || locked || busy || run?.status === 'running';
   const start = () => {
+    showReview();
     if (startDisabled) return;
-    if ((writer.gate.data?.draftVersion ?? 0) > 0 && !regenerate) {
-      setRegenerate(true);
-      return;
-    }
-    writer.begin();
+    writer.begin(true);
   };
   useEffect(() => {
     function key(e: KeyboardEvent) {
@@ -485,32 +558,146 @@ function Desk({
     window.addEventListener('keydown', key);
     return () => window.removeEventListener('keydown', key);
   }, [setSide]);
+  const reviewFailure = reviewFailureInfo(run);
   const reason = stale
     ? t.stale
-    : planningError
-      ? '暂时无法读取真实规划，请确认 Go 服务已启动。'
-      : block ||
-        (run?.error ? readableMessage(run.error, '本次修改或复检未完成，请检查结果后重试。') : '');
-  const canRewrite = !!run?.result && !busy && run.status !== 'running' && !draft.dirty;
+    : reviewFailure
+      ? `${reviewFailure.title}：${reviewFailure.detail}`
+      : planningError
+        ? '暂时无法读取真实规划，请确认 Go 服务已启动。'
+        : run?.error
+          ? readableMessage(run.error, '本次修改或复检未完成，请检查结果后重试。')
+          : writer.blockIsProgress
+            ? ''
+            : block;
+  const contextRecheck =
+    writer.start.variables?.recheck &&
+    (writer.start.variables.fromRunId === run?.id || writer.start.data?.id === run?.id);
+  const recheckingContext =
+    !!contextRecheck &&
+    !run?.pendingAction &&
+    (writer.start.isPending || (run?.status === 'running' && writer.start.data?.id === run.id));
+  const retryContext = !!contextRecheck && !!writer.pendingStart && !writer.start.isPending;
+  const reviewGate = run?.planning?.mode === 'chapter' ? writer.chapterGate : writer.gate;
+  const contextReviewBlock =
+    draft.dirty || instructionDraft.dirty
+      ? '本机还有未提交的修改，请先处理这些修改，再复检已保存的正文。'
+      : retryContext
+        ? '' // Retry the same idempotent request when its outcome is unknown.
+        : busy || locked || run?.status === 'running'
+          ? '请等待当前操作完成。'
+          : !writer.current || !reviewGate.data?.ready || reviewGate.isError
+            ? reviewGate.data?.reason || '正在核对创作准备状态；准备就绪后可复检。'
+            : '';
+  const localActionRunning =
+    run?.status === 'running' &&
+    ['propose_finding', 'apply_finding', 'discard_finding', 'edit_finding'].includes(
+      run.pendingAction?.type ?? '',
+    );
+  const canRewrite =
+    !!run?.result &&
+    !busy &&
+    run.status !== 'running' &&
+    !draft.dirty &&
+    !run.result.findingProposal;
+  const rewriteInPlace =
+    actions.waiting &&
+    (run?.planning?.neighborPolicy === 'working-v1' || run?.planning?.mode === 'chapter');
+  const rewriteBlock = !canRewrite
+    ? draft.dirty
+      ? '请先保存正文修改，再发送要求。'
+      : '请先完成当前操作。'
+    : otherRewriteLocks
+      ? '还有其他未保存的修改或未完成请求，请先处理。'
+      : instructionDraft.stale
+        ? '修改要求对应的正文版本已变化，请核对后清空并重新填写。'
+        : rewriteInPlace
+          ? ''
+          : writer.revisionBlock(true);
   const sendRewrite = async () => {
+    setRewriteFeedback('');
+    if (rewriteBlock) {
+      setRewriteFeedback(rewriteBlock);
+      return;
+    }
     const segment =
       sourceSegments.find((s) => s.id === instructionDraft.texts.segmentId) ??
       sourceSegments.find((s) => !s.beatId || s.beatId === beatId);
-    if (!segment || !canRewrite) return;
+    if (!segment) {
+      setRewriteFeedback('未找到对应正文，请重新选择要修改的段落。');
+      return;
+    }
     try {
       const request = rewriteRequest(segment, instruction, quote);
-      // Legacy runs did not freeze neighboring prose; fork them with current context.
-      const inPlace =
-        actions.waiting &&
-        (run?.planning?.neighborPolicy === 'working-v1' || run?.planning?.mode === 'chapter');
-      if (await (inPlace ? actions.rewrite(request) : writer.revise(request)))
+      const ok = await (rewriteInPlace ? actions.rewrite(request) : writer.revise(request));
+      if (ok) {
         instructionDraft.clear();
+        setRewriteFeedback('修改要求已提交，正在生成新候选。');
+      } else {
+        setRewriteFeedback('修改要求尚未提交，输入已保留。请查看上方状态或重试原请求。');
+      }
     } catch (error) {
-      setSelectionNotice(error instanceof Error ? error.message : '无法定位选区，请重新选择。');
+      setRewriteFeedback(error instanceof Error ? error.message : '无法定位选区，请重新选择。');
     }
   };
-  const primaryLabel =
-    run?.status === 'running'
+  useEffect(() => {
+    if (
+      !resumeFinding ||
+      resumeFinding.beatId !== beatId ||
+      !run ||
+      run.id === resumeFinding.runId ||
+      run.status !== 'waiting_human' ||
+      !actions.waiting
+    )
+      return;
+    const matches =
+      run.result?.report.findings.filter(
+        (f) => f.segmentId === resumeFinding.segmentId && f.quote === resumeFinding.quote,
+      ) ?? [];
+    setResumeFinding(null);
+    if (matches.length === 1) {
+      setSelectedFinding(matches[0].id);
+      setEditOnOpen(matches[0].id);
+    } else {
+      setSelectionNotice(
+        '审核已更新。旧问题已变化，请选择最新问题修改，也可直接在正文选中需要修改的文字。',
+      );
+      setSelectedFinding(null);
+    }
+  }, [resumeFinding, beatId, run, actions.waiting]);
+  const recoverFinding = async () => {
+    const f = run?.result?.report.findings.find((f) => f.id === selectedFinding);
+    if (!run || !f || contextReviewBlock) return;
+    setResumeFinding({ runId: run.id, beatId, quote: f.quote, segmentId: f.segmentId });
+    setEditOnOpen(null);
+    await writer.revise();
+  };
+  const focusInstruction = () => {
+    showReview();
+    requestAnimationFrame(() =>
+      document.querySelector<HTMLTextAreaElement>('[data-writing-instruction]')?.focus(),
+    );
+  };
+  const failureNotice = (
+    <ReviewFailure
+      run={run}
+      disabled={!!contextReviewBlock}
+      disabledReason={contextReviewBlock}
+      onPendingInstruction={instructionDraft.dirty ? focusInstruction : undefined}
+      requestError={
+        contextRecheck && writer.start.isError
+          ? readableMessage(writer.start.error?.message, '重新检查请求未确认，请重试原请求。')
+          : ''
+      }
+      onRetry={() => {
+        if (retryContext) writer.retryStart();
+        else void writer.revise();
+      }}
+    />
+  );
+  const primaryLabel = writer.loading
+    ? '读取中…'
+    : run?.status === 'running'
       ? t.running
       : run?.status === 'committed'
         ? t.assembly
@@ -631,6 +818,10 @@ function Desk({
               </Button>
             </div>
             <div className="top-actions">
+              <Button variant="ghost" size="sm" onClick={() => setCheckSettings(true)}>
+                <Settings2 size={14} />
+                检查设置
+              </Button>
               <Button
                 variant="ghost"
                 size="icon"
@@ -655,6 +846,7 @@ function Desk({
                 size="sm"
                 variant={run && run.status !== 'running' ? 'human' : 'default'}
                 disabled={
+                  writer.loading ||
                   run?.status === 'running' ||
                   (!run && (locked || busy || !!block || !writer.chapterGate.data?.ready))
                 }
@@ -687,6 +879,14 @@ function Desk({
               </aside>
             ))}
           <main className="route-content">
+            <ReviewProgress run={run} />
+            {localActionRunning && (
+              <div className="writing-operation-progress" role="status" aria-label="局部处理进度">
+                {run.pendingAction?.type === 'propose_finding'
+                  ? '正在生成这条问题的修改预览，正文尚未改变。'
+                  : '正在保存你的局部处理，不会重新审核整段。'}
+              </div>
+            )}
             {selectionNotice && (
               <div className="manuscript-alert" role="status">
                 <span>{selectionNotice}</span>
@@ -720,8 +920,33 @@ function Desk({
                 selectedFinding={selectedFinding}
                 editable={editable && !inspection}
                 localText={draft.texts}
+                editRequest={editRequest}
                 dirty={draft.dirty}
-                blocked={reason}
+                blocked={stale || reviewFailure || run?.status === 'running' ? '' : reason}
+                reviewNotice={
+                  !inspection && reviewFailure ? (
+                    side !== 'review' || focus ? (
+                      failureNotice
+                    ) : undefined
+                  ) : !inspection &&
+                    (stale || recheckingContext || (contextRecheck && writer.start.isError)) ? (
+                    <ContextReviewNotice
+                      running={recheckingContext}
+                      onPendingInstruction={instructionDraft.dirty ? focusInstruction : undefined}
+                      disabledReason={recheckingContext ? '' : contextReviewBlock}
+                      retry={retryContext}
+                      error={
+                        contextRecheck && writer.start.isError
+                          ? readableMessage(writer.start.error?.message, '复检未提交成功，请重试。')
+                          : ''
+                      }
+                      onRecheck={() => {
+                        if (retryContext) writer.retryStart();
+                        else void writer.revise();
+                      }}
+                    />
+                  ) : undefined
+                }
                 busy={busy || run?.status === 'running'}
                 onChange={draft.change}
                 onSelectBeat={selectBeat}
@@ -738,6 +963,27 @@ function Desk({
                     });
                 }}
                 onSave={() => void saveEdit()}
+                onDiscard={draft.clear}
+                saveBlockedReason={
+                  draft.stale ? '保存版本已变化，你的修改仍保留，请先核对当前版本。' : undefined
+                }
+                saveError={
+                  actions.mutation.isError &&
+                  actions.mutation.variables?.operation.kind === 'action' &&
+                  actions.mutation.variables.operation.input.type === 'inline_edit'
+                    ? readableMessage(
+                        actions.mutation.error?.message,
+                        '保存未完成，修改仍保留，请重试。',
+                      )
+                    : undefined
+                }
+                onRetrySave={
+                  actions.pending?.operation.kind === 'action' &&
+                  actions.pending.operation.input.type === 'inline_edit' &&
+                  !actions.mutation.isPending
+                    ? actions.retry
+                    : undefined
+                }
                 onStart={start}
                 onReview={showReview}
                 startDisabled={startDisabled}
@@ -747,16 +993,91 @@ function Desk({
                     run={run}
                     id={selectedFinding}
                     onClose={() => setSelectedFinding(null)}
-                    onEdit={() => {
-                      setSelectedFinding(null);
-                      showReview();
+                    key={`${run?.id}:${run?.draftVersion}:${selectedFinding}:${editOnOpen === selectedFinding}`}
+                    busy={busy || run?.status === 'running'}
+                    initialEdit={editOnOpen === selectedFinding}
+                    onRecover={
+                      !editable && !busy && run?.status !== 'running'
+                        ? () => void recoverFinding()
+                        : undefined
+                    }
+                    recoveryBlock={contextReviewBlock}
+                    onPendingInstruction={instructionDraft.dirty ? focusInstruction : undefined}
+                    editBlock={
+                      !editable || draft.dirty || instructionDraft.dirty
+                        ? draft.dirty || instructionDraft.dirty
+                          ? '请先保存或放弃已有修改，再处理这条问题。'
+                          : run?.commitId
+                            ? '这是已采用稿。请先在作者审核中生成新候选，再直接修改。'
+                            : stale
+                              ? '相邻正文或当前稿已变化，更新审核后可继续修改。'
+                              : '正在同步当前稿状态，请稍候。'
+                        : ''
+                    }
+                    rewriteBlock={
+                      !canRewrite ||
+                      stale ||
+                      instructionDraft.dirty ||
+                      instructionDraft.stale ||
+                      (!actions.waiting &&
+                        run?.result?.report.findings.some(
+                          (f) =>
+                            f.id === selectedFinding &&
+                            f.severity === 'P3' &&
+                            f.id !== 'author-request-review',
+                        ))
+                        ? '请先处理未保存的修改或当前运行，再发送这条问题。'
+                        : ''
+                    }
+                    decisionBlock={
+                      !editable ||
+                      draft.dirty ||
+                      instructionDraft.dirty ||
+                      selectedFinding === 'author-request-review'
+                        ? selectedFinding === 'author-request-review'
+                          ? '这条是修改要求的核对结果，请修改或重新核对后处理。'
+                          : instructionDraft.dirty
+                            ? '请先发送或清空右栏的修改要求。'
+                            : stale
+                              ? '上下文已变化，请先更新审核再决定保留。'
+                              : '请先保存当前修改或等待操作完成。'
+                        : ''
+                    }
+                    onEdit={async (replacement) => {
+                      if (!editable || draft.dirty || instructionDraft.dirty) return false;
+                      const f = run?.result?.report.findings.find((f) => f.id === selectedFinding);
+                      if (f?.severity === 'P3' && f.id !== 'author-request-review')
+                        return actions.editFinding(
+                          selectedFinding,
+                          findingRewrite(run, selectedFinding, '作者直接修改这处原文', false),
+                          replacement,
+                        );
+                      const change = replaceFindingQuote(run, selectedFinding, replacement);
+                      return actions.edit(change.segmentId, change.text);
                     }}
-                    onInstruct={() => {
-                      setInstruction(
-                        run?.result?.report.findings.find((f) => f.id === selectedFinding)
-                          ?.suggestion ?? '',
-                      );
-                      showReview();
+                    onInstruct={async (instruction, whole) => {
+                      if (!canRewrite || stale || instructionDraft.dirty) return false;
+                      const request = findingRewrite(run, selectedFinding, instruction, whole);
+                      const f = run?.result?.report.findings.find((f) => f.id === selectedFinding);
+                      if (f?.severity === 'P3' && f.id !== 'author-request-review')
+                        return actions.proposeFinding(selectedFinding, request);
+                      const inPlace =
+                        actions.waiting &&
+                        (run?.planning?.neighborPolicy === 'working-v1' ||
+                          run?.planning?.mode === 'chapter');
+                      const ok = await (inPlace
+                        ? actions.rewrite(request)
+                        : writer.revise(request));
+                      if (ok) showReview();
+                      return ok;
+                    }}
+                    onApply={async (id) =>
+                      !stale && !draft.dirty && !instructionDraft.dirty && actions.applyFinding(id)
+                    }
+                    onDiscard={async (id) => actions.discardFinding(id)}
+                    onDecision={async (decision, reason) => {
+                      if (!editable || draft.dirty || instructionDraft.dirty) return false;
+                      return actions.decideFinding(selectedFinding, decision, reason);
                     }}
                   />
                 )}
@@ -826,34 +1147,119 @@ function Desk({
                   chapterId={chapterId}
                   editing={!ready || draft.dirty || planningError}
                   embedded
+                  enhancedContinuity={writer.enhancedContinuity}
                   onRead={inspect}
                   onReviewBeat={showReview}
                 />
               )}
             </div>
             <div className="writing-panel-scroll writing-review-scroll" hidden={side !== 'review'}>
-              <section className="writing-next-step" aria-label="当前稿与下一步" aria-live="polite">
+              {failureNotice}
+              <section
+                hidden={!!reviewFailure}
+                className="writing-next-step"
+                aria-label="当前稿与下一步"
+                aria-live="polite"
+              >
                 <strong>
                   {run?.planning?.mode === 'chapter' ? chapter?.title : beat?.title || '当前情节段'}
                   {run ? ` · v${run.draftVersion}` : ''}
                 </strong>
                 <p>
-                  {run?.status === 'running'
-                    ? '正在生成或复检正文，完成后会停在这里等你判断。'
-                    : draft.dirty
-                      ? '正文有你的修改，下一步保存并复检。'
-                      : run?.commitId
-                        ? run.planning?.mode === 'chapter'
-                          ? '整章候选已采用，可进入整章复审。'
-                          : '本段已采用。可继续下一段，或进入整章审核。'
-                        : run?.status === 'approved'
-                          ? run.planning?.mode === 'chapter'
-                            ? '整章候选已批准，核对事实后采用全部段落。'
-                            : '本段已批准，核对事实后采用到章稿。'
-                          : actions.waiting
-                            ? '核对正文，提出修改或批准当前稿。'
-                            : reason || '生成候选后，在正文旁完成审核。'}
+                  {writer.loading
+                    ? '正在读取当前稿与审核状态…'
+                    : run?.status === 'running'
+                      ? run.pendingAction?.type === 'propose_finding'
+                        ? '正在生成局部修改预览，正文保持不变。'
+                        : ['apply_finding', 'edit_finding', 'discard_finding'].includes(
+                              run.pendingAction?.type ?? '',
+                            )
+                          ? '正在保存局部处理，不会重新审核整段。'
+                          : '正在生成或复检正文，完成后会停在这里等你判断。'
+                      : draft.dirty
+                        ? '正文有你的修改，下一步保存并复检。'
+                        : adoptedCurrent
+                          ? run?.planning?.mode === 'chapter'
+                            ? '整章候选已采用，可进入整章复审。'
+                            : '本段已采用。可继续下一段，或进入整章审核。'
+                          : run?.status === 'approved'
+                            ? run.planning?.mode === 'chapter'
+                              ? '整章候选已批准，核对事实后采用全部段落。'
+                              : '本段已批准，核对事实后采用到章稿。'
+                            : run?.result?.findingProposal
+                              ? '这条问题的修改预览已就绪，请核对后确认替换。'
+                              : run?.result?.reviewPending
+                                ? '局部修改已保存。可继续处理其他问题，完成后统一复审。'
+                                : actions.waiting
+                                  ? '核对正文，提出修改或批准当前稿。'
+                                  : reason || '生成候选后，在正文旁完成审核。'}
                 </p>
+                {!!writer.gate.data?.adopted && !adoptedCurrent && (
+                  <p className="muted">
+                    已采用 v{writer.gate.data.adopted.version} 保留；当前 v{run?.draftVersion}{' '}
+                    是修改后的候选，需要确认的是新正文。
+                  </p>
+                )}
+                {run?.neighborsChanged && !stale && (
+                  <p className="muted" role="status">
+                    邻段已更新，衔接将在整章复审核对。
+                    {adoptedCurrent
+                      ? '已采用正文继续有效，无需重复采用。'
+                      : '可继续审核当前候选，无需因邻段变化先复检。'}
+                  </p>
+                )}
+                {stale && (
+                  <div className="page-actions">
+                    {instructionDraft.dirty ? (
+                      <Button size="sm" onClick={focusInstruction}>
+                        处理未发送的修改要求
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="default"
+                        disabled={!!contextReviewBlock}
+                        disabledReason={contextReviewBlock}
+                        onClick={() => {
+                          if (retryContext) writer.retryStart();
+                          else void writer.revise();
+                        }}
+                      >
+                        更新本段审核
+                      </Button>
+                    )}
+                  </div>
+                )}
+                {run?.result?.findingProposal && (
+                  <Button
+                    size="sm"
+                    onClick={() => setSelectedFinding(run.result!.findingProposal!.findingId)}
+                  >
+                    查看待确认修改
+                  </Button>
+                )}
+                {run?.result?.reviewPending && !stale && (
+                  <section className="finding-batch-status" aria-label="待统一复审">
+                    <p>
+                      已保存 {run.result.findingChanges?.length ?? 0}{' '}
+                      处局部修改。其余意见来自上一版，暂不重新编号；批准前需复审最新正文。
+                    </p>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      disabled={
+                        busy ||
+                        !!run.result.findingProposal ||
+                        draft.dirty ||
+                        instructionDraft.dirty ||
+                        !actions.waiting
+                      }
+                      onClick={() => void actions.reviewBatch()}
+                    >
+                      统一复审当前稿
+                    </Button>
+                  </section>
+                )}
                 {run?.commitId && (
                   <div className="page-actions">
                     <Button variant="default" onClick={() => setSide('assembly')}>
@@ -869,6 +1275,20 @@ function Desk({
                   </div>
                 )}
               </section>
+              {(writer.start.isError || actions.mutation.isError) && (
+                <p role="alert">
+                  {readableMessage(
+                    writer.start.error?.message || actions.mutation.error?.message,
+                    '请求结果尚未确认，请检查服务连接后重试原请求。',
+                  )}
+                </p>
+              )}
+              {writer.pendingStart && !writer.start.isPending && (
+                <>
+                  <small>{t.unknown}</small>
+                  <Button onClick={writer.retryStart}>{t.retry}</Button>
+                </>
+              )}
               {run?.planning?.mode === 'chapter' && (
                 <p className="muted">
                   当前是整章候选：批准与采用覆盖全部情节段；选区修改只影响指定正文。
@@ -885,17 +1305,9 @@ function Desk({
                     .join('；')}
                 </p>
               )}
-              {run?.status === 'stale' && (
-                <Button
-                  disabled={busy || locked || !writer.gate.data?.ready}
-                  onClick={() => void writer.revise()}
-                >
-                  保留本段正文，按最新上下文复检
-                </Button>
-              )}
               <div className="writing-findings">
                 {findings
-                  .filter((f) => f.id !== 'author-request-review')
+                  .filter((f) => f.id !== 'author-request-review' && f.status === 'open')
                   .map((f) => (
                     <button key={f.id} onClick={() => selectFinding(f.id)}>
                       <Badge>{f.severity}</Badge>
@@ -904,7 +1316,78 @@ function Desk({
                   ))}
               </div>
 
-              <RevisionReceipt run={run} />
+              {findings.some((f) => f.status === 'resolved') && (
+                <details className="writing-kept-findings" open>
+                  <summary>
+                    已修改 · 待复审 {findings.filter((f) => f.status === 'resolved').length}
+                  </summary>
+                  {findings
+                    .filter((f) => f.status === 'resolved')
+                    .map((f) => (
+                      <Button
+                        key={f.id}
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => selectFinding(f.id)}
+                      >
+                        {f.quote || '查看这处修改'}
+                      </Button>
+                    ))}
+                </details>
+              )}
+              {findings.some((f) => f.status === 'ignored') && (
+                <details className="writing-kept-findings">
+                  <summary>
+                    已保留原文 · {findings.filter((f) => f.status === 'ignored').length}
+                  </summary>
+                  {findings
+                    .filter((f) => f.status === 'ignored')
+                    .map((f) => (
+                      <Button
+                        key={f.id}
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => selectFinding(f.id)}
+                      >
+                        {f.quote || '查看作者判断'}
+                      </Button>
+                    ))}
+                </details>
+              )}
+
+              {!run?.result?.reviewPending && (
+                <QualitySummary
+                  run={run}
+                  dirty={draft.dirty}
+                  onPrepareCondense={
+                    canRewrite && !stale && !instructionDraft.dirty && !instructionDraft.stale
+                      ? (target) => {
+                          const segment = sourceSegments.find(
+                            (s) => !s.beatId || s.beatId === beatId,
+                          );
+                          if (!segment) return;
+                          instructionDraft.change('segmentId', segment.id);
+                          instructionDraft.remove('quote');
+                          setInstruction(
+                            `请将当前情节段精简到约 ${target} 字，优先删除重复描写、反复确认和过度解释。保留关键动作、人物关系、数量与事件结果，保持与前后段的衔接；不添加新事实、不截断结尾，只改本段。`,
+                          );
+                          requestAnimationFrame(() => {
+                            const field = document.querySelector<HTMLTextAreaElement>(
+                              '[data-writing-instruction]',
+                            );
+                            field?.focus();
+                            field?.scrollIntoView({ block: 'nearest' });
+                          });
+                        }
+                      : undefined
+                  }
+                />
+              )}
+              {!stale &&
+                !reviewFailure &&
+                !localActionRunning &&
+                !run?.result?.findingProposal &&
+                !run?.result?.reviewPending && <RevisionReceipt run={run} />}
               <section
                 className="writing-revision-form"
                 aria-label="修改当前稿"
@@ -957,38 +1440,27 @@ function Desk({
                     size="sm"
                     loading={writer.start.isPending || actions.mutation.isPending}
                     disabled={
-                      !canRewrite ||
+                      !!rewriteBlock ||
                       !instruction.trim() ||
                       Array.from(instruction).length > 1000 ||
                       instructionDraft.stale
                     }
+                    disabledReason={rewriteBlock}
                     onClick={() => void sendRewrite()}
                   >
                     {t.sendInstruction}
                   </Button>
                 </div>
-                {draft.dirty && <p className="muted">请先保存正文修改，再发送要求。</p>}
+                {(rewriteFeedback || rewriteBlock) && (
+                  <p role="status">{rewriteFeedback || rewriteBlock}</p>
+                )}
                 {Array.from(instruction).length > 1000 && (
                   <p role="alert">修改要求最多 1000 字，请精简后发送。</p>
                 )}
               </section>
-              {side === 'review' && (
+              {side === 'review' && !draft.dirty && (
                 <section className="writing-review-actions" aria-label="确认当前稿">
                   <strong>确认当前稿</strong>
-                  {(writer.start.isError || actions.mutation.isError) && (
-                    <p role="alert">
-                      {readableMessage(
-                        writer.start.error?.message || actions.mutation.error?.message,
-                        '请求结果尚未确认，请检查服务连接后重试原请求。',
-                      )}
-                    </p>
-                  )}
-                  {writer.pendingStart && !writer.start.isPending && (
-                    <>
-                      <small>{t.unknown}</small>
-                      <Button onClick={writer.retryStart}>{t.retry}</Button>
-                    </>
-                  )}
                   {actions.pending && !actions.mutation.isPending && (
                     <>
                       <small>{t.unknown}</small>
@@ -1003,29 +1475,11 @@ function Desk({
                       恢复未完成的修改
                     </Button>
                   )}
-                  {draft.dirty ? (
-                    <>
-                      <Button
-                        variant="human"
-                        disabled={!editable || draft.stale}
-                        onClick={() => void saveEdit()}
-                      >
-                        {t.recheck}
-                      </Button>
-                      <DangerButton
-                        disabled={busy}
-                        title={t.discardConfirm}
-                        description="只放弃本机尚未提交的正文修改，已保存稿件保留。"
-                        onConfirm={draft.clear}
-                      >
-                        {t.discard}
-                      </DangerButton>
-                    </>
-                  ) : run?.commitId ? (
+                  {adoptedCurrent ? (
                     <p>
                       <Check size={14} />{' '}
-                      {run.planning?.mode === 'chapter' ? '整章候选已采用' : t.accepted} · v
-                      {run.draftVersion}
+                      {run?.planning?.mode === 'chapter' ? '整章候选已采用' : t.accepted} · v
+                      {adoptedVersion}
                     </p>
                   ) : (
                     <>
@@ -1096,6 +1550,31 @@ function Desk({
                   检查结果与候选历史{findings.length ? ` · ${findings.length} 个问题` : ''}
                 </summary>
                 <WritingGate run={run} stale={stale} />
+                {run && (
+                  <p className="muted">
+                    本轮加强衔接检查：{run.planning?.enhancedContinuity ? '已开启' : '未开启'}
+                  </p>
+                )}
+                {run?.result &&
+                  !['running', 'failed', 'interrupted', 'stale'].includes(run.status) && (
+                    <Button
+                      variant="secondary"
+                      disabled={
+                        busy ||
+                        locked ||
+                        draft.dirty ||
+                        instructionDraft.dirty ||
+                        !!writer.pendingStart ||
+                        !(run.planning?.mode === 'chapter'
+                          ? writer.chapterGate.data?.ready
+                          : writer.gate.data?.ready)
+                      }
+                      onClick={() => void writer.revise()}
+                    >
+                      保留正文，重新检查
+                    </Button>
+                  )}
+
                 <p className="muted">{t.noScore}</p>
                 <label>
                   {t.history}
@@ -1191,6 +1670,19 @@ function Desk({
           />
         )}
       </div>
+      <Modal
+        open={checkSettings}
+        onOpenChange={setCheckSettings}
+        title="检查设置"
+        description="本次工作台的段落生成、整章生成和整章复审共用。只用于新任务，已开始的检查保持原设置。"
+        footer={<Button onClick={() => setCheckSettings(false)}>完成</Button>}
+      >
+        <ContinuityOption
+          checked={writer.enhancedContinuity}
+          onChange={writer.setEnhancedContinuity}
+          disabled={busy || locked || !!writer.pendingStart}
+        />
+      </Modal>
       <Modal open={command} onOpenChange={setCommand} title={t.command}>
         <div className="page-stack">
           {[t.review, t.assembly, t.knowledge].map((label, i) => (
@@ -1213,24 +1705,6 @@ function Desk({
             专注写作
           </Button>
         </div>
-      </Modal>
-      <Modal
-        open={regenerate}
-        onOpenChange={setRegenerate}
-        title="重新生成这一段"
-        description="已采用的版本会保留，新候选需要重新审核，不会自动替换整章。"
-        footer={
-          <Button
-            onClick={() => {
-              setRegenerate(false);
-              writer.begin(true);
-            }}
-          >
-            生成新候选
-          </Button>
-        }
-      >
-        {null}
       </Modal>
     </div>
   );

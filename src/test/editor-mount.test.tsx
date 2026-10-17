@@ -24,3 +24,82 @@ describe('editor document hydration', () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 });
+
+it('shows and closes a nearby review without saving its UI as author text', async () => {
+  const segment = { ...seedDocuments().ch7.segments[0], text: '前段。\n引用证据。\n后段。' };
+  const onChange = vi.fn();
+  const props = {
+    segment,
+    text: segment.text,
+    findings: [],
+    editable: true,
+    heatmap: false,
+    onChange,
+    onFocus: vi.fn(),
+    onSelection: vi.fn(),
+    onFinding: vi.fn(),
+  };
+  const { container, rerender } = render(
+    <SegmentEditor
+      {...props}
+      review={{
+        id: 'test',
+        quote: '引用证据。',
+        content: <aside aria-label="问题详情">核对这个句子</aside>,
+      }}
+    />,
+  );
+  await waitFor(() =>
+    expect(
+      container.querySelector('.inline-review-host')?.previousElementSibling,
+    ).toHaveTextContent('引用证据。'),
+  );
+  expect(container.querySelector('.inline-review-host')?.nextElementSibling).toHaveTextContent(
+    '后段。',
+  );
+  expect(onChange).not.toHaveBeenCalled();
+  rerender(<SegmentEditor {...props} />);
+  await waitFor(() => expect(container.querySelector('.inline-review-host')).toBeNull());
+  expect(onChange).not.toHaveBeenCalled();
+});
+
+it('updates findings and heatmap without recreating the editor or saving text', async () => {
+  const segment = seedDocuments().ch7.segments[0];
+  const onChange = vi.fn();
+  const props = {
+    segment,
+    text: segment.text,
+    findings: [],
+    editable: true,
+    heatmap: false,
+    onChange,
+    onFocus: vi.fn(),
+    onSelection: vi.fn(),
+    onFinding: vi.fn(),
+  };
+  const { container, rerender } = render(<SegmentEditor {...props} />);
+  await waitFor(() => expect(container.querySelector('.tiptap')).toBeInTheDocument());
+  const original = container.querySelector('.tiptap');
+  rerender(
+    <SegmentEditor
+      {...props}
+      heatmap
+      segment={{ ...segment, styleStats: { ...segment.styleStats, aiTaste: 0.8 } }}
+      findings={[
+        {
+          id: 'fresh',
+          quote: segment.text.slice(0, 5),
+          status: 'open',
+          severity: 'P3',
+          critic: 'ai_taste',
+        } as import('@/types/domain').Finding,
+      ]}
+    />,
+  );
+  await waitFor(() =>
+    expect(container.querySelector('[data-finding-id="fresh"]')).toBeInTheDocument(),
+  );
+  expect(container.querySelector('.tiptap')).toBe(original);
+  expect(container.querySelector('.ai-heat')).toBeInTheDocument();
+  expect(onChange).not.toHaveBeenCalled();
+});

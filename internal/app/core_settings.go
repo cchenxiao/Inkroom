@@ -71,7 +71,7 @@ func generateCoreSettings(ctx context.Context, cfg config.Config, input planning
 	if cfg.Model == "fake" {
 		report.Message = "Fake 流程样例，不代表模型对本次立意的创作结果；所有内容均待作者确认。"
 	}
-	guard := model.NewGuard(chat, model.Limits{Calls: min(cfg.MaxCalls, 3), Tokens: cfg.MaxTokens, OutputTokens: cfg.MaxOutputTokens, Timeout: cfg.CallTimeout, ModelName: cfg.ModelName, OnCall: func(ctx context.Context, c model.CallRecord) error {
+	guard := model.NewGuard(chat, model.Limits{Calls: min(cfg.MaxCalls, 3), Tokens: cfg.MaxTokens, OutputTokens: cfg.MaxOutputTokens, ConsistencyOutputTokens: cfg.ConsistencyOutputTokens, ConsistencyTimeout: cfg.ConsistencyTimeout, Timeout: cfg.CallTimeout, ModelName: cfg.ModelName, OnCall: func(ctx context.Context, c model.CallRecord) error {
 		report.Calls = append(report.Calls, c)
 		if onCall != nil {
 			return onCall(ctx, c)
