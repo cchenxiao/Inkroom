@@ -85,6 +85,11 @@ func ContextRefs(b ContextBundle) ([]VersionRef, error) {
 			return nil, err
 		}
 	}
+	if b.RevisionRequest != nil {
+		if err := add("author_revision_review", b.RevisionRequest.SegmentID, b.Beat.Version, b.RevisionRequest); err != nil {
+			return nil, err
+		}
+	}
 	if b.Rewrite != nil {
 		if err := add("author_rewrite", b.Rewrite.SegmentID, b.Beat.Version, b.Rewrite); err != nil {
 			return nil, err

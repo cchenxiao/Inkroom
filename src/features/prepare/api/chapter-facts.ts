@@ -56,6 +56,7 @@ export interface FactsJob {
   provider: string;
   model: string;
   message: string;
+  failure?: { stage: string; code: string; message: string };
   input: {
     chapterId: string;
     review: ChapterReviewJob['input'];

@@ -83,6 +83,7 @@ type ChapterFactsJob struct {
 	Model     string              `json:"model"`
 	Output    *ChapterFactsOutput `json:"output,omitempty"`
 	Message   string              `json:"message"`
+	Failure   *ChapterFactFailure `json:"failure,omitempty"`
 	Calls     []model.CallRecord  `json:"calls"`
 	CreatedAt time.Time           `json:"createdAt"`
 }
@@ -106,19 +107,19 @@ func factSource(in ChapterFactsInput, e ChapterEvidence) (ChapterReviewPart, Cha
 }
 func ValidateChapterFactCandidates(in ChapterFactsInput, out ChapterFactsOutput) error {
 	if out.Candidates == nil || len(out.Candidates) > 24 {
-		return ErrInvalidWrite
+		return factError("validation", "candidate_count", "候选列表缺失或超过允许数量。", ErrInvalidWrite)
 	}
 	ids := map[string]bool{}
 	for _, c := range out.Candidates {
 		if c.ID == "" || len(c.ID) > 80 || ids[c.ID] || strings.TrimSpace(c.Text) == "" || utf8.RuneCountInString(c.Text) > 500 || len(c.Reason) > 2000 || !slices.Contains([]string{"event", "statement", "uncertain"}, c.Kind) {
-			return ErrInvalidWrite
+			return factError("validation", "candidate_fields", "候选编号重复、字段缺失或内容长度不符合要求。", ErrInvalidWrite)
 		}
 		ids[c.ID] = true
 		if _, _, ok := factSource(in, c.Evidence); !ok {
-			return fmt.Errorf("%w: 事实候选必须引用章稿原文", ErrInvalidWrite)
+			return factError("validation", "evidence_mismatch", "候选引用的段落或引文与本次章稿不一致，未载入候选。", ErrInvalidWrite)
 		}
 		if c.RelatedFactID != "" && !slices.ContainsFunc(in.Knowledge.Facts, func(f knowledge.Fact) bool { return f.ID == c.RelatedFactID }) {
-			return fmt.Errorf("%w: 不存在的已有事实引用", ErrInvalidWrite)
+			return factError("validation", "unknown_fact_reference", "候选关联了本次知识快照中不存在的事实，未载入候选。", ErrInvalidWrite)
 		}
 	}
 	return nil

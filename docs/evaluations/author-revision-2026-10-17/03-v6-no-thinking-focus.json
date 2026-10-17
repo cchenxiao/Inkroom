@@ -1,0 +1,104 @@
+{
+  "dataset": "author-revision-v2",
+  "datasetDigest": "bb211a0f400e5936dd342c70d9f5da6ed85ffc7a44453d4f910c4282e5ff04eb",
+  "provider": "deepseek",
+  "model": "deepseek-flash",
+  "startedAt": "2026-10-16T18:18:23.454815Z",
+  "total": 1,
+  "attempted": 1,
+  "passed": 1,
+  "usage": {
+    "inputTokens": 6601,
+    "outputTokens": 236,
+    "known": true
+  },
+  "results": [
+    {
+      "textChecksPassed": true,
+      "case": {
+        "requiredPatterns": [
+          "十六|16",
+          "十七|17",
+          "十八|18",
+          "十九|19"
+        ],
+        "forbiddenPatterns": [
+          "缺(?:失)?(?:了)?十八",
+          "缺(?:失)?(?:了)?18",
+          "十八页那一面"
+        ],
+        "id": "rewrite-pages",
+        "name": "作者质疑驱动实质改写",
+        "mode": "rewrite",
+        "original": "沈砚翻开旧档。十七页后是十九页，中间少了十八页。装订处留着撕口，他认定有人撕走了一张纸。他把缺失的页码记在笔记上。",
+        "instruction": "中间撕了一张怎么会隔一页呢？请按档案双面编号的设定修正这个逻辑，保留发现缺失并记录的动作。",
+        "facts": [
+          "档案按双面连续页码编号，十七和十八是同一张纸的正反面。"
+        ],
+        "after": "沈砚合上笔记，等着陆青进门。",
+        "expectedStatuses": [
+          "addressed"
+        ]
+      },
+      "candidate": "沈砚翻开旧档。十六页之后直接跳到了十九页，十七、十八两页连同一张纸一起不见了。装订处留着撕口，纸根还卡在订线里。他把缺失的页码记在笔记上。",
+      "check": {
+        "status": "addressed",
+        "reason": "原稿称“十七页后是十九页，中间少了十八页”，与 fact-1（十七和十八是同一张纸的正反面）冲突：若整张纸被撕走，十七、十八应同时缺失。当前正文改为“十六页之后直接跳到了十九页，十七、十八两页连同一张纸一起不见了”，缺失范围与双面同张的设定一致，并保留了发现缺失、查看撕口和记录页码的动作，问题已实质解决。",
+        "quote": "沈砚翻开旧档。十六页之后直接跳到了十九页，十七、十八两页连同一张纸一起不见了。装订处留着撕口，纸根还卡在订线里。他把缺失的页码记在笔记上。"
+      },
+      "findings": [],
+      "approvalBlock": "",
+      "scopePreserved": true,
+      "outcomeMatched": true,
+      "exactReplacementMatched": true,
+      "passed": true,
+      "calls": [
+        {
+          "role": "planned_writer",
+          "promptVersion": "planned_writer.v6",
+          "schemaVersion": "writer.v1",
+          "inputDigest": "0cf479909c2ea079a9a7c569e88ead1e1194b3dcbcfab11823954abffbb4841d",
+          "promptDigest": "0a1526dfcff1d03c5aaeffe31d60b406177d6186ec3dbf4e3a77d971123b03b9",
+          "output": "{\"text\":\"沈砚翻开旧档。十六页之后直接跳到了十九页，十七、十八两页连同一张纸一起不见了。装订处留着撕口，纸根还卡在订线里。他把缺失的页码记在笔记上。\"}",
+          "finishReason": "complete",
+          "usage": {
+            "inputTokens": 2267,
+            "outputTokens": 56,
+            "known": true
+          },
+          "elapsedMs": 1144
+        },
+        {
+          "role": "ai_taste",
+          "promptVersion": "ai_taste.v2",
+          "schemaVersion": "critic.v1",
+          "inputDigest": "7b573e21bbc301ee471015f1859b825113b810c1adbd34075998ed1927dce5d0",
+          "promptDigest": "6a9375dbd281d0c3e669e3d2977ddd4491f23ae60d542f2fe3ad67b86a946b30",
+          "output": "{\"findings\":[]}",
+          "finishReason": "complete",
+          "usage": {
+            "inputTokens": 1416,
+            "outputTokens": 6,
+            "known": true
+          },
+          "elapsedMs": 816
+        },
+        {
+          "role": "hard_consistency",
+          "promptVersion": "hard_consistency.v6",
+          "schemaVersion": "hard_consistency.revision.v1",
+          "inputDigest": "cdd215453af4b1f1d2d92e2b3a853138bf8b83d3023df7df899175cf71736016",
+          "promptDigest": "fe2c4336ed5417016dfbae998f1180ebcbb3fe4babe0f25580272c67b7e0b4b4",
+          "output": "{\"findings\":[],\"authorCheck\":{\"status\":\"addressed\",\"reason\":\"原稿称“十七页后是十九页，中间少了十八页”，与 fact-1（十七和十八是同一张纸的正反面）冲突：若整张纸被撕走，十七、十八应同时缺失。当前正文改为“十六页之后直接跳到了十九页，十七、十八两页连同一张纸一起不见了”，缺失范围与双面同张的设定一致，并保留了发现缺失、查看撕口和记录页码的动作，问题已实质解决。\",\"quote\":\"沈砚翻开旧档。十六页之后直接跳到了十九页，十七、十八两页连同一张纸一起不见了。装订处留着撕口，纸根还卡在订线里。他把缺失的页码记在笔记上。\"}}",
+          "finishReason": "complete",
+          "usage": {
+            "inputTokens": 2918,
+            "outputTokens": 174,
+            "known": true
+          },
+          "elapsedMs": 1571
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,388 @@
+{
+  "dataset": "author-revision-v1",
+  "datasetDigest": "ccb35fca0e22322a59319dda64e3bf69329e4b49e32f521e74822bbeefbeec98",
+  "provider": "deepseek",
+  "model": "deepseek-flash",
+  "startedAt": "2026-10-16T18:12:58.219375Z",
+  "total": 6,
+  "attempted": 6,
+  "passed": 4,
+  "usage": {
+    "inputTokens": 20133,
+    "outputTokens": 1537,
+    "known": true
+  },
+  "results": [
+    {
+      "case": {
+        "id": "page-rephrased",
+        "name": "页码问题仅换措辞，编号方式未明",
+        "mode": "review",
+        "original": "十七页后是十九页，中间少了十八页，是有人撕走了一张。",
+        "instruction": "中间撕了一张怎么会隔一页呢？",
+        "candidate": "下一张是十九页，中间没有十八。有人从中间抽走了一张。",
+        "facts": [
+          "沈砚正在查阅旧档案；档案的单面或双面编号方式尚未确定。"
+        ],
+        "after": "沈砚问陆青：十七到十九，中间那页，你见过没有？",
+        "expectedStatuses": [
+          "unresolved",
+          "needs_clarification"
+        ]
+      },
+      "candidate": "下一张是十九页，中间没有十八。有人从中间抽走了一张。",
+      "check": {
+        "status": "addressed",
+        "reason": "作者原句把“十七页后是十九页”直接等同于“撕走了一张”，隐含一页对应一张纸；当前正文改为“下一张是十九页，中间没有十八。有人从中间抽走了一张”，用“下一张”指代相邻的下一张纸/页，并明确“中间没有十八”，不再断言十七与十九之间只隔一页，从而消除了原句“隔一页却称撕一张”的数量矛盾。fact-1 已说明单面或双面编号方式尚未确定，因此“下一张”不构成新的硬冲突。",
+        "quote": "下一张是十九页，中间没有十八。有人从中间抽走了一张。"
+      },
+      "findings": [],
+      "approvalBlock": "",
+      "scopePreserved": true,
+      "outcomeMatched": false,
+      "exactReplacementMatched": true,
+      "passed": false,
+      "calls": [
+        {
+          "role": "hard_consistency",
+          "promptVersion": "hard_consistency.v4",
+          "schemaVersion": "hard_consistency.revision.v1",
+          "inputDigest": "873ffe1ebbf69a5d918e2a8fd9ab3cc7ee80b750a831de386f9da981088c5315",
+          "promptDigest": "14cb571baa9f4c99bca6ee0ca91722eef90ae372eb9ef20c05900722785189dc",
+          "output": "{\"findings\":[],\"authorCheck\":{\"status\":\"addressed\",\"reason\":\"作者原句把“十七页后是十九页”直接等同于“撕走了一张”，隐含一页对应一张纸；当前正文改为“下一张是十九页，中间没有十八。有人从中间抽走了一张”，用“下一张”指代相邻的下一张纸/页，并明确“中间没有十八”，不再断言十七与十九之间只隔一页，从而消除了原句“隔一页却称撕一张”的数量矛盾。fact-1 已说明单面或双面编号方式尚未确定，因此“下一张”不构成新的硬冲突。\",\"quote\":\"下一张是十九页，中间没有十八。有人从中间抽走了一张。\"}}",
+          "finishReason": "complete",
+          "usage": {
+            "inputTokens": 2346,
+            "outputTokens": 160,
+            "known": true
+          },
+          "elapsedMs": 1837
+        }
+      ]
+    },
+    {
+      "case": {
+        "id": "page-neighbor-conflict",
+        "name": "本段修正但后段仍沿用旧页码",
+        "mode": "review",
+        "original": "十七页后是十九页，中间缺了十八页，有人撕走了一张纸。",
+        "instruction": "这是双面连续编号的档案，一张纸两页，请修正缺页逻辑并核对前后衔接。",
+        "candidate": "十六页之后直接到了十九页。缺的是同一张纸上的十七、十八两页。沈砚把这两个页码记在笔记上。",
+        "facts": [
+          "档案按双面连续页码编号，十七和十八是同一张纸的正反面。"
+        ],
+        "after": "沈砚照着刚记的笔记说：十七页还在，只有十八页不见了。陆青点头。",
+        "expectedStatuses": [
+          "unresolved",
+          "needs_clarification"
+        ]
+      },
+      "candidate": "十六页之后直接到了十九页。缺的是同一张纸上的十七、十八两页。沈砚把这两个页码记在笔记上。",
+      "findings": null,
+      "approvalBlock": "",
+      "scopePreserved": true,
+      "outcomeMatched": false,
+      "exactReplacementMatched": true,
+      "passed": false,
+      "error": "consistency critic: invalid_content: finding \"hard-1\": severity does not match repair scope",
+      "calls": [
+        {
+          "role": "hard_consistency",
+          "promptVersion": "hard_consistency.v4",
+          "schemaVersion": "hard_consistency.revision.v1",
+          "inputDigest": "5e53fcd820bed4104b0b105ecddf925db8ca7fc326db674f7a3885eda7697b19",
+          "promptDigest": "ff789fce166dcd33a4118ee47e62fa131f57126bf88d474c8124c4c010362144",
+          "output": "{\"findings\":[{\"id\":\"hard-1\",\"critic\":\"hard_consistency\",\"severity\":\"P1\",\"segmentId\":\"target\",\"quote\":\"十六页之后直接到了十九页。缺的是同一张纸上的十七、十八两页。\",\"evidenceRefs\":[\"target\",\"fact-1\"],\"reason\":\"fact-1 明确十七和十八是同一张纸的正反面，因此若十六页之后直接到十九页，缺失的应是十七、十八两页，正文这一句与事实一致；但后段邻段中沈砚说“十七页还在，只有十八页不见了”，与本章“十七、十八两页都缺”的结论直接冲突，属于跨段事实衔接缺口。\",\"suggestion\":\"核对后段邻段，使沈砚对缺失页码的陈述与本章“十七、十八两页均缺”的结论一致；若后段为只读邻稿，请在本章或后段统一缺失页码口径。\",\"repairScope\":\"cross_chapter\",\"draftVersion\":2,\"ruleRef\":\"fact-1\",\"ruleQuote\":\"档案按双面连续页码编号，十七和十八是同一张纸的正反面。\",\"evidenceStatus\":\"confirmed\",\"possibleDialogueLie\":false,\"requiresHuman\":true}],\"authorCheck\":{\"status\":\"addressed\",\"reason\":\"作者要求按双面连续编号修正缺页逻辑。原句“十七页后是十九页，中间缺了十八页，有人撕走了一张纸”把缺失说成仅十八页，与“一张纸两页”矛盾。现正文改为“十六页之后直接到了十九页。缺的是同一张纸上的十七、十八两页”，缺失页码与同张纸正反面一致，已实质解决原问题；但后段邻段仍称“十七页还在，只有十八页不见了”，需另行统一。\",\"quote\":\"十六页之后直接到了十九页。缺的是同一张纸上的十七、十八两页。\"}}",
+          "finishReason": "complete",
+          "usage": {
+            "inputTokens": 2380,
+            "outputTokens": 411,
+            "known": true
+          },
+          "elapsedMs": 2845
+        }
+      ]
+    },
+    {
+      "case": {
+        "id": "page-corrected",
+        "name": "页码及邻稿均已一致，不应误拦",
+        "mode": "review",
+        "original": "十七页后是十九页，中间缺了十八页，有人撕走了一张纸。",
+        "instruction": "一张纸两页，请修正缺页逻辑并核对前后衔接。",
+        "candidate": "十六页之后直接到了十九页，装订处留下半截撕口。沈砚确认，同一张纸上的十七、十八两页一起不见了。",
+        "facts": [
+          "档案按双面连续页码编号，十七和十八是同一张纸的正反面。"
+        ],
+        "after": "沈砚把十七、十八两个页码记在笔记里，又问陆青：那张纸，你见过没有？",
+        "expectedStatuses": [
+          "addressed"
+        ]
+      },
+      "candidate": "十六页之后直接到了十九页，装订处留下半截撕口。沈砚确认，同一张纸上的十七、十八两页一起不见了。",
+      "check": {
+        "status": "addressed",
+        "reason": "原句“十七页后是十九页，中间缺了十八页，有人撕走了一张纸”把缺页说成只缺十八页、却又称撕走一张纸，与“一张纸两页”的设定自相矛盾。现正文改为“十六页之后直接到了十九页……同一张纸上的十七、十八两页一起不见了”，缺页范围与“一张纸两页”一致，且与后段“把十七、十八两个页码记在笔记里”的衔接吻合。",
+        "quote": "十六页之后直接到了十九页，装订处留下半截撕口。沈砚确认，同一张纸上的十七、十八两页一起不见了。"
+      },
+      "findings": [],
+      "approvalBlock": "",
+      "scopePreserved": true,
+      "outcomeMatched": true,
+      "exactReplacementMatched": true,
+      "passed": true,
+      "calls": [
+        {
+          "role": "hard_consistency",
+          "promptVersion": "hard_consistency.v4",
+          "schemaVersion": "hard_consistency.revision.v1",
+          "inputDigest": "62d7f2b95d999039d651a33097b575e3408d44cb780b6c947417b4850be5377e",
+          "promptDigest": "abba38a6ecbe9913e450553b6c87da37590ee7b90602d71c4cadea3e15d2cd5a",
+          "output": "{\"findings\":[],\"authorCheck\":{\"status\":\"addressed\",\"reason\":\"原句“十七页后是十九页，中间缺了十八页，有人撕走了一张纸”把缺页说成只缺十八页、却又称撕走一张纸，与“一张纸两页”的设定自相矛盾。现正文改为“十六页之后直接到了十九页……同一张纸上的十七、十八两页一起不见了”，缺页范围与“一张纸两页”一致，且与后段“把十七、十八两个页码记在笔记里”的衔接吻合。\",\"quote\":\"十六页之后直接到了十九页，装订处留下半截撕口。沈砚确认，同一张纸上的十七、十八两页一起不见了。\"}}",
+          "finishReason": "complete",
+          "usage": {
+            "inputTokens": 2372,
+            "outputTokens": 161,
+            "known": true
+          },
+          "elapsedMs": 1763
+        }
+      ]
+    },
+    {
+      "case": {
+        "id": "rewrite-pages",
+        "name": "作者质疑驱动实质改写",
+        "mode": "rewrite",
+        "original": "沈砚翻开旧档。十七页后是十九页，中间少了十八页。装订处留着撕口，他认定有人撕走了一张纸。他把缺失的页码记在笔记上。",
+        "instruction": "中间撕了一张怎么会隔一页呢？请按档案双面编号的设定修正这个逻辑，保留发现缺失并记录的动作。",
+        "facts": [
+          "档案按双面连续页码编号，十七和十八是同一张纸的正反面。"
+        ],
+        "after": "沈砚合上笔记，等着陆青进门。",
+        "expectedStatuses": [
+          "addressed"
+        ]
+      },
+      "candidate": "沈砚翻开旧档。十七页之后直接是十九页。他盯着这两页看了片刻：档案双面连续编号，十七和十八本该是同一张纸的正反面，如今只见十七页的正面，翻过去却是十九页——十八页那一面连同它背面的十九页正面？不，十九页还在。他伸手去摸装订处，十七页与十九页之间留着撕口，纸根参差，显然有人从这张纸里抽走了什么。沈砚把缺失的页码记在笔记上：十七与十九之间，缺十八。",
+      "check": {
+        "status": "addressed",
+        "reason": "作者指出原稿“十七页后是十九页、中间少了十八页”与“撕走一张纸”在双面连续编号下不自洽：若十七与十八同张纸正反面，撕走该张纸应同时失去十七和十八，不会只缺十八而十七仍在。当前正文已按双面编号设定重写：明确“十七和十八本该是同一张纸的正反面”，并让沈砚在观察中意识到十七页正面仍在、翻过去却是十九页，随后以“十七页与十九页之间留着撕口，纸根参差，显然有人从这张纸里抽走了什么”描述缺失，最后记录“十七与十九之间，缺十八”。发现缺失并记录的动作保留，逻辑已按双面编号修正。",
+        "quote": "档案双面连续编号，十七和十八本该是同一张纸的正反面，如今只见十七页的正面，翻过去却是十九页——十八页那一面连同它背面的十九页正面？不，十九页还在。他伸手去摸装订处，十七页与十九页之间留着撕口，纸根参差，显然有人从这张纸里抽走了什么。沈砚把缺失的页码记在笔记上：十七与十九之间，缺十八。"
+      },
+      "findings": [],
+      "approvalBlock": "",
+      "scopePreserved": true,
+      "outcomeMatched": true,
+      "exactReplacementMatched": true,
+      "passed": true,
+      "calls": [
+        {
+          "role": "planned_writer",
+          "promptVersion": "planned_writer.v4",
+          "schemaVersion": "writer.v1",
+          "inputDigest": "0cf479909c2ea079a9a7c569e88ead1e1194b3dcbcfab11823954abffbb4841d",
+          "promptDigest": "c05bd14aa517a5f6251be50e0f6d7de7805c5b55b8a8e2e209add0df48dfdb0a",
+          "output": "{\"text\":\"沈砚翻开旧档。十七页之后直接是十九页。他盯着这两页看了片刻：档案双面连续编号，十七和十八本该是同一张纸的正反面，如今只见十七页的正面，翻过去却是十九页——十八页那一面连同它背面的十九页正面？不，十九页还在。他伸手去摸装订处，十七页与十九页之间留着撕口，纸根参差，显然有人从这张纸里抽走了什么。沈砚把缺失的页码记在笔记上：十七与十九之间，缺十八。\"}",
+          "finishReason": "complete",
+          "usage": {
+            "inputTokens": 1954,
+            "outputTokens": 125,
+            "known": true
+          },
+          "elapsedMs": 1704
+        },
+        {
+          "role": "ai_taste",
+          "promptVersion": "ai_taste.v2",
+          "schemaVersion": "critic.v1",
+          "inputDigest": "2270d7ce036e96a5497b1a225f4377a2a29d9144124cf6445efba221bcfae709",
+          "promptDigest": "6f4fdb429f699c3240f039b3a7affaa19fcd9507f8a38133e6a1db892e5dfaf0",
+          "output": "{\"findings\":[]}",
+          "finishReason": "complete",
+          "usage": {
+            "inputTokens": 1497,
+            "outputTokens": 6,
+            "known": true
+          },
+          "elapsedMs": 709
+        },
+        {
+          "role": "hard_consistency",
+          "promptVersion": "hard_consistency.v4",
+          "schemaVersion": "hard_consistency.revision.v1",
+          "inputDigest": "bdc882fd3ca5bafe3a4f6eabea6a07c997e2893cad3adddf4719ff1721722098",
+          "promptDigest": "466f0cc0ada1e843691e1b7c590701c484464df5a8676457f5e41bdc8c54c2bb",
+          "output": "{\"findings\":[],\"authorCheck\":{\"status\":\"addressed\",\"reason\":\"作者指出原稿“十七页后是十九页、中间少了十八页”与“撕走一张纸”在双面连续编号下不自洽：若十七与十八同张纸正反面，撕走该张纸应同时失去十七和十八，不会只缺十八而十七仍在。当前正文已按双面编号设定重写：明确“十七和十八本该是同一张纸的正反面”，并让沈砚在观察中意识到十七页正面仍在、翻过去却是十九页，随后以“十七页与十九页之间留着撕口，纸根参差，显然有人从这张纸里抽走了什么”描述缺失，最后记录“十七与十九之间，缺十八”。发现缺失并记录的动作保留，逻辑已按双面编号修正。\",\"quote\":\"档案双面连续编号，十七和十八本该是同一张纸的正反面，如今只见十七页的正面，翻过去却是十九页——十八页那一面连同它背面的十九页正面？不，十九页还在。他伸手去摸装订处，十七页与十九页之间留着撕口，纸根参差，显然有人从这张纸里抽走了什么。沈砚把缺失的页码记在笔记上：十七与十九之间，缺十八。\"}}",
+          "finishReason": "complete",
+          "usage": {
+            "inputTokens": 2484,
+            "outputTokens": 283,
+            "known": true
+          },
+          "elapsedMs": 2331
+        }
+      ]
+    },
+    {
+      "case": {
+        "id": "rewrite-selected-count",
+        "name": "选区纠错只改余额，其他正文不变",
+        "mode": "rewrite",
+        "original": "沈砚数出三枚筹码，交给陆青两枚，手里还剩两枚。他把剩下的筹码装进口袋。",
+        "instruction": "三枚给出去两枚，怎么还剩两枚？只把余额改正确，选中文字改成‘还剩一枚’。",
+        "selection": "还剩两枚",
+        "expectedReplacement": "还剩一枚",
+        "facts": [
+          "沈砚最初有三枚筹码，刚交给陆青两枚，期间没有其他筹码增减。"
+        ],
+        "expectedStatuses": [
+          "addressed"
+        ]
+      },
+      "candidate": "沈砚数出三枚筹码，交给陆青两枚，手里还剩一枚。他把剩下的筹码装进口袋。",
+      "check": {
+        "status": "addressed",
+        "reason": "原稿“数出三枚、给出两枚、还剩两枚”存在算术矛盾；现稿已将余额改为“还剩一枚”，与 fact-1（最初三枚、刚交出两枚、无其他增减）一致，作者指出的余额错误已修正。",
+        "quote": "沈砚数出三枚筹码，交给陆青两枚，手里还剩一枚。他把剩下的筹码装进口袋。"
+      },
+      "findings": [],
+      "approvalBlock": "",
+      "scopePreserved": true,
+      "outcomeMatched": true,
+      "exactReplacementMatched": true,
+      "passed": true,
+      "calls": [
+        {
+          "role": "planned_writer",
+          "promptVersion": "planned_writer.v4",
+          "schemaVersion": "writer.v1",
+          "inputDigest": "65d523016351d46e5947703b737e1a5c6bc409aa4eff8a2407375adc02dd83dd",
+          "promptDigest": "81cf569a1b7e13399cd559ade7080a161e49c2f8397773a5c646d57266d197b8",
+          "output": "{\"text\":\"还剩一枚\"}",
+          "finishReason": "complete",
+          "usage": {
+            "inputTokens": 1617,
+            "outputTokens": 6,
+            "known": true
+          },
+          "elapsedMs": 793
+        },
+        {
+          "role": "ai_taste",
+          "promptVersion": "ai_taste.v2",
+          "schemaVersion": "critic.v1",
+          "inputDigest": "a6093c6da29ea522b66c6bbfd55551ca1d1ef1ab50c9f1790b43649340f1adfb",
+          "promptDigest": "c75a9d5a1433d71289bd05da11cea9d0934212bc5e89cb680f10c228e8c6ff20",
+          "output": "{\"findings\":[]}",
+          "finishReason": "complete",
+          "usage": {
+            "inputTokens": 1076,
+            "outputTokens": 6,
+            "known": true
+          },
+          "elapsedMs": 687
+        },
+        {
+          "role": "hard_consistency",
+          "promptVersion": "hard_consistency.v4",
+          "schemaVersion": "hard_consistency.revision.v1",
+          "inputDigest": "8de692779a232e50f12ac37d017d8cb7f016f7359cfd527b1c5a63351b50287f",
+          "promptDigest": "37acc9a67d5c5fb0f534fb9568c8730c92138fafc22c23bc8a17b06da2a737bf",
+          "output": "{\"findings\":[],\"authorCheck\":{\"status\":\"addressed\",\"reason\":\"原稿“数出三枚、给出两枚、还剩两枚”存在算术矛盾；现稿已将余额改为“还剩一枚”，与 fact-1（最初三枚、刚交出两枚、无其他增减）一致，作者指出的余额错误已修正。\",\"quote\":\"沈砚数出三枚筹码，交给陆青两枚，手里还剩一枚。他把剩下的筹码装进口袋。\"}}",
+          "finishReason": "complete",
+          "usage": {
+            "inputTokens": 2068,
+            "outputTokens": 102,
+            "known": true
+          },
+          "elapsedMs": 979
+        }
+      ]
+    },
+    {
+      "case": {
+        "id": "future-knowledge",
+        "name": "换措辞后仍泄露人物未来知识",
+        "mode": "review",
+        "original": "沈砚知道钥匙属于陆青。",
+        "instruction": "这里他还不知道钥匙的主人，只能猜测，不能提前确认。",
+        "candidate": "沈砚心里清楚，钥匙的主人正是陆青。",
+        "facts": [
+          "当前场景中沈砚尚不知道钥匙属于谁；陆青将在下一场景才告诉他。"
+        ],
+        "after": "陆青走进屋里，第一次告诉沈砚：那把钥匙是我的。",
+        "expectedStatuses": [
+          "unresolved"
+        ]
+      },
+      "candidate": "沈砚心里清楚，钥匙的主人正是陆青。",
+      "check": {
+        "status": "unresolved",
+        "reason": "作者要求此处沈砚只能猜测、不能提前确认钥匙主人。当前正文仍写“沈砚心里清楚，钥匙的主人正是陆青”，把猜测写成了确定认知，与 fact-1 冲突，问题未解决。",
+        "quote": "沈砚心里清楚，钥匙的主人正是陆青。"
+      },
+      "findings": [
+        {
+          "ruleRef": "fact-1",
+          "ruleQuote": "当前场景中沈砚尚不知道钥匙属于谁；陆青将在下一场景才告诉他。",
+          "evidenceStatus": "confirmed",
+          "id": "hard-1",
+          "critic": "hard_consistency",
+          "severity": "P0",
+          "segmentId": "target",
+          "quote": "沈砚心里清楚，钥匙的主人正是陆青。",
+          "evidenceRefs": [
+            "target",
+            "fact-1"
+          ],
+          "reason": "事实 fact-1 明确当前场景中沈砚尚不知道钥匙属于谁，陆青将在下一场景才告诉他；正文却写沈砚“心里清楚”钥匙主人正是陆青，属于提前确认了尚未获得的知识，与冻结事实直接冲突。",
+          "suggestion": "改为沈砚只能猜测钥匙的主人，例如“沈砚心里猜测，钥匙的主人也许是陆青”，不要写成已确认。",
+          "repairScope": "beat",
+          "draftVersion": 2
+        },
+        {
+          "ruleRef": "target",
+          "ruleQuote": "沈砚心里清楚，钥匙的主人正是陆青。",
+          "evidenceStatus": "uncertain",
+          "requiresHuman": true,
+          "id": "author-request-review",
+          "critic": "hard_consistency",
+          "severity": "P3",
+          "segmentId": "target",
+          "quote": "沈砚心里清楚，钥匙的主人正是陆青。",
+          "evidenceRefs": [
+            "target"
+          ],
+          "reason": "作者要求此处沈砚只能猜测、不能提前确认钥匙主人。当前正文仍写“沈砚心里清楚，钥匙的主人正是陆青”，把猜测写成了确定认知，与 fact-1 冲突，问题未解决。",
+          "suggestion": "请核对作者修改要求，修改正文或明确需要调整的范围后重新复检。",
+          "repairScope": "segment",
+          "draftVersion": 2
+        }
+      ],
+      "approvalBlock": "作者修改要求尚未核对通过，请查看修改核对结果并重新复检",
+      "scopePreserved": true,
+      "outcomeMatched": true,
+      "exactReplacementMatched": true,
+      "passed": true,
+      "calls": [
+        {
+          "role": "hard_consistency",
+          "promptVersion": "hard_consistency.v4",
+          "schemaVersion": "hard_consistency.revision.v1",
+          "inputDigest": "f219215844f841d0b99c2ba89666b45c1f4c52f36a20d6f43e679d715755f732",
+          "promptDigest": "7157f5b3afc0d9c558a2f93a52f78dcfa1297484109294bdbcb1732722a48efc",
+          "output": "{\"findings\":[{\"id\":\"hard-1\",\"critic\":\"hard_consistency\",\"severity\":\"P0\",\"segmentId\":\"target\",\"quote\":\"沈砚心里清楚，钥匙的主人正是陆青。\",\"evidenceRefs\":[\"target\",\"fact-1\"],\"reason\":\"事实 fact-1 明确当前场景中沈砚尚不知道钥匙属于谁，陆青将在下一场景才告诉他；正文却写沈砚“心里清楚”钥匙主人正是陆青，属于提前确认了尚未获得的知识，与冻结事实直接冲突。\",\"suggestion\":\"改为沈砚只能猜测钥匙的主人，例如“沈砚心里猜测，钥匙的主人也许是陆青”，不要写成已确认。\",\"repairScope\":\"beat\",\"draftVersion\":2,\"ruleRef\":\"fact-1\",\"ruleQuote\":\"当前场景中沈砚尚不知道钥匙属于谁；陆青将在下一场景才告诉他。\",\"evidenceStatus\":\"confirmed\",\"possibleDialogueLie\":false,\"requiresHuman\":false}],\"authorCheck\":{\"status\":\"unresolved\",\"reason\":\"作者要求此处沈砚只能猜测、不能提前确认钥匙主人。当前正文仍写“沈砚心里清楚，钥匙的主人正是陆青”，把猜测写成了确定认知，与 fact-1 冲突，问题未解决。\",\"quote\":\"沈砚心里清楚，钥匙的主人正是陆青。\"}}",
+          "finishReason": "complete",
+          "usage": {
+            "inputTokens": 2339,
+            "outputTokens": 277,
+            "known": true
+          },
+          "elapsedMs": 1899
+        }
+      ]
+    }
+  ],
+  "error": "author revision evaluation: 4/6 probes passed"
+}

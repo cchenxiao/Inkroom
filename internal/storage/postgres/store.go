@@ -159,7 +159,7 @@ func (s *Store) migrate(ctx context.Context) error {
 	return tx.Commit(ctx)
 }
 func (s *Store) recoverInterrupted(ctx context.Context) error {
-	if _, err := s.pool.Exec(ctx, `UPDATE chapter_fact_jobs SET status='interrupted',record=record || '{"status":"interrupted","message":"服务中断，事实候选未完成；未自动重发模型请求。"}'::jsonb WHERE status='running'`); err != nil {
+	if _, err := s.pool.Exec(ctx, `UPDATE chapter_fact_jobs SET status='interrupted',record=record || '{"status":"interrupted","message":"服务中断，事实候选未完成；未自动重发模型请求。","failure":{"stage":"interrupted","code":"service_restarted","message":"服务中断，事实候选未完成；未自动重发模型请求。"}}'::jsonb WHERE status='running'`); err != nil {
 		return err
 	}
 	if _, err := s.pool.Exec(ctx, `UPDATE chapter_fact_calls SET record=record || '{"phase":"unknown"}'::jsonb WHERE record->>'phase'='started'`); err != nil {

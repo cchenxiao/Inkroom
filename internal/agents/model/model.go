@@ -7,6 +7,7 @@ import (
 )
 
 type Input struct {
+	Thinking bool // Stateless author correction and its verification only.
 	Tools    []ToolDefinition
 	Messages []Message
 	Role     string

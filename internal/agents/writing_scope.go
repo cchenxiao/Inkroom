@@ -73,7 +73,7 @@ func RewriteAuthor(ctx context.Context, chat model.ChatModel, segments []manuscr
 		}
 	}
 	// Prior author requests remain in the frozen audit record, but are not instructions for this rewrite.
-	b.Rewrite, b.Original = nil, nil
+	b.Rewrite, b.RevisionRequest, b.Original = nil, nil, nil
 	material, err := json.Marshal(struct {
 		Context  manuscript.ContextBundle `json:"context"`
 		Segments []manuscript.Segment     `json:"segments"`
@@ -82,7 +82,12 @@ func RewriteAuthor(ctx context.Context, chat model.ChatModel, segments []manuscr
 	if err != nil {
 		return nil, model.Usage{}, err
 	}
-	out, u, err := parse.Generate[contracts.WriterOutput](ctx, chat, model.Input{Role: "planned_writer", Task: "按 rewrite.instruction 重写指定范围。start/end 是原文 Unicode 码点偏移，end 不包含。只返回这个范围的替换正文 text，不包含前后缀。其他正文与 neighbors 只读；后文不是角色已知事实。", Material: material, OutputSchema: contracts.WriterSchema}, nil)
+	out, u, err := parse.Generate[contracts.WriterOutput](ctx, chat, model.Input{Role: "planned_writer", Task: "按 rewrite.instruction 重写指定范围。start/end 是原文 Unicode 码点偏移，end 不包含。只返回这个范围的替换正文 text，不包含前后缀。其他正文与 neighbors 只读；后文不是角色已知事实。", Material: material, OutputSchema: contracts.WriterSchema}, func(out contracts.WriterOutput) error {
+		if strings.TrimSpace(out.Text) == "" || out.Text == string([]rune(req.Original)[req.Start:req.End]) {
+			return fmt.Errorf("模型没有修改选中的正文，本次结果未保存，请补充要求后重试")
+		}
+		return nil
+	})
 	if err != nil {
 		return nil, u, err
 	}

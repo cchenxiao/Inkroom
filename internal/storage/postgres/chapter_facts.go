@@ -126,6 +126,10 @@ func (s *Store) FinishChapterFacts(ctx context.Context, id string, out app.Chapt
 	if runErr == nil {
 		runErr = app.ValidateChapterFactCandidates(job.Input, out)
 	}
+	job.Failure = app.ClassifyChapterFactFailure(runErr)
+	if job.Failure != nil {
+		job.Message = job.Failure.Message
+	}
 	if runErr == nil {
 		job.Status = "completed"
 		job.Output = &out

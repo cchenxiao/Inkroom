@@ -55,6 +55,7 @@ export interface ChapterReviewJob {
     number: number;
     role: string;
     phase: string;
+    success?: boolean;
     elapsedMs: number;
     promptVersion: string;
     schemaVersion: string;

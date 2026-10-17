@@ -1,0 +1,587 @@
+{
+  "dataset": "author-revision-v2",
+  "datasetDigest": "8ffcdc613ddda097574f3087b56bfcd28376761065d6c0687cae8551838198d7",
+  "provider": "deepseek",
+  "model": "deepseek-flash",
+  "startedAt": "2026-10-16T18:22:50.423029Z",
+  "total": 8,
+  "attempted": 8,
+  "passed": 8,
+  "usage": {
+    "inputTokens": 29041,
+    "outputTokens": 8009,
+    "known": true
+  },
+  "results": [
+    {
+      "textChecksPassed": true,
+      "case": {
+        "id": "page-rephrased",
+        "name": "页码问题仅换措辞，编号方式未明",
+        "mode": "review",
+        "original": "十七页后是十九页，中间少了十八页，是有人撕走了一张。",
+        "instruction": "中间撕了一张怎么会隔一页呢？",
+        "candidate": "下一张是十九页，中间没有十八。有人从中间抽走了一张。",
+        "facts": [
+          "沈砚正在查阅旧档案；档案的单面或双面编号方式尚未确定。"
+        ],
+        "after": "沈砚问陆青：十七到十九，中间那页，你见过没有？",
+        "expectedStatuses": [
+          "unresolved",
+          "needs_clarification"
+        ]
+      },
+      "candidate": "下一张是十九页，中间没有十八。有人从中间抽走了一张。",
+      "check": {
+        "status": "needs_clarification",
+        "reason": "作者质疑的命题是：抽走/撕走“一张”后，页码却只隔一页（十七页后直接是十九页，仅缺十八页）。当前稿把原句改写为“下一张是十九页，中间没有十八。有人从中间抽走了一张”，观察结果（只缺一页）与结论（抽走一张）这一命题并未改变，只是把“撕走”换成“抽走”、“少了十八页”换成“中间没有十八”，属于措辞替换。是否真的矛盾取决于档案是单面还是双面编号：若双面编号，一张纸含连续两页，抽走一张应缺两页，本句就矛盾；若单面编号，一张即一页，本句可成立。fact-1 明确“档案的单面或双面编号方式尚未确定”，因此无法据现有事实判定对错，需要作者先确定编号方式才能判断该句是否需要改。邻段“十七到十九，中间那页，你见过没有？”同样按“仅缺一页”追问，不会提供额外判定依据，故不作为已解决的证据。",
+        "quote": "下一张是十九页，中间没有十八。有人从中间抽走了一张。"
+      },
+      "findings": [
+        {
+          "ruleRef": "target",
+          "ruleQuote": "下一张是十九页，中间没有十八。有人从中间抽走了一张。",
+          "evidenceStatus": "uncertain",
+          "requiresHuman": true,
+          "id": "author-request-review",
+          "critic": "hard_consistency",
+          "severity": "P3",
+          "segmentId": "target",
+          "quote": "下一张是十九页，中间没有十八。有人从中间抽走了一张。",
+          "evidenceRefs": [
+            "target"
+          ],
+          "reason": "作者质疑的命题是：抽走/撕走“一张”后，页码却只隔一页（十七页后直接是十九页，仅缺十八页）。当前稿把原句改写为“下一张是十九页，中间没有十八。有人从中间抽走了一张”，观察结果（只缺一页）与结论（抽走一张）这一命题并未改变，只是把“撕走”换成“抽走”、“少了十八页”换成“中间没有十八”，属于措辞替换。是否真的矛盾取决于档案是单面还是双面编号：若双面编号，一张纸含连续两页，抽走一张应缺两页，本句就矛盾；若单面编号，一张即一页，本句可成立。fact-1 明确“档案的单面或双面编号方式尚未确定”，因此无法据现有事实判定对错，需要作者先确定编号方式才能判断该句是否需要改。邻段“十七到十九，中间那页，你见过没有？”同样按“仅缺一页”追问，不会提供额外判定依据，故不作为已解决的证据。",
+          "suggestion": "请核对作者修改要求，修改正文或明确需要调整的范围后重新复检。",
+          "repairScope": "segment",
+          "draftVersion": 2
+        }
+      ],
+      "approvalBlock": "作者修改要求尚未核对通过，请查看修改核对结果并重新复检",
+      "scopePreserved": true,
+      "outcomeMatched": true,
+      "exactReplacementMatched": true,
+      "passed": true,
+      "calls": [
+        {
+          "thinking": true,
+          "role": "hard_consistency",
+          "promptVersion": "hard_consistency.v6",
+          "schemaVersion": "hard_consistency.revision.v1",
+          "inputDigest": "873ffe1ebbf69a5d918e2a8fd9ab3cc7ee80b750a831de386f9da981088c5315",
+          "promptDigest": "e9e3dc54ebc8c63c741d216803b29b7ef9c487a0fcc21cd06906b6f70a289c8e",
+          "output": "{\"findings\":[],\"authorCheck\":{\"status\":\"needs_clarification\",\"reason\":\"作者质疑的命题是：抽走/撕走“一张”后，页码却只隔一页（十七页后直接是十九页，仅缺十八页）。当前稿把原句改写为“下一张是十九页，中间没有十八。有人从中间抽走了一张”，观察结果（只缺一页）与结论（抽走一张）这一命题并未改变，只是把“撕走”换成“抽走”、“少了十八页”换成“中间没有十八”，属于措辞替换。是否真的矛盾取决于档案是单面还是双面编号：若双面编号，一张纸含连续两页，抽走一张应缺两页，本句就矛盾；若单面编号，一张即一页，本句可成立。fact-1 明确“档案的单面或双面编号方式尚未确定”，因此无法据现有事实判定对错，需要作者先确定编号方式才能判断该句是否需要改。邻段“十七到十九，中间那页，你见过没有？”同样按“仅缺一页”追问，不会提供额外判定依据，故不作为已解决的证据。\",\"quote\":\"下一张是十九页，中间没有十八。有人从中间抽走了一张。\"}}",
+          "finishReason": "complete",
+          "usage": {
+            "inputTokens": 2874,
+            "outputTokens": 2356,
+            "known": true
+          },
+          "elapsedMs": 17393
+        }
+      ]
+    },
+    {
+      "textChecksPassed": true,
+      "case": {
+        "id": "page-neighbor-conflict",
+        "name": "本段修正但后段仍沿用旧页码",
+        "mode": "review",
+        "original": "十七页后是十九页，中间缺了十八页，有人撕走了一张纸。",
+        "instruction": "这是双面连续编号的档案，一张纸两页，请修正缺页逻辑并核对前后衔接。",
+        "candidate": "十六页之后直接到了十九页。缺的是同一张纸上的十七、十八两页。沈砚把这两个页码记在笔记上。",
+        "facts": [
+          "档案按双面连续页码编号，十七和十八是同一张纸的正反面。"
+        ],
+        "after": "沈砚照着刚记的笔记说：十七页还在，只有十八页不见了。陆青点头。",
+        "expectedStatuses": [
+          "unresolved",
+          "needs_clarification"
+        ]
+      },
+      "candidate": "十六页之后直接到了十九页。缺的是同一张纸上的十七、十八两页。沈砚把这两个页码记在笔记上。",
+      "check": {
+        "status": "unresolved",
+        "reason": "目标段已按 fact-1（十七、十八为同一张纸正反面）修正：十六页之后直接到十九页，缺失的是同一张纸上的十七、十八两页，缺页逻辑本身成立。但后邻段仍引用旧信息——“沈砚照着刚记的笔记说：十七页还在，只有十八页不见了”，与目标段刚记下的“十七、十八两页都缺”直接冲突，且该邻句自称依据“刚记的笔记”，正是目标段的产物，前后衔接未闭环。需作者决定：把邻段台词改为“十七、十八两页都不见了”之类与目标段一致的说法，还是另行说明笔记内容差异的成因；邻段为只读候选稿，本段无法自行修改。",
+        "quote": "十六页之后直接到了十九页。缺的是同一张纸上的十七、十八两页。沈砚把这两个页码记在笔记上。"
+      },
+      "findings": [
+        {
+          "ruleRef": "target",
+          "ruleQuote": "十六页之后直接到了十九页。缺的是同一张纸上的十七、十八两页。沈砚把这两个页码记在笔记上。",
+          "evidenceStatus": "uncertain",
+          "requiresHuman": true,
+          "id": "author-request-review",
+          "critic": "hard_consistency",
+          "severity": "P3",
+          "segmentId": "target",
+          "quote": "十六页之后直接到了十九页。缺的是同一张纸上的十七、十八两页。沈砚把这两个页码记在笔记上。",
+          "evidenceRefs": [
+            "target"
+          ],
+          "reason": "目标段已按 fact-1（十七、十八为同一张纸正反面）修正：十六页之后直接到十九页，缺失的是同一张纸上的十七、十八两页，缺页逻辑本身成立。但后邻段仍引用旧信息——“沈砚照着刚记的笔记说：十七页还在，只有十八页不见了”，与目标段刚记下的“十七、十八两页都缺”直接冲突，且该邻句自称依据“刚记的笔记”，正是目标段的产物，前后衔接未闭环。需作者决定：把邻段台词改为“十七、十八两页都不见了”之类与目标段一致的说法，还是另行说明笔记内容差异的成因；邻段为只读候选稿，本段无法自行修改。",
+          "suggestion": "请核对作者修改要求，修改正文或明确需要调整的范围后重新复检。",
+          "repairScope": "segment",
+          "draftVersion": 2
+        }
+      ],
+      "approvalBlock": "作者修改要求尚未核对通过，请查看修改核对结果并重新复检",
+      "scopePreserved": true,
+      "outcomeMatched": true,
+      "exactReplacementMatched": true,
+      "passed": true,
+      "calls": [
+        {
+          "thinking": true,
+          "role": "hard_consistency",
+          "promptVersion": "hard_consistency.v6",
+          "schemaVersion": "hard_consistency.revision.v1",
+          "inputDigest": "5e53fcd820bed4104b0b105ecddf925db8ca7fc326db674f7a3885eda7697b19",
+          "promptDigest": "b4192cde6824f7e28ea99fc201eb372159f957efde8e8e0498225c31ea7e5a22",
+          "output": "{\"findings\":[],\"authorCheck\":{\"status\":\"unresolved\",\"reason\":\"目标段已按 fact-1（十七、十八为同一张纸正反面）修正：十六页之后直接到十九页，缺失的是同一张纸上的十七、十八两页，缺页逻辑本身成立。但后邻段仍引用旧信息——“沈砚照着刚记的笔记说：十七页还在，只有十八页不见了”，与目标段刚记下的“十七、十八两页都缺”直接冲突，且该邻句自称依据“刚记的笔记”，正是目标段的产物，前后衔接未闭环。需作者决定：把邻段台词改为“十七、十八两页都不见了”之类与目标段一致的说法，还是另行说明笔记内容差异的成因；邻段为只读候选稿，本段无法自行修改。\",\"quote\":\"十六页之后直接到了十九页。缺的是同一张纸上的十七、十八两页。沈砚把这两个页码记在笔记上。\"}}",
+          "finishReason": "complete",
+          "usage": {
+            "inputTokens": 2908,
+            "outputTokens": 1074,
+            "known": true
+          },
+          "elapsedMs": 5848
+        }
+      ]
+    },
+    {
+      "textChecksPassed": true,
+      "case": {
+        "id": "page-corrected",
+        "name": "页码及邻稿均已一致，不应误拦",
+        "mode": "review",
+        "original": "十七页后是十九页，中间缺了十八页，有人撕走了一张纸。",
+        "instruction": "一张纸两页，请修正缺页逻辑并核对前后衔接。",
+        "candidate": "十六页之后直接到了十九页，装订处留下半截撕口。沈砚确认，同一张纸上的十七、十八两页一起不见了。",
+        "facts": [
+          "档案按双面连续页码编号，十七和十八是同一张纸的正反面。"
+        ],
+        "after": "沈砚把十七、十八两个页码记在笔记里，又问陆青：那张纸，你见过没有？",
+        "expectedStatuses": [
+          "addressed"
+        ]
+      },
+      "candidate": "十六页之后直接到了十九页，装订处留下半截撕口。沈砚确认，同一张纸上的十七、十八两页一起不见了。",
+      "check": {
+        "status": "addressed",
+        "reason": "原稿称十七页后直接到十九页、仅缺十八页，但已确认事实要求十七与十八是同一张纸的正反面，不能保留十七而只缺十八。当前正文改为十六页之后直接到十九页，并明确十七、十八两页一起不见，缺页逻辑与同一张纸两页的设定一致；后段仍记十七、十八两个页码，未出现保留十七而仅缺十八的前后冲突。",
+        "quote": "十六页之后直接到了十九页，装订处留下半截撕口。沈砚确认，同一张纸上的十七、十八两页一起不见了。"
+      },
+      "findings": [],
+      "approvalBlock": "",
+      "scopePreserved": true,
+      "outcomeMatched": true,
+      "exactReplacementMatched": true,
+      "passed": true,
+      "calls": [
+        {
+          "thinking": true,
+          "role": "hard_consistency",
+          "promptVersion": "hard_consistency.v6",
+          "schemaVersion": "hard_consistency.revision.v1",
+          "inputDigest": "62d7f2b95d999039d651a33097b575e3408d44cb780b6c947417b4850be5377e",
+          "promptDigest": "1cf1feeed53ac0134c93fc705a52a8bce4ccf5d9d852efced19e4deea0ca663f",
+          "output": "{\"findings\":[],\"authorCheck\":{\"status\":\"addressed\",\"reason\":\"原稿称十七页后直接到十九页、仅缺十八页，但已确认事实要求十七与十八是同一张纸的正反面，不能保留十七而只缺十八。当前正文改为十六页之后直接到十九页，并明确十七、十八两页一起不见，缺页逻辑与同一张纸两页的设定一致；后段仍记十七、十八两个页码，未出现保留十七而仅缺十八的前后冲突。\",\"quote\":\"十六页之后直接到了十九页，装订处留下半截撕口。沈砚确认，同一张纸上的十七、十八两页一起不见了。\"}}",
+          "finishReason": "complete",
+          "usage": {
+            "inputTokens": 2900,
+            "outputTokens": 943,
+            "known": true
+          },
+          "elapsedMs": 5544
+        }
+      ]
+    },
+    {
+      "textChecksPassed": true,
+      "case": {
+        "requiredPatterns": [
+          "十六|16",
+          "十七|17",
+          "十八|18",
+          "十九|19"
+        ],
+        "forbiddenPatterns": [
+          "缺(?:失)?(?:了)?十八",
+          "缺(?:失)?(?:了)?18",
+          "十八页那一面"
+        ],
+        "id": "rewrite-pages",
+        "name": "作者质疑驱动实质改写",
+        "mode": "rewrite",
+        "original": "沈砚翻开旧档。十七页后是十九页，中间少了十八页。装订处留着撕口，他认定有人撕走了一张纸。他把缺失的页码记在笔记上。",
+        "instruction": "中间撕了一张怎么会隔一页呢？请按档案双面编号的设定修正这个逻辑，保留发现缺失并记录的动作。",
+        "facts": [
+          "档案按双面连续页码编号，十七和十八是同一张纸的正反面。"
+        ],
+        "after": "沈砚合上笔记，等着陆青进门。",
+        "expectedStatuses": [
+          "addressed"
+        ]
+      },
+      "candidate": "沈砚翻开旧档。十六页之后，下一页直接跳到了十九页。\n\n装订处露出一道撕口，纸根还毛着。按双面连续编号，十七和十八本该是同一张纸的正反面——如今那一整张都不在了，不是缺了一面，是整张被撕走。\n\n他在笔记上记下缺失的页码：十七、十八，同一张纸。",
+      "check": {
+        "status": "addressed",
+        "reason": "原稿称十七页后是十九页、只缺十八页，却认定撕走一张纸，与“双面连续编号、十七和十八同属一张纸”的固定事实冲突。现稿改为十六页后直接跳到十九页，缺失十七、十八，并明确十七和十八是同一张纸的正反面、整张被撕走，同时保留了发现缺失并在笔记上记录的动作，符合 fact-1，修改目标已落实。",
+        "quote": "十六页之后，下一页直接跳到了十九页。\n\n装订处露出一道撕口，纸根还毛着。按双面连续编号，十七和十八本该是同一张纸的正反面——如今那一整张都不在了，不是缺了一面，是整张被撕走。\n\n他在笔记上记下缺失的页码：十七、十八，同一张纸。"
+      },
+      "findings": [],
+      "approvalBlock": "",
+      "scopePreserved": true,
+      "outcomeMatched": true,
+      "exactReplacementMatched": true,
+      "passed": true,
+      "calls": [
+        {
+          "thinking": true,
+          "role": "planned_writer",
+          "promptVersion": "planned_writer.v6",
+          "schemaVersion": "writer.v1",
+          "inputDigest": "0cf479909c2ea079a9a7c569e88ead1e1194b3dcbcfab11823954abffbb4841d",
+          "promptDigest": "0a1526dfcff1d03c5aaeffe31d60b406177d6186ec3dbf4e3a77d971123b03b9",
+          "output": "{\"text\":\"沈砚翻开旧档。十六页之后，下一页直接跳到了十九页。\\n\\n装订处露出一道撕口，纸根还毛着。按双面连续编号，十七和十八本该是同一张纸的正反面——如今那一整张都不在了，不是缺了一面，是整张被撕走。\\n\\n他在笔记上记下缺失的页码：十七、十八，同一张纸。\"}",
+          "finishReason": "complete",
+          "usage": {
+            "inputTokens": 2292,
+            "outputTokens": 299,
+            "known": true
+          },
+          "elapsedMs": 2394
+        },
+        {
+          "thinking": false,
+          "role": "ai_taste",
+          "promptVersion": "ai_taste.v2",
+          "schemaVersion": "critic.v1",
+          "inputDigest": "4a3d6a44fcad74790ac97544202c961bbe357cc61db0bdda53a83f906d939f2e",
+          "promptDigest": "15a56d8a17e248fc985605a7aa829d2e9dfa6ccf389fdd2160094f3dba525e13",
+          "output": "{\"findings\":[]}",
+          "finishReason": "complete",
+          "usage": {
+            "inputTokens": 1456,
+            "outputTokens": 6,
+            "known": true
+          },
+          "elapsedMs": 720
+        },
+        {
+          "thinking": true,
+          "role": "hard_consistency",
+          "promptVersion": "hard_consistency.v6",
+          "schemaVersion": "hard_consistency.revision.v1",
+          "inputDigest": "98288b8862b9812b84500313f4b77da6ca8b52fd176835fb483bcc1776d2a215",
+          "promptDigest": "da73db05578440ef8c187cd6f4f6e9faaed88dd745d01ac7910f30a4a6ceda8b",
+          "output": "{\"findings\":[],\"authorCheck\":{\"status\":\"addressed\",\"reason\":\"原稿称十七页后是十九页、只缺十八页，却认定撕走一张纸，与“双面连续编号、十七和十八同属一张纸”的固定事实冲突。现稿改为十六页后直接跳到十九页，缺失十七、十八，并明确十七和十八是同一张纸的正反面、整张被撕走，同时保留了发现缺失并在笔记上记录的动作，符合 fact-1，修改目标已落实。\",\"quote\":\"十六页之后，下一页直接跳到了十九页。\\n\\n装订处露出一道撕口，纸根还毛着。按双面连续编号，十七和十八本该是同一张纸的正反面——如今那一整张都不在了，不是缺了一面，是整张被撕走。\\n\\n他在笔记上记下缺失的页码：十七、十八，同一张纸。\"}}",
+          "finishReason": "complete",
+          "usage": {
+            "inputTokens": 2981,
+            "outputTokens": 697,
+            "known": true
+          },
+          "elapsedMs": 3861
+        }
+      ]
+    },
+    {
+      "textChecksPassed": true,
+      "case": {
+        "id": "rewrite-selected-count",
+        "name": "选区纠错只改余额，其他正文不变",
+        "mode": "rewrite",
+        "original": "沈砚数出三枚筹码，交给陆青两枚，手里还剩两枚。他把剩下的筹码装进口袋。",
+        "instruction": "三枚给出去两枚，怎么还剩两枚？只把余额改正确，选中文字改成‘还剩一枚’。",
+        "selection": "还剩两枚",
+        "expectedReplacement": "还剩一枚",
+        "facts": [
+          "沈砚最初有三枚筹码，刚交给陆青两枚，期间没有其他筹码增减。"
+        ],
+        "expectedStatuses": [
+          "addressed"
+        ]
+      },
+      "candidate": "沈砚数出三枚筹码，交给陆青两枚，手里还剩一枚。他把剩下的筹码装进口袋。",
+      "check": {
+        "status": "addressed",
+        "reason": "原稿称沈砚数出三枚、交给陆青两枚后仍剩两枚，与 fact-1 的三枚减去两枚不符。当前正文已把余额改为“还剩一枚”，使三枚送出两枚后只剩一枚，符合事实且未影响后续装入口袋的动作。",
+        "quote": "沈砚数出三枚筹码，交给陆青两枚，手里还剩一枚。他把剩下的筹码装进口袋。"
+      },
+      "findings": [],
+      "approvalBlock": "",
+      "scopePreserved": true,
+      "outcomeMatched": true,
+      "exactReplacementMatched": true,
+      "passed": true,
+      "calls": [
+        {
+          "thinking": true,
+          "role": "planned_writer",
+          "promptVersion": "planned_writer.v6",
+          "schemaVersion": "writer.v1",
+          "inputDigest": "65d523016351d46e5947703b737e1a5c6bc409aa4eff8a2407375adc02dd83dd",
+          "promptDigest": "eb38279147932a772fefa53a62e010c749752fea9473a02dc2d71331cfd9b4db",
+          "output": "{\"text\":\"还剩一枚\"}",
+          "finishReason": "complete",
+          "usage": {
+            "inputTokens": 1955,
+            "outputTokens": 294,
+            "known": true
+          },
+          "elapsedMs": 1397
+        },
+        {
+          "thinking": false,
+          "role": "ai_taste",
+          "promptVersion": "ai_taste.v2",
+          "schemaVersion": "critic.v1",
+          "inputDigest": "a6093c6da29ea522b66c6bbfd55551ca1d1ef1ab50c9f1790b43649340f1adfb",
+          "promptDigest": "c75a9d5a1433d71289bd05da11cea9d0934212bc5e89cb680f10c228e8c6ff20",
+          "output": "{\"findings\":[]}",
+          "finishReason": "complete",
+          "usage": {
+            "inputTokens": 1076,
+            "outputTokens": 6,
+            "known": true
+          },
+          "elapsedMs": 746
+        },
+        {
+          "thinking": true,
+          "role": "hard_consistency",
+          "promptVersion": "hard_consistency.v6",
+          "schemaVersion": "hard_consistency.revision.v1",
+          "inputDigest": "8de692779a232e50f12ac37d017d8cb7f016f7359cfd527b1c5a63351b50287f",
+          "promptDigest": "9c916f8b360726bb07490bef145dff7d7dc197ec7f8989b762d6067967fbc171",
+          "output": "{\"findings\":[],\"authorCheck\":{\"status\":\"addressed\",\"reason\":\"原稿称沈砚数出三枚、交给陆青两枚后仍剩两枚，与 fact-1 的三枚减去两枚不符。当前正文已把余额改为“还剩一枚”，使三枚送出两枚后只剩一枚，符合事实且未影响后续装入口袋的动作。\",\"quote\":\"沈砚数出三枚筹码，交给陆青两枚，手里还剩一枚。他把剩下的筹码装进口袋。\"}}",
+          "finishReason": "complete",
+          "usage": {
+            "inputTokens": 2596,
+            "outputTokens": 271,
+            "known": true
+          },
+          "elapsedMs": 1965
+        }
+      ]
+    },
+    {
+      "textChecksPassed": true,
+      "case": {
+        "id": "future-knowledge",
+        "name": "换措辞后仍泄露人物未来知识",
+        "mode": "review",
+        "original": "沈砚知道钥匙属于陆青。",
+        "instruction": "这里他还不知道钥匙的主人，只能猜测，不能提前确认。",
+        "candidate": "沈砚心里清楚，钥匙的主人正是陆青。",
+        "facts": [
+          "当前场景中沈砚尚不知道钥匙属于谁；陆青将在下一场景才告诉他。"
+        ],
+        "after": "陆青走进屋里，第一次告诉沈砚：那把钥匙是我的。",
+        "expectedStatuses": [
+          "unresolved"
+        ]
+      },
+      "candidate": "沈砚心里清楚，钥匙的主人正是陆青。",
+      "check": {
+        "status": "unresolved",
+        "reason": "作者要求去掉提前确认，但当前稿仍写“心里清楚，钥匙的主人正是陆青”，只是把“知道”换成“心里清楚”，命题未变，仍确认了钥匙属于陆青；与 fact-1 的当前场景不知情及下一场景才由陆青告知冲突。",
+        "quote": "沈砚心里清楚，钥匙的主人正是陆青。"
+      },
+      "findings": [
+        {
+          "ruleRef": "fact-1",
+          "ruleQuote": "当前场景中沈砚尚不知道钥匙属于谁；陆青将在下一场景才告诉他。",
+          "evidenceStatus": "confirmed",
+          "id": "hard-1",
+          "critic": "hard_consistency",
+          "severity": "P0",
+          "segmentId": "target",
+          "quote": "沈砚心里清楚，钥匙的主人正是陆青。",
+          "evidenceRefs": [
+            "target",
+            "fact-1"
+          ],
+          "reason": "fact-1 明确当前场景沈砚尚不知道钥匙属于谁，陆青要到下一场景才告诉他；本段把“知道”改成“心里清楚”并未改变沈砚已确认主人是陆青这一命题，与明确知识边界冲突。",
+          "suggestion": "改为沈砚只能猜测或不确定钥匙主人，不能写出“正是陆青”这一确认。",
+          "repairScope": "beat",
+          "draftVersion": 2
+        },
+        {
+          "ruleRef": "target",
+          "ruleQuote": "沈砚心里清楚，钥匙的主人正是陆青。",
+          "evidenceStatus": "uncertain",
+          "requiresHuman": true,
+          "id": "author-request-review",
+          "critic": "hard_consistency",
+          "severity": "P3",
+          "segmentId": "target",
+          "quote": "沈砚心里清楚，钥匙的主人正是陆青。",
+          "evidenceRefs": [
+            "target"
+          ],
+          "reason": "作者要求去掉提前确认，但当前稿仍写“心里清楚，钥匙的主人正是陆青”，只是把“知道”换成“心里清楚”，命题未变，仍确认了钥匙属于陆青；与 fact-1 的当前场景不知情及下一场景才由陆青告知冲突。",
+          "suggestion": "请核对作者修改要求，修改正文或明确需要调整的范围后重新复检。",
+          "repairScope": "segment",
+          "draftVersion": 2
+        }
+      ],
+      "approvalBlock": "作者修改要求尚未核对通过，请查看修改核对结果并重新复检",
+      "scopePreserved": true,
+      "outcomeMatched": true,
+      "exactReplacementMatched": true,
+      "passed": true,
+      "calls": [
+        {
+          "thinking": true,
+          "role": "hard_consistency",
+          "promptVersion": "hard_consistency.v6",
+          "schemaVersion": "hard_consistency.revision.v1",
+          "inputDigest": "f219215844f841d0b99c2ba89666b45c1f4c52f36a20d6f43e679d715755f732",
+          "promptDigest": "ae6e95b9f05d8ffbeace5e7752c17e1df6843b11321b216b11be0c72e3db8cdf",
+          "output": "{\"findings\":[{\"id\":\"hard-1\",\"critic\":\"hard_consistency\",\"severity\":\"P0\",\"segmentId\":\"target\",\"quote\":\"沈砚心里清楚，钥匙的主人正是陆青。\",\"evidenceRefs\":[\"target\",\"fact-1\"],\"reason\":\"fact-1 明确当前场景沈砚尚不知道钥匙属于谁，陆青要到下一场景才告诉他；本段把“知道”改成“心里清楚”并未改变沈砚已确认主人是陆青这一命题，与明确知识边界冲突。\",\"suggestion\":\"改为沈砚只能猜测或不确定钥匙主人，不能写出“正是陆青”这一确认。\",\"repairScope\":\"beat\",\"draftVersion\":2,\"ruleRef\":\"fact-1\",\"ruleQuote\":\"当前场景中沈砚尚不知道钥匙属于谁；陆青将在下一场景才告诉他。\",\"evidenceStatus\":\"confirmed\",\"possibleDialogueLie\":false,\"requiresHuman\":false}],\"authorCheck\":{\"status\":\"unresolved\",\"reason\":\"作者要求去掉提前确认，但当前稿仍写“心里清楚，钥匙的主人正是陆青”，只是把“知道”换成“心里清楚”，命题未变，仍确认了钥匙属于陆青；与 fact-1 的当前场景不知情及下一场景才由陆青告知冲突。\",\"quote\":\"沈砚心里清楚，钥匙的主人正是陆青。\"}}",
+          "finishReason": "complete",
+          "usage": {
+            "inputTokens": 2867,
+            "outputTokens": 1112,
+            "known": true
+          },
+          "elapsedMs": 7627
+        }
+      ]
+    },
+    {
+      "textChecksPassed": true,
+      "case": {
+        "id": "time-rephrased",
+        "name": "留出样本：时间计算错误仅换措辞",
+        "mode": "review",
+        "original": "九点四十他出门，走了半小时，十点整抵达车站。",
+        "instruction": "九点四十出发走半小时，怎么会十点整到？请改正到站时间。",
+        "candidate": "他九点四十迈出门，步行三十分钟后，正好十点整抵达车站。",
+        "facts": [
+          "他九点四十出发，到车站步行耗时三十分钟，中间没有停留。"
+        ],
+        "expectedStatuses": [
+          "unresolved"
+        ]
+      },
+      "candidate": "他九点四十迈出门，步行三十分钟后，正好十点整抵达车站。",
+      "check": {
+        "status": "unresolved",
+        "reason": "作者指出原句“九点四十出发、走半小时却十点整到达”时间算不通，要求改正到站时间。当前正文仍写“他九点四十迈出门，步行三十分钟后，正好十点整抵达车站”，出发时间、耗时与到站时间三者的矛盾命题未被改动，仅把“出门”换成“迈出门”，仍与 fact-1（九点四十出发、步行三十分钟）推出的十点十分不符，问题未解决。",
+        "quote": "他九点四十迈出门，步行三十分钟后，正好十点整抵达车站。"
+      },
+      "findings": [
+        {
+          "ruleRef": "fact-1",
+          "ruleQuote": "他九点四十出发，到车站步行耗时三十分钟，中间没有停留。",
+          "evidenceStatus": "confirmed",
+          "id": "hard-1",
+          "critic": "hard_consistency",
+          "severity": "P1",
+          "segmentId": "target",
+          "quote": "他九点四十迈出门，步行三十分钟后，正好十点整抵达车站。",
+          "evidenceRefs": [
+            "target",
+            "fact-1"
+          ],
+          "reason": "fact-1 确认他九点四十出发、步行耗时三十分钟且中途无停留，则到站时间应为十点十分；本段却写“正好十点整抵达”，时间推算与已确认事实冲突，且该冲突正是作者要求改正的到站时间问题，本次仅换了措辞（“出门”变“迈出门”）并未改正。",
+          "suggestion": "将到站时间改为与出发时间加步行耗时一致的结果，例如“他九点四十迈出门，步行三十分钟后，十点十分抵达车站。”",
+          "repairScope": "segment",
+          "draftVersion": 2
+        },
+        {
+          "ruleRef": "target",
+          "ruleQuote": "他九点四十迈出门，步行三十分钟后，正好十点整抵达车站。",
+          "evidenceStatus": "uncertain",
+          "requiresHuman": true,
+          "id": "author-request-review",
+          "critic": "hard_consistency",
+          "severity": "P3",
+          "segmentId": "target",
+          "quote": "他九点四十迈出门，步行三十分钟后，正好十点整抵达车站。",
+          "evidenceRefs": [
+            "target"
+          ],
+          "reason": "作者指出原句“九点四十出发、走半小时却十点整到达”时间算不通，要求改正到站时间。当前正文仍写“他九点四十迈出门，步行三十分钟后，正好十点整抵达车站”，出发时间、耗时与到站时间三者的矛盾命题未被改动，仅把“出门”换成“迈出门”，仍与 fact-1（九点四十出发、步行三十分钟）推出的十点十分不符，问题未解决。",
+          "suggestion": "请核对作者修改要求，修改正文或明确需要调整的范围后重新复检。",
+          "repairScope": "segment",
+          "draftVersion": 2
+        }
+      ],
+      "approvalBlock": "作者修改要求尚未核对通过，请查看修改核对结果并重新复检",
+      "scopePreserved": true,
+      "outcomeMatched": true,
+      "exactReplacementMatched": true,
+      "passed": true,
+      "calls": [
+        {
+          "thinking": true,
+          "role": "hard_consistency",
+          "promptVersion": "hard_consistency.v6",
+          "schemaVersion": "hard_consistency.revision.v1",
+          "inputDigest": "6678bd2e2855fccbe3d3cf995fafb21ddc483f5f1853658dea50817d4482a601",
+          "promptDigest": "d3e3835ae687fad1a41fe90ad4a595c287be9c0647022acc59966d76366097bd",
+          "output": "{\"findings\":[{\"id\":\"hard-1\",\"critic\":\"hard_consistency\",\"severity\":\"P1\",\"segmentId\":\"target\",\"quote\":\"他九点四十迈出门，步行三十分钟后，正好十点整抵达车站。\",\"evidenceRefs\":[\"target\",\"fact-1\"],\"reason\":\"fact-1 确认他九点四十出发、步行耗时三十分钟且中途无停留，则到站时间应为十点十分；本段却写“正好十点整抵达”，时间推算与已确认事实冲突，且该冲突正是作者要求改正的到站时间问题，本次仅换了措辞（“出门”变“迈出门”）并未改正。\",\"suggestion\":\"将到站时间改为与出发时间加步行耗时一致的结果，例如“他九点四十迈出门，步行三十分钟后，十点十分抵达车站。”\",\"repairScope\":\"segment\",\"draftVersion\":2,\"ruleRef\":\"fact-1\",\"ruleQuote\":\"他九点四十出发，到车站步行耗时三十分钟，中间没有停留。\",\"evidenceStatus\":\"confirmed\",\"possibleDialogueLie\":false,\"requiresHuman\":false}],\"authorCheck\":{\"status\":\"unresolved\",\"reason\":\"作者指出原句“九点四十出发、走半小时却十点整到达”时间算不通，要求改正到站时间。当前正文仍写“他九点四十迈出门，步行三十分钟后，正好十点整抵达车站”，出发时间、耗时与到站时间三者的矛盾命题未被改动，仅把“出门”换成“迈出门”，仍与 fact-1（九点四十出发、步行三十分钟）推出的十点十分不符，问题未解决。\",\"quote\":\"他九点四十迈出门，步行三十分钟后，正好十点整抵达车站。\"}}",
+          "finishReason": "complete",
+          "usage": {
+            "inputTokens": 2570,
+            "outputTokens": 708,
+            "known": true
+          },
+          "elapsedMs": 4181
+        }
+      ]
+    },
+    {
+      "textChecksPassed": true,
+      "case": {
+        "id": "time-corrected",
+        "name": "留出样本：正确时间修正不应误拦",
+        "mode": "review",
+        "original": "九点四十他出门，走了半小时，十点整抵达车站。",
+        "instruction": "九点四十出发走半小时，怎么会十点整到？请改正到站时间。",
+        "candidate": "九点四十他出门，走了半小时，十点十分抵达车站。",
+        "facts": [
+          "他九点四十出发，到车站步行耗时三十分钟，中间没有停留。"
+        ],
+        "expectedStatuses": [
+          "addressed"
+        ]
+      },
+      "candidate": "九点四十他出门，走了半小时，十点十分抵达车站。",
+      "check": {
+        "status": "addressed",
+        "reason": "作者指出原稿“九点四十出门、走半小时却十点整到”存在时间算术矛盾（9:40+30分钟应为10:10）。当前正文已将到站时间改为“十点十分”，与 fact-1（九点四十出发、步行三十分钟、中途无停留）一致，原矛盾已消除。",
+        "quote": "九点四十他出门，走了半小时，十点十分抵达车站。"
+      },
+      "findings": [],
+      "approvalBlock": "",
+      "scopePreserved": true,
+      "outcomeMatched": true,
+      "exactReplacementMatched": true,
+      "passed": true,
+      "calls": [
+        {
+          "thinking": true,
+          "role": "hard_consistency",
+          "promptVersion": "hard_consistency.v6",
+          "schemaVersion": "hard_consistency.revision.v1",
+          "inputDigest": "668d93388c704059e4e5b8a70f0a259355c470c8778e8c63356daa64d041eb42",
+          "promptDigest": "6d05e89dacfe7c867e9b781ca814ffebe51bf9d94b15b9902046a89deb4689c6",
+          "output": "{\"findings\":[],\"authorCheck\":{\"status\":\"addressed\",\"reason\":\"作者指出原稿“九点四十出门、走半小时却十点整到”存在时间算术矛盾（9:40+30分钟应为10:10）。当前正文已将到站时间改为“十点十分”，与 fact-1（九点四十出发、步行三十分钟、中途无停留）一致，原矛盾已消除。\",\"quote\":\"九点四十他出门，走了半小时，十点十分抵达车站。\"}}",
+          "finishReason": "complete",
+          "usage": {
+            "inputTokens": 2566,
+            "outputTokens": 243,
+            "known": true
+          },
+          "elapsedMs": 1661
+        }
+      ]
+    }
+  ]
+}

@@ -29,23 +29,24 @@ type Options struct {
 }
 
 type ChapterState struct {
-	NodePhase     string                   `json:"nodePhase,omitempty"`
-	CriticReviews []CriticReview           `json:"criticReviews"`
-	Route         review.Decision          `json:"route"`
-	Context       manuscript.ContextBundle `json:"context"`
-	DraftVersion  int                      `json:"draftVersion"`
-	Segments      []manuscript.Segment     `json:"segments"`
-	Findings      []review.Finding         `json:"-"`
-	Report        review.Report            `json:"report"`
-	Reviews       []review.Report          `json:"reviews"`
-	Metrics       []style.Stats            `json:"metrics"`
-	Revisions     []revision.Revision      `json:"revisions"`
-	ReviseRound   int                      `json:"reviseRound"`
-	MaxRounds     int                      `json:"maxRounds"`
-	Status        string                   `json:"status"`
-	CurrentNode   string                   `json:"currentNode"`
-	StopReason    string                   `json:"stopReason,omitempty"`
-	Usage         model.Usage              `json:"usage"`
+	AuthorRequest *manuscript.AuthorRewrite `json:"authorRequest,omitempty"`
+	NodePhase     string                    `json:"nodePhase,omitempty"`
+	CriticReviews []CriticReview            `json:"criticReviews"`
+	Route         review.Decision           `json:"route"`
+	Context       manuscript.ContextBundle  `json:"context"`
+	DraftVersion  int                       `json:"draftVersion"`
+	Segments      []manuscript.Segment      `json:"segments"`
+	Findings      []review.Finding          `json:"-"`
+	Report        review.Report             `json:"report"`
+	Reviews       []review.Report           `json:"reviews"`
+	Metrics       []style.Stats             `json:"metrics"`
+	Revisions     []revision.Revision       `json:"revisions"`
+	ReviseRound   int                       `json:"reviseRound"`
+	MaxRounds     int                       `json:"maxRounds"`
+	Status        string                    `json:"status"`
+	CurrentNode   string                    `json:"currentNode"`
+	StopReason    string                    `json:"stopReason,omitempty"`
+	Usage         model.Usage               `json:"usage"`
 }
 
 // NewChapter 的条件回边：aggregate → polisher/scene_reviser/structural_reviser → critics → aggregate。
@@ -81,7 +82,11 @@ func NewChapter(ctx context.Context, chat model.ChatModel, opts Options) (compos
 		if err != nil {
 			return ChapterState{}, err
 		}
-		state := start(ChapterState{Context: frozen, Report: review.Report{Findings: []review.Finding{}}, Status: "running", DraftVersion: opts.BaseDraftVersion, MaxRounds: opts.MaxRounds, Segments: []manuscript.Segment{}, Reviews: []review.Report{}, Revisions: []revision.Revision{}, Metrics: []style.Stats{}}, "draft")
+		request := frozen.Rewrite
+		if request == nil {
+			request = frozen.RevisionRequest
+		}
+		state := start(ChapterState{Context: frozen, AuthorRequest: request, Report: review.Report{Findings: []review.Finding{}}, Status: "running", DraftVersion: opts.BaseDraftVersion, MaxRounds: opts.MaxRounds, Segments: []manuscript.Segment{}, Reviews: []review.Report{}, Revisions: []revision.Revision{}, Metrics: []style.Stats{}}, "draft")
 		segments, usage, err := agents.WriteScope(ctx, chat, frozen)
 		if err != nil {
 			return state, err

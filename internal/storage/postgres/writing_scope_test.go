@@ -95,6 +95,9 @@ func exerciseWritingScopes(t *testing.T, s *Store, scope string, p planning.Chap
 	if err != nil || chapter.DraftVersion != 2 || chapter.Status != "waiting_human" || !reflect.DeepEqual(chapter.Result.Segments[1], before[1]) {
 		t.Fatal("scope escaped or recheck absent", err)
 	}
+	if chapter.Result.AuthorRequest == nil || *chapter.Result.AuthorRequest != req {
+		t.Fatal("author request lost across checkpoint resume")
+	}
 	if chapter.Result.Segments[0].Text == before[0].Text {
 		t.Fatal("rewrite did not apply")
 	}
@@ -124,6 +127,12 @@ func exerciseWritingScopes(t *testing.T, s *Store, scope string, p planning.Chap
 	// Unsaved adoption is not required: latest working prose is pinned, and unchanged rechecks do not invalidate neighbors.
 	left := start("beat", first, &chapter, nil)
 	right := start("beat", second, &chapter, nil)
+	if left.Result.RewriteRequest() == nil || left.Result.RewriteRequest().Instruction != req.Instruction {
+		t.Fatal("recheck dropped author request")
+	}
+	if right.Result.RewriteRequest() != nil {
+		t.Fatal("author request leaked into another beat")
+	}
 	if len(left.Planning.Neighbors) != 1 || left.Planning.Neighbors[0].RunID != chapter.ID || left.Planning.Neighbors[0].Version != chapter.DraftVersion {
 		t.Fatal("missing adopted neighbor")
 	}

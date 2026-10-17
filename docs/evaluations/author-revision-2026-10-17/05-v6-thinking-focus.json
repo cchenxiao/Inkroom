@@ -1,0 +1,107 @@
+{
+  "dataset": "author-revision-v2",
+  "datasetDigest": "bb211a0f400e5936dd342c70d9f5da6ed85ffc7a44453d4f910c4282e5ff04eb",
+  "provider": "deepseek",
+  "model": "deepseek-flash",
+  "startedAt": "2026-10-16T18:22:11.262704Z",
+  "total": 1,
+  "attempted": 1,
+  "passed": 1,
+  "usage": {
+    "inputTokens": 6700,
+    "outputTokens": 1447,
+    "known": true
+  },
+  "results": [
+    {
+      "textChecksPassed": true,
+      "case": {
+        "requiredPatterns": [
+          "十六|16",
+          "十七|17",
+          "十八|18",
+          "十九|19"
+        ],
+        "forbiddenPatterns": [
+          "缺(?:失)?(?:了)?十八",
+          "缺(?:失)?(?:了)?18",
+          "十八页那一面"
+        ],
+        "id": "rewrite-pages",
+        "name": "作者质疑驱动实质改写",
+        "mode": "rewrite",
+        "original": "沈砚翻开旧档。十七页后是十九页，中间少了十八页。装订处留着撕口，他认定有人撕走了一张纸。他把缺失的页码记在笔记上。",
+        "instruction": "中间撕了一张怎么会隔一页呢？请按档案双面编号的设定修正这个逻辑，保留发现缺失并记录的动作。",
+        "facts": [
+          "档案按双面连续页码编号，十七和十八是同一张纸的正反面。"
+        ],
+        "after": "沈砚合上笔记，等着陆青进门。",
+        "expectedStatuses": [
+          "addressed"
+        ]
+      },
+      "candidate": "沈砚翻开旧档。十六页之后直接跳到十九页——档案按双面连续编号，十七和十八本是同一张纸的正反面，该一同出现，如今却连那张纸都不见了。装订处留着撕口，断茬毛糙。他认定有人撕走了一张纸，把缺失的页码记在笔记上：十七、十八。",
+      "check": {
+        "status": "addressed",
+        "reason": "作者质疑原稿‘撕走一张纸’却只缺十八页一页的矛盾。当前正文已把观察结果改为‘十六页之后直接跳到十九页’，即十七、十八两页同时缺失，并明确说明‘十七和十八本是同一张纸的正反面，该一同出现’，随后记录缺失页码为‘十七、十八’。单张纸双面连续编号下，撕去该张即同时失去十七、十八，剩余顺序为十六后接十九，与 fact-1 及作者要求一致；发现缺失并记录的动作也保留。",
+        "quote": "十六页之后直接跳到十九页——档案按双面连续编号，十七和十八本是同一张纸的正反面，该一同出现，如今却连那张纸都不见了。装订处留着撕口，断茬毛糙。他认定有人撕走了一张纸，把缺失的页码记在笔记上：十七、十八。"
+      },
+      "findings": [],
+      "approvalBlock": "",
+      "scopePreserved": true,
+      "outcomeMatched": true,
+      "exactReplacementMatched": true,
+      "passed": true,
+      "calls": [
+        {
+          "thinking": true,
+          "role": "planned_writer",
+          "promptVersion": "planned_writer.v6",
+          "schemaVersion": "writer.v1",
+          "inputDigest": "0cf479909c2ea079a9a7c569e88ead1e1194b3dcbcfab11823954abffbb4841d",
+          "promptDigest": "0a1526dfcff1d03c5aaeffe31d60b406177d6186ec3dbf4e3a77d971123b03b9",
+          "output": "{\"text\":\"沈砚翻开旧档。十六页之后直接跳到十九页——档案按双面连续编号，十七和十八本是同一张纸的正反面，该一同出现，如今却连那张纸都不见了。装订处留着撕口，断茬毛糙。他认定有人撕走了一张纸，把缺失的页码记在笔记上：十七、十八。\"}",
+          "finishReason": "complete",
+          "usage": {
+            "inputTokens": 2292,
+            "outputTokens": 507,
+            "known": true
+          },
+          "elapsedMs": 4252
+        },
+        {
+          "thinking": false,
+          "role": "ai_taste",
+          "promptVersion": "ai_taste.v2",
+          "schemaVersion": "critic.v1",
+          "inputDigest": "6e88e26b29642669af0346a2475ead53232647ff9750160fc11c3f06a4ae84d0",
+          "promptDigest": "e3d319460e9f2c58eecafec6561c1531f7ff3c6dc20b47c2e857199398b568ca",
+          "output": "{\"findings\":[]}",
+          "finishReason": "complete",
+          "usage": {
+            "inputTokens": 1441,
+            "outputTokens": 6,
+            "known": true
+          },
+          "elapsedMs": 860
+        },
+        {
+          "thinking": true,
+          "role": "hard_consistency",
+          "promptVersion": "hard_consistency.v6",
+          "schemaVersion": "hard_consistency.revision.v1",
+          "inputDigest": "d4a6fe0235f20c87a67a3a29437906238d8e4536b61815e6614732e6c671529f",
+          "promptDigest": "ba9bb0427641439cdf21db8ca26bec19429fd8a9bf62c4f5c607d96cdcde0cdf",
+          "output": "{\"findings\":[],\"authorCheck\":{\"status\":\"addressed\",\"reason\":\"作者质疑原稿‘撕走一张纸’却只缺十八页一页的矛盾。当前正文已把观察结果改为‘十六页之后直接跳到十九页’，即十七、十八两页同时缺失，并明确说明‘十七和十八本是同一张纸的正反面，该一同出现’，随后记录缺失页码为‘十七、十八’。单张纸双面连续编号下，撕去该张即同时失去十七、十八，剩余顺序为十六后接十九，与 fact-1 及作者要求一致；发现缺失并记录的动作也保留。\",\"quote\":\"十六页之后直接跳到十九页——档案按双面连续编号，十七和十八本是同一张纸的正反面，该一同出现，如今却连那张纸都不见了。装订处留着撕口，断茬毛糙。他认定有人撕走了一张纸，把缺失的页码记在笔记上：十七、十八。\"}}",
+          "finishReason": "complete",
+          "usage": {
+            "inputTokens": 2967,
+            "outputTokens": 934,
+            "known": true
+          },
+          "elapsedMs": 5490
+        }
+      ]
+    }
+  ]
+}

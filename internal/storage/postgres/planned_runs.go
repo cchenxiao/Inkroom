@@ -113,6 +113,14 @@ func (s *Store) StartPlannedRun(ctx context.Context, scope string, req app.Plann
 					}
 				}
 				frozen.Bundle.Rewrite = req.Rewrite
+				if req.Recheck {
+					previous := origin.Result.RewriteRequest()
+					for _, segment := range frozen.Bundle.Original {
+						if previous != nil && previous.SegmentID == segment.ID {
+							frozen.Bundle.RevisionRequest = previous
+						}
+					}
+				}
 			}
 		}
 		if err == nil {

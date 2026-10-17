@@ -14,10 +14,10 @@ import (
 // ExtractChapterFacts proposes claims. It cannot approve them or mutate story knowledge.
 func ExtractChapterFacts(ctx context.Context, cfg config.Config, in ChapterFactsInput, onCall func(context.Context, model.CallRecord) error) (ChapterFactsOutput, error) {
 	if err := in.Review.Validate(); err != nil {
-		return ChapterFactsOutput{}, err
+		return ChapterFactsOutput{}, factError("input", "invalid_review", "整章复审材料无效，请重新核对章稿来源。", err)
 	}
 	if err := in.Knowledge.Validate(); err != nil {
-		return ChapterFactsOutput{}, err
+		return ChapterFactsOutput{}, factError("input", "invalid_knowledge", "冻结的知识材料无效，请重新核对知识来源。", err)
 	}
 	var chat model.ChatModel
 	var err error
@@ -28,10 +28,23 @@ func ExtractChapterFacts(ctx context.Context, cfg config.Config, in ChapterFacts
 	} else {
 		chat, err = adapters.NewDeepSeek(cfg)
 		if err != nil {
-			return ChapterFactsOutput{}, err
+			return ChapterFactsOutput{}, factError("configuration", "model_configuration", "模型配置不可用，请检查模型服务配置。", err)
 		}
 	}
-	guard := model.NewGuard(chat, model.Limits{Calls: cfg.MaxCalls, Tokens: cfg.MaxTokens, OutputTokens: cfg.MaxOutputTokens, Timeout: cfg.CallTimeout, ModelName: cfg.ModelName, OnCall: onCall})
+	return extractChapterFactsWithModel(ctx, cfg, in, chat, onCall)
+}
+
+func extractChapterFactsWithModel(ctx context.Context, cfg config.Config, in ChapterFactsInput, chat model.ChatModel, onCall func(context.Context, model.CallRecord) error) (ChapterFactsOutput, error) {
+	record := func(ctx context.Context, call model.CallRecord) error {
+		if onCall == nil {
+			return nil
+		}
+		if err := onCall(ctx, call); err != nil {
+			return factError("persistence", "call_record_failed", "模型调用记录未能保存，请检查存储状态后再处理。", err)
+		}
+		return nil
+	}
+	guard := model.NewGuard(chat, model.Limits{Calls: cfg.MaxCalls, Tokens: cfg.MaxTokens, OutputTokens: cfg.MaxOutputTokens, Timeout: cfg.CallTimeout, ModelName: cfg.ModelName, OnCall: record})
 	raw, err := json.Marshal(in)
 	if err != nil {
 		return ChapterFactsOutput{}, err

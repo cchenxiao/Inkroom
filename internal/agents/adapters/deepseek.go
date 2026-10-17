@@ -32,6 +32,13 @@ func NewDeepSeek(cfg config.Config) (*DeepSeek, error) {
 }
 
 func (d *DeepSeek) Generate(ctx context.Context, in model.Input) (model.Output, model.Usage, error) {
+	thinking := "disabled"
+	if in.Thinking {
+		if len(in.Tools) > 0 || len(in.Messages) > 0 {
+			return model.Output{}, model.Usage{}, fmt.Errorf("thinking requires a stateless call without tools")
+		}
+		thinking = "enabled"
+	}
 	format := deepseek.ResponseFormatType(deepseek.ResponseFormatTypeJSONObject)
 	if len(in.Tools) > 0 || len(in.Messages) > 0 {
 		format = deepseek.ResponseFormatTypeText
@@ -39,7 +46,7 @@ func (d *DeepSeek) Generate(ctx context.Context, in model.Input) (model.Output, 
 	cm, err := deepseek.NewChatModel(ctx, &deepseek.ChatModelConfig{
 		APIKey: d.cfg.APIKey, BaseURL: d.cfg.BaseURL, Model: d.cfg.ModelName,
 		Timeout: d.cfg.CallTimeout, MaxTokens: d.cfg.MaxOutputTokens, Temperature: in.Temperature,
-		ThinkingConfig:     &deepseek.ThinkingConfig{Type: "disabled"},
+		ThinkingConfig:     &deepseek.ThinkingConfig{Type: thinking},
 		ResponseFormatType: format,
 		HTTPClient:         &http.Client{Timeout: d.cfg.CallTimeout, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }},
 	})

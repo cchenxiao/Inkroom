@@ -50,11 +50,34 @@ func exerciseChapterPublication(t *testing.T, s *Store, scope string, j app.Chap
 	if e != nil {
 		t.Fatal(e)
 	}
-	if e = s.FinishChapterFacts(ctx, fj.ID, output, nil); e != nil {
+	// A successful provider call can still yield unusable evidence. Preserve the
+	// classified failure, forbid publication, then take over without another call.
+	broken := app.ChapterFactsOutput{Candidates: append([]app.ChapterFactCandidate{}, output.Candidates...)}
+	broken.Candidates[0].Evidence.Quote = "不在章稿中的引文"
+	if e = s.FinishChapterFacts(ctx, fj.ID, broken, nil); e != nil {
 		t.Fatal(e)
 	}
+	failedID := fj.ID
+	state, e := s.ChapterFacts(ctx, scope, j.ID)
+	if e != nil || state.Job == nil || state.Job.Failure == nil || state.Job.Failure.Code != "evidence_mismatch" || state.Job.Output != nil || len(state.Job.Calls) != 1 || !state.Job.Calls[0].Success {
+		t.Fatal("failed task lost diagnosis or exposed candidates", state, e)
+	}
+	if _, e := s.PublishChapter(ctx, scope, req); !errors.Is(e, app.ErrFactsUnconfirmed) {
+		t.Fatal("failed facts bypassed", e)
+	}
+	manual := app.ChapterFactsRequest{RequestID: rand.Text(), ReviewID: j.ID, InputDigest: j.InputDigest, Mode: "manual"}
+	fj, created, e = s.StartChapterFacts(ctx, scope, manual, cfg)
+	if e != nil || !created || fj.Provider != "human" || fj.Status != "completed" || len(fj.Calls) != 0 {
+		t.Fatal("manual takeover", fj, e)
+	}
+	if _, fresh, e := s.StartChapterFacts(ctx, scope, manual, cfg); e != nil || fresh {
+		t.Fatal("manual retry", e)
+	}
+	if old, _, e := s.StartChapterFacts(ctx, scope, fr, cfg); e != nil || old.ID != failedID || old.Failure == nil {
+		t.Fatal("lost failed history", e)
+	}
 	candidate := app.ChapterFactCandidate{ID: "manual-1", Kind: "event", Text: "作者确认的交接动作", Evidence: output.Candidates[0].Evidence, Reason: "作者补充"}
-	selection := app.ChapterFactsSelectionRequest{RequestID: rand.Text(), JobID: fj.ID, ExpectedVersion: 0, Manual: []app.ChapterFactCandidate{candidate}, Decisions: []app.ChapterFactDecision{{CandidateID: "f1", Action: "exclude", Reason: "样例不作为事实"}, {CandidateID: "manual-1", Action: "confirm", Text: candidate.Text, KnownBy: []string{fj.Input.Knowledge.Characters[0]}, Reason: "已核对原文和知情人"}}}
+	selection := app.ChapterFactsSelectionRequest{RequestID: rand.Text(), JobID: fj.ID, ExpectedVersion: 0, Manual: []app.ChapterFactCandidate{candidate}, Decisions: []app.ChapterFactDecision{{CandidateID: "manual-1", Action: "confirm", Text: candidate.Text, KnownBy: []string{fj.Input.Knowledge.Characters[0]}, Reason: "已核对原文和知情人"}}}
 	selected, e := s.SelectChapterFacts(ctx, scope, selection)
 	if e != nil || selected.Block != "" || len(selected.Package.Facts) != 1 {
 		t.Fatal("fact selection", e, selected)
@@ -92,7 +115,7 @@ func exerciseChapterPublication(t *testing.T, s *Store, scope string, j app.Chap
 	if p.Review.InputDigest != j.InputDigest || len(p.Review.Calls) != 2 || p.CreatedAt.IsZero() {
 		t.Fatal("missing audit trail")
 	}
-	if p.FactSelection == nil || len(p.FactSelection.Package.Facts) != 1 || p.FactReview == nil || len(p.FactReview.Calls) != 1 {
+	if p.FactSelection == nil || len(p.FactSelection.Package.Facts) != 1 || p.FactReview == nil || len(p.FactReview.Calls) != 0 || p.FactReview.Provider != "human" {
 		t.Fatal("facts not frozen")
 	}
 	if k, e := s.GetKnowledge(ctx, fj.Input.Knowledge.ProjectID, fj.Input.Knowledge.BranchID, 0); e != nil || k.Digest != fj.Input.BaseKnowledge.Digest {

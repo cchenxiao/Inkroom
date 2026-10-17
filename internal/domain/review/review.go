@@ -36,6 +36,13 @@ type Finding struct {
 	DraftVersion        int      `json:"draftVersion"`
 }
 
+// AuthorCheck is a version-bound assessment, not author approval.
+type AuthorCheck struct {
+	Status string `json:"status"`
+	Reason string `json:"reason"`
+	Quote  string `json:"quote"`
+}
+
 type Report struct {
 	DraftVersion    int       `json:"draftVersion"`
 	Findings        []Finding `json:"findings"`

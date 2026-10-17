@@ -3,6 +3,7 @@ package orchestration
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 
 	"inkloom/internal/agents"
@@ -16,6 +17,7 @@ import (
 type ConsistencyCheck func(context.Context, model.ChatModel, ChapterState) (CriticReview, model.Usage, error)
 
 type CriticReview struct {
+	AuthorCheck  *review.AuthorCheck      `json:"authorCheck,omitempty"`
 	Lookup       *memory.LookupTrace      `json:"lookup,omitempty"`
 	Evidence     *memory.RetrievalContext `json:"evidence,omitempty"`
 	Critic       string                   `json:"critic"`
@@ -43,6 +45,30 @@ func reviewTogether(ctx context.Context, chat model.ChatModel, state ChapterStat
 			if role == "hard_consistency" {
 				if len(checks) > 0 && checks[0] != nil {
 					results[i], usages[i], errs[i] = checks[0](ctx, chat, state)
+					if errs[i] == nil && state.RewriteRequest() != nil {
+						b, e := state.Context.WithReviewEvidence(results[i].Evidence)
+						if e != nil {
+							errs[i] = e
+						} else {
+							var extra model.Usage
+							fs, results[i].AuthorCheck, extra, errs[i] = agents.CheckConsistencyRevision(ctx, chat, state.Segments, state.DraftVersion, b, state.RewriteRequest())
+							ids := map[string]bool{}
+							for _, existing := range results[i].Findings {
+								ids[existing.ID] = true
+							}
+							for _, f := range fs {
+								originalID := f.ID
+								for n := 1; ids[f.ID]; n++ {
+									f.ID = fmt.Sprintf("author-check-%d-%s", n, originalID)
+								}
+								ids[f.ID] = true
+								results[i].Findings = append(results[i].Findings, f)
+							}
+							usages[i].InputTokens += extra.InputTokens
+							usages[i].OutputTokens += extra.OutputTokens
+							usages[i].Known = usages[i].Known && extra.Known
+						}
+					}
 					if errs[i] != nil {
 						results[i].Status = "failed"
 						results[i].Error = errs[i].Error()
@@ -51,14 +77,14 @@ func reviewTogether(ctx context.Context, chat model.ChatModel, state ChapterStat
 					}
 					return
 				}
-				fs, usages[i], errs[i] = agents.CheckConsistency(ctx, chat, state.Segments, state.DraftVersion, state.Context)
+				fs, results[i].AuthorCheck, usages[i], errs[i] = agents.CheckConsistencyRevision(ctx, chat, state.Segments, state.DraftVersion, state.Context, state.RewriteRequest())
 			} else {
 				fs, usages[i], errs[i] = agents.Critique(ctx, chat, state.Segments, state.DraftVersion, state.Metrics, state.Context)
 				if errs[i] == nil {
 					fs = style.AddFindings(fs, state.Metrics, state.DraftVersion)
 				}
 			}
-			r := CriticReview{Critic: role, DraftVersion: state.DraftVersion, Status: "completed", Findings: fs}
+			r := CriticReview{AuthorCheck: results[i].AuthorCheck, Critic: role, DraftVersion: state.DraftVersion, Status: "completed", Findings: fs}
 			if errs[i] != nil {
 				r.Status = "failed"
 				r.Error = errs[i].Error()
@@ -86,4 +112,15 @@ func (s ChapterState) ReviewContext() (manuscript.ContextBundle, error) {
 		}
 	}
 	return s.Context.Freeze()
+}
+
+// RewriteRequest preserves legacy fork requests while keeping frozen context immutable.
+func (s ChapterState) RewriteRequest() *manuscript.AuthorRewrite {
+	if s.AuthorRequest != nil {
+		return s.AuthorRequest
+	}
+	if s.Context.RevisionRequest != nil {
+		return s.Context.RevisionRequest
+	}
+	return s.Context.Rewrite
 }

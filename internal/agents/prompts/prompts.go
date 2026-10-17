@@ -75,6 +75,18 @@ func render(in model.Input, candidate string) (model.Input, error) {
 	default:
 		return in, fmt.Errorf("unsupported prompt role %q", name)
 	}
+	// Keep native tool loops on their existing protocol. Only stateless author revision
+	// and its dedicated consistency check use thinking; hidden reasoning is never stored.
+	in.Thinking = false
+	if in.Purpose != model.Repair && len(in.Tools) == 0 && len(in.Messages) == 0 {
+		var material struct {
+			Rewrite       *json.RawMessage `json:"rewrite"`
+			AuthorRequest *json.RawMessage `json:"authorRequest"`
+		}
+		if json.Unmarshal(in.Material, &material) == nil {
+			in.Thinking = (name == "planned_writer" && material.Rewrite != nil) || (name == "hard_consistency" && material.AuthorRequest != nil)
+		}
+	}
 	if in.Purpose == model.Repair {
 		name = "repair"
 		in.Temperature = 0.1
@@ -84,10 +96,10 @@ func render(in model.Input, candidate string) (model.Input, error) {
 	}
 	promptVersion := name + ".v1"
 	if name == "hard_consistency" {
-		promptVersion = "hard_consistency.v2"
+		promptVersion = "hard_consistency.v6"
 	}
 	if name == "planned_writer" {
-		promptVersion = "planned_writer.v3"
+		promptVersion = "planned_writer.v6"
 	}
 	if name == "writer" {
 		promptVersion = "writer.v2"
@@ -123,6 +135,9 @@ func render(in model.Input, candidate string) (model.Input, error) {
 	in.SchemaVersion = in.Role + ".v1"
 	if in.Role == "hard_consistency" && len(in.Tools) > 0 {
 		in.SchemaVersion = "hard_consistency.tools.v1"
+	}
+	if in.Role == "hard_consistency" && bytes.Contains(in.OutputSchema, []byte(`"authorCheck"`)) {
+		in.SchemaVersion = "hard_consistency.revision.v1"
 	}
 	if in.Role == "chapter_consistency" || in.Role == "chapter_language" {
 		in.SchemaVersion = "chapter_review.v1"

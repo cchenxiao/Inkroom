@@ -33,22 +33,23 @@ type SourceRef struct {
 
 // ContextBundle 是一次运行的冻结材料；角色只取需要的子集，不自行查询最新值。
 type ContextBundle struct {
-	Targets        []ContextBundle          `json:"targets,omitempty"`
-	Neighbors      []Passage                `json:"neighbors,omitempty"`
-	Rewrite        *AuthorRewrite           `json:"rewrite,omitempty"`
-	Original       []Segment                `json:"original,omitempty"`
-	WritingTask    *WritingTask             `json:"writingTask,omitempty"`
-	Retrieval      *memory.RetrievalContext `json:"retrieval,omitempty"`
-	POVCharacterID string                   `json:"povCharacterId,omitempty"`
-	ProjectID      string                   `json:"projectId,omitempty"`
-	PreviousEnding *SourceRef               `json:"previousEnding,omitempty"`
-	Characters     []CharacterFacts         `json:"characters"`
-	Facts          []SourceRef              `json:"facts"`
-	BannedPhrases  []string                 `json:"bannedPhrases"`
-	ProtectedTerms []string                 `json:"protectedTerms"`
-	ChapterID      string                   `json:"chapterId"`
-	BranchID       string                   `json:"branchId"`
-	Beat           Beat                     `json:"beat"`
-	POV            string                   `json:"pov"`
-	Sources        []SourceRef              `json:"sources"`
+	RevisionRequest *AuthorRewrite           `json:"revisionRequest,omitempty"` // Recheck only; never replays Writer.
+	Targets         []ContextBundle          `json:"targets,omitempty"`
+	Neighbors       []Passage                `json:"neighbors,omitempty"`
+	Rewrite         *AuthorRewrite           `json:"rewrite,omitempty"`
+	Original        []Segment                `json:"original,omitempty"`
+	WritingTask     *WritingTask             `json:"writingTask,omitempty"`
+	Retrieval       *memory.RetrievalContext `json:"retrieval,omitempty"`
+	POVCharacterID  string                   `json:"povCharacterId,omitempty"`
+	ProjectID       string                   `json:"projectId,omitempty"`
+	PreviousEnding  *SourceRef               `json:"previousEnding,omitempty"`
+	Characters      []CharacterFacts         `json:"characters"`
+	Facts           []SourceRef              `json:"facts"`
+	BannedPhrases   []string                 `json:"bannedPhrases"`
+	ProtectedTerms  []string                 `json:"protectedTerms"`
+	ChapterID       string                   `json:"chapterId"`
+	BranchID        string                   `json:"branchId"`
+	Beat            Beat                     `json:"beat"`
+	POV             string                   `json:"pov"`
+	Sources         []SourceRef              `json:"sources"`
 }

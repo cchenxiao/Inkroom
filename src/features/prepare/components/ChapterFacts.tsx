@@ -1,3 +1,4 @@
+import { TechnicalDetails } from '@/shared/ui/technical-details';
 import { textLabel, readableMessage } from '@/shared/lib/business-labels';
 import { useEffect, useRef, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
@@ -101,7 +102,14 @@ export default function ChapterFacts({
         <Button disabled={disabled} disabledReason={t.editBlock} onClick={() => begin('model')}>
           {t.model}
         </Button>
-        <Button disabled={disabled} disabledReason={t.editBlock} onClick={() => begin('manual')}>
+        <Button
+          variant={
+            job?.status === 'failed' || job?.status === 'interrupted' ? 'default' : 'secondary'
+          }
+          disabled={disabled}
+          disabledReason={t.editBlock}
+          onClick={() => begin('manual')}
+        >
           {t.manual}
         </Button>
       </div>
@@ -113,11 +121,18 @@ export default function ChapterFacts({
       )}
       {job && (
         <>
-          <p role="status">
+          <p role={job.status === 'failed' || job.status === 'interrupted' ? 'alert' : 'status'}>
             {job.status === 'running'
               ? t.busy
-              : readableMessage(job.message, '请核对本次事实整理结果。')}
+              : readableMessage(job.failure?.message ?? job.message, '请核对本次事实整理结果。')}
           </p>
+          {(job.status === 'failed' || job.status === 'interrupted') && (
+            <p>
+              {job.failure
+                ? '本批次未生成可确认的候选。可选择“我来整理事实”，按原文补充并保存逐条决定；完成核对后再定稿。'
+                : '这条历史记录未保存具体失败原因。可重新提取以记录诊断，或选择“我来整理事实”继续核对。'}
+            </p>
+          )}
           {job.provider === 'human' && <p>{t.noModel}</p>}
           {job.provider === 'fake' && <p>{t.fake}</p>}
           {latest?.id !== job.id && (
@@ -149,14 +164,31 @@ export default function ChapterFacts({
           )}
           <details>
             <summary>{t.audit}</summary>
-            <p className="mono">
-              {job.id} · {job.provider} · {job.calls.length} calls
+            <p>
+              {job.provider === 'human' ? '人工整理' : '模型整理'} · {job.calls.length} 次模型调用
             </p>
             {job.calls.map((c) => (
               <p key={c.number}>
-                {c.role} · {c.phase} · {c.elapsedMs} ms · {c.promptVersion}
+                第 {c.number} 次 ·{' '}
+                {c.phase === 'finished'
+                  ? c.success === true
+                    ? '调用已完成（不代表候选校验通过）'
+                    : c.success === false
+                      ? '调用未成功'
+                      : '调用已结束，结果未标记'
+                  : c.phase === 'started'
+                    ? '调用中'
+                    : '调用结果未确认'}
+                {c.elapsedMs != null ? ` · ${(c.elapsedMs / 1000).toFixed(1)} 秒` : ''}
               </p>
             ))}
+            <TechnicalDetails
+              items={{
+                整理记录编号: job.id,
+                失败阶段: job.failure?.stage,
+                错误码: job.failure?.code,
+              }}
+            />
           </details>
         </>
       )}

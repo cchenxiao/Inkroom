@@ -21,6 +21,8 @@ import (
 )
 
 func main() {
+	revisionCase := flag.String("author-revision-case", "", "run one fixed case; requires -author-revision-eval")
+	revisionEval := flag.Bool("author-revision-eval", false, "evaluate author correction on isolated synthetic cases using configured real model; no database writes")
 	coreSettings := flag.String("core-settings", "", "generate unconfirmed core setting proposals from frozen planning JSON; no persistence")
 	styleTrial := flag.String("style-trial", "", "compare two style requests on a frozen temporary scene JSON; no persistence")
 	knowledgeSeed := flag.Bool("knowledge-seed", false, "explicitly publish teaching knowledge snapshot to database")
@@ -63,12 +65,16 @@ func main() {
 		fmt.Fprintln(os.Stderr, "-chapter and -story-time require -knowledge-preview")
 		os.Exit(1)
 	}
+	if *revisionCase != "" && !*revisionEval {
+		fmt.Fprintln(os.Stderr, "-author-revision-case requires -author-revision-eval")
+		os.Exit(1)
+	}
 	if *candidateCritic && !*evalCritic {
 		fmt.Fprintln(os.Stderr, "-critic-eval-candidate requires -critic-eval")
 		os.Exit(1)
 	}
 	modes := 0
-	for _, enabled := range []bool{*coreSettings != "", *styleTrial != "", *knowledgeSeed, *knowledgeShow, *knowledgeImport != "", *knowledge, *evalCritic, *preview, *serve, *list, *seedMemory, *evalMemory, *memoryQuery != "", *memoryImport != ""} {
+	for _, enabled := range []bool{*revisionEval, *coreSettings != "", *styleTrial != "", *knowledgeSeed, *knowledgeShow, *knowledgeImport != "", *knowledge, *evalCritic, *preview, *serve, *list, *seedMemory, *evalMemory, *memoryQuery != "", *memoryImport != ""} {
 		if enabled {
 			modes++
 		}
@@ -104,7 +110,9 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	var err error
-	if *coreSettings != "" {
+	if *revisionEval {
+		err = authorRevisionEvaluation(ctx, *revisionCase)
+	} else if *coreSettings != "" {
 		err = coreSettingsCommand(ctx, *coreSettings)
 	} else if *styleTrial != "" {
 		err = styleTrialCommand(ctx, *styleTrial)

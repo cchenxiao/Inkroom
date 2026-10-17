@@ -604,3 +604,105 @@
   white-space: nowrap;
   color: var(--ai);
 }
+
+/* One reading order: request, result, decision. No detached footer or empty spacer. */
+.writing-review-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  font-size: 13px;
+  line-height: 1.6;
+  padding: 16px;
+}
+.writing-review-scroll > * {
+  flex-shrink: 0;
+  min-width: 0;
+}
+.writing-review-scroll :is(p, blockquote) {
+  margin: 0;
+}
+.writing-review-scroll .writing-next-step {
+  padding: 0;
+  gap: 4px;
+}
+.writing-review-scroll
+  :is(.writing-revision-form, .writing-revision-receipt, .writing-review-actions) {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--paper);
+}
+.writing-revision-heading,
+.writing-revision-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.writing-revision-heading span {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.writing-revision-target,
+.writing-revision-controls small {
+  color: var(--text-dim);
+  font-size: 12px;
+}
+.writing-revision-controls small {
+  margin-right: auto;
+}
+.writing-review-scroll .writing-revision-form textarea {
+  display: block;
+  min-height: 108px;
+  max-height: 240px;
+  font-size: 13px;
+  line-height: 1.7;
+  padding: 10px;
+  background: var(--panel);
+}
+.writing-revision-form label {
+  gap: 8px;
+}
+.writing-review-scroll blockquote {
+  border-left: 2px solid var(--ai);
+  padding-left: 10px;
+  max-height: 140px;
+  overflow: auto;
+  white-space: pre-wrap;
+}
+.writing-revision-receipt strong {
+  color: var(--ai);
+}
+.writing-revision-receipt p {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.writing-submitted-request {
+  font-weight: 600;
+}
+.writing-review-scroll details {
+  padding-block: 8px;
+}
+.writing-review-scroll summary {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.writing-review-scroll .writing-findings:empty {
+  display: none;
+}
+.writing-review-scroll .writing-findings button {
+  font-size: 12px;
+  gap: 8px;
+}
+.writing-review-scroll .writing-review-actions .page-actions > * {
+  flex: 1;
+}
+.writing-review-scroll .writing-review-actions .ui-button {
+  width: 100%;
+}
+.writing-review-scroll .writing-review-actions > p {
+  display: block;
+  font-size: 12px;
+}

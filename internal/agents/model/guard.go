@@ -71,7 +71,7 @@ func (g *Guard) Generate(ctx context.Context, in Input) (Output, Usage, error) {
 		g.reserved += estimate
 		call := g.calls
 		g.mu.Unlock()
-		record := CallRecord{ReservedTokens: estimate, Number: call, Attempt: attempt + 1, Role: in.Role, Purpose: in.Purpose, PromptVersion: in.PromptVersion, SchemaVersion: in.SchemaVersion, Model: g.limits.ModelName, Phase: "started"}
+		record := CallRecord{Thinking: in.Thinking, ReservedTokens: estimate, Number: call, Attempt: attempt + 1, Role: in.Role, Purpose: in.Purpose, PromptVersion: in.PromptVersion, SchemaVersion: in.SchemaVersion, Model: g.limits.ModelName, Phase: "started"}
 		if g.limits.OnCall != nil {
 			if err := g.limits.OnCall(ctx, record); err != nil {
 				return Output{}, total, fmt.Errorf("record model call intent: %w", err)
@@ -95,7 +95,7 @@ func (g *Guard) Generate(ctx context.Context, in Input) (Output, Usage, error) {
 		g.usage.OutputTokens += usage.OutputTokens
 		g.usage.Known = g.usage.Known && usage.Known
 		g.mu.Unlock()
-		slog.InfoContext(ctx, "llm_call", "role", in.Role, "purpose", in.Purpose, "prompt_version", in.PromptVersion, "schema_version", in.SchemaVersion, "model", g.limits.ModelName, "call", call, "attempt", attempt+1, "elapsed_ms", time.Since(started).Milliseconds(), "input_tokens", usage.InputTokens, "output_tokens", usage.OutputTokens, "usage_known", usage.Known, "finish", out.FinishReason, "success", err == nil)
+		slog.InfoContext(ctx, "llm_call", "role", in.Role, "purpose", in.Purpose, "prompt_version", in.PromptVersion, "schema_version", in.SchemaVersion, "thinking", in.Thinking, "model", g.limits.ModelName, "call", call, "attempt", attempt+1, "elapsed_ms", time.Since(started).Milliseconds(), "input_tokens", usage.InputTokens, "output_tokens", usage.OutputTokens, "usage_known", usage.Known, "finish", out.FinishReason, "success", err == nil)
 		record.Phase = "finished"
 		record.ElapsedMs = time.Since(started).Milliseconds()
 		record.Usage = usage

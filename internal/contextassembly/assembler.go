@@ -105,6 +105,13 @@ func Assemble(b manuscript.ContextBundle, previous PreviousChapter, opts Options
 				}
 			}
 		}
+		if ref.Kind == "author_revision_review" {
+			title = "待核对的作者修改要求"
+			var request manuscript.AuthorRewrite
+			if json.Unmarshal(ref.Payload, &request) == nil {
+				excerpt = request.Instruction
+			}
+		}
 		if ref.Kind == "author_rewrite" {
 			title = "作者修改范围"
 			excerpt = "仅修改作者指定范围，其他正文保持不变"

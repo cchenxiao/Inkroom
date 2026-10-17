@@ -81,7 +81,17 @@ it.each(['publish', 'remote publication'])(
     const state: FactsState = {
       job:
         scenario === 'publish'
-          ? { ...job, status: 'failed', output: undefined, message: '提取失败' }
+          ? {
+              ...job,
+              status: 'failed',
+              output: undefined,
+              message: '提取失败',
+              failure: {
+                stage: 'validation',
+                code: 'evidence_mismatch',
+                message: '候选引文与本次章稿不一致，未载入候选。',
+              },
+            }
           : null,
       selection: null,
       current: true,
@@ -158,6 +168,10 @@ it.each(['publish', 'remote publication'])(
     );
     const user = userEvent.setup();
     await waitFor(() => expect(screen.getByRole('button', { name: t.manual })).toBeEnabled());
+    if (scenario === 'publish') {
+      expect(await screen.findByText('候选引文与本次章稿不一致，未载入候选。')).toBeVisible();
+      expect(screen.getByRole('button', { name: p.publish })).toBeDisabled();
+    }
     await user.click(screen.getByRole('button', { name: t.manual }));
     if (scenario === 'publish') {
       await screen.findByRole('dialog', { name: '重新整理本章事实' });

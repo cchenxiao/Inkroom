@@ -62,6 +62,7 @@ export interface BackendRun extends Omit<RunState, 'status' | 'currentNode'> {
   error?: string;
   usage?: { inputTokens: number; outputTokens: number; known: boolean };
   result?: {
+    authorRequest?: AuthorRewrite;
     nodePhase?: 'started' | 'finished';
     route: {
       kind: string;
@@ -71,6 +72,11 @@ export interface BackendRun extends Omit<RunState, 'status' | 'currentNode'> {
       reason: string;
     };
     criticReviews: {
+      authorCheck?: {
+        status: 'addressed' | 'unresolved' | 'needs_clarification';
+        reason: string;
+        quote: string;
+      };
       critic: string;
       draftVersion: number;
       status: string;
@@ -78,6 +84,8 @@ export interface BackendRun extends Omit<RunState, 'status' | 'currentNode'> {
       error?: string;
     }[];
     context: {
+      rewrite?: AuthorRewrite;
+      revisionRequest?: AuthorRewrite;
       beat: { id: string; version: number; locked: boolean };
       characters: {
         id: string;

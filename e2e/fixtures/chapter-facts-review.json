@@ -1,0 +1,35 @@
+{
+  "id": "review-facts-acceptance",
+  "current": true,
+  "status": "completed",
+  "approvalBlock": "",
+  "inputDigest": "review-digest",
+  "input": {
+    "assemblyId": "assembly",
+    "draftVersion": 1,
+    "assemblyDigest": "assembly-digest",
+    "parts": [
+      {
+        "beatId": "beat",
+        "sceneId": "scene",
+        "title": "铜扣交接",
+        "commitId": "commit",
+        "pov": "shen",
+        "storyTime": 10,
+        "segments": [
+          {
+            "id": "s1",
+            "kind": "passage",
+            "text": "陆青把铜扣交给沈砚。",
+            "sourceId": "segment",
+            "sourceVersion": 1
+          }
+        ],
+        "facts": []
+      }
+    ]
+  },
+  "decision": { "requestId": "approval", "action": "approve" },
+  "calls": [],
+  "message": ""
+}

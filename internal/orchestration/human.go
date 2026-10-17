@@ -51,6 +51,17 @@ type HumanOptions struct {
 
 // ApprovalReason 是程序门禁，不由模型自报 approved。通过仅表示候选审核，正式 commit 在 I9。
 func ApprovalReason(s ChapterState) string {
+	if s.RewriteRequest() != nil {
+		checked := false
+		for _, c := range s.CriticReviews {
+			if c.Critic == "hard_consistency" && c.Status == "completed" && c.DraftVersion == s.DraftVersion && c.AuthorCheck != nil && c.AuthorCheck.Status == "addressed" {
+				checked = true
+			}
+		}
+		if !checked {
+			return "作者修改要求尚未核对通过，请查看修改核对结果并重新复检"
+		}
+	}
 	if s.Report.DraftVersion != s.DraftVersion || len(s.CriticReviews) != 2 {
 		return "当前稿本尚未完成两个必要评审"
 	}
@@ -116,7 +127,7 @@ func ValidateHumanAction(s ChapterState, a HumanAction) error {
 	return nil
 }
 
-// RunHuman 只有人工门禁、修改、复检三个节点；恢复绝不重新运行 Writer。
+// RunHuman 只有人工门禁、修改、复检三个节点；恢复复用已保存的修改产物，不重复调用 Writer。
 // Eino 保存执行位置，业务 Save/Load 另行保证节点产物幂等。
 func RunHuman(ctx context.Context, initial ChapterState, chat model.ChatModel, opts HumanOptions) (ChapterState, error) {
 	g := compose.NewGraph[humanState, humanState]()
@@ -175,6 +186,8 @@ func RunHuman(ctx context.Context, initial ChapterState, chat model.ChatModel, o
 			if err != nil {
 				return in, err
 			}
+			request := *in.Action.Rewrite
+			s.AuthorRequest = &request
 			s.Segments = updated
 			for i := range s.Segments {
 				if s.Segments[i].ID == in.Action.Rewrite.SegmentID {

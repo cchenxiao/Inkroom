@@ -1,0 +1,132 @@
+[
+  {
+    "id": "page-rephrased",
+    "name": "页码问题仅换措辞，编号方式未明",
+    "mode": "review",
+    "original": "十七页后是十九页，中间少了十八页，是有人撕走了一张。",
+    "instruction": "中间撕了一张怎么会隔一页呢？",
+    "candidate": "下一张是十九页，中间没有十八。有人从中间抽走了一张。",
+    "facts": [
+      "沈砚正在查阅旧档案；档案的单面或双面编号方式尚未确定。"
+    ],
+    "after": "沈砚问陆青：十七到十九，中间那页，你见过没有？",
+    "expectedStatuses": [
+      "unresolved",
+      "needs_clarification"
+    ]
+  },
+  {
+    "id": "page-neighbor-conflict",
+    "name": "本段修正但后段仍沿用旧页码",
+    "mode": "review",
+    "original": "十七页后是十九页，中间缺了十八页，有人撕走了一张纸。",
+    "instruction": "这是双面连续编号的档案，一张纸两页，请修正缺页逻辑并核对前后衔接。",
+    "candidate": "十六页之后直接到了十九页。缺的是同一张纸上的十七、十八两页。沈砚把这两个页码记在笔记上。",
+    "facts": [
+      "档案按双面连续页码编号，十七和十八是同一张纸的正反面。"
+    ],
+    "after": "沈砚照着刚记的笔记说：十七页还在，只有十八页不见了。陆青点头。",
+    "expectedStatuses": [
+      "unresolved",
+      "needs_clarification"
+    ]
+  },
+  {
+    "id": "page-corrected",
+    "name": "页码及邻稿均已一致，不应误拦",
+    "mode": "review",
+    "original": "十七页后是十九页，中间缺了十八页，有人撕走了一张纸。",
+    "instruction": "一张纸两页，请修正缺页逻辑并核对前后衔接。",
+    "candidate": "十六页之后直接到了十九页，装订处留下半截撕口。沈砚确认，同一张纸上的十七、十八两页一起不见了。",
+    "facts": [
+      "档案按双面连续页码编号，十七和十八是同一张纸的正反面。"
+    ],
+    "after": "沈砚把十七、十八两个页码记在笔记里，又问陆青：那张纸，你见过没有？",
+    "expectedStatuses": [
+      "addressed"
+    ]
+  },
+  {
+    "id": "rewrite-pages",
+    "name": "作者质疑驱动实质改写",
+    "mode": "rewrite",
+    "original": "沈砚翻开旧档。十七页后是十九页，中间少了十八页。装订处留着撕口，他认定有人撕走了一张纸。他把缺失的页码记在笔记上。",
+    "instruction": "中间撕了一张怎么会隔一页呢？请按档案双面编号的设定修正这个逻辑，保留发现缺失并记录的动作。",
+    "facts": [
+      "档案按双面连续页码编号，十七和十八是同一张纸的正反面。"
+    ],
+    "after": "沈砚合上笔记，等着陆青进门。",
+    "expectedStatuses": [
+      "addressed"
+    ],
+    "requiredPatterns": [
+      "十六|16",
+      "十七|17",
+      "十八|18",
+      "十九|19"
+    ],
+    "forbiddenPatterns": [
+      "缺(?:失)?(?:了)?十八",
+      "缺(?:失)?(?:了)?18",
+      "十八页那一面"
+    ]
+  },
+  {
+    "id": "rewrite-selected-count",
+    "name": "选区纠错只改余额，其他正文不变",
+    "mode": "rewrite",
+    "original": "沈砚数出三枚筹码，交给陆青两枚，手里还剩两枚。他把剩下的筹码装进口袋。",
+    "selection": "还剩两枚",
+    "expectedReplacement": "还剩一枚",
+    "instruction": "三枚给出去两枚，怎么还剩两枚？只把余额改正确，选中文字改成‘还剩一枚’。",
+    "facts": [
+      "沈砚最初有三枚筹码，刚交给陆青两枚，期间没有其他筹码增减。"
+    ],
+    "expectedStatuses": [
+      "addressed"
+    ]
+  },
+  {
+    "id": "future-knowledge",
+    "name": "换措辞后仍泄露人物未来知识",
+    "mode": "review",
+    "original": "沈砚知道钥匙属于陆青。",
+    "instruction": "这里他还不知道钥匙的主人，只能猜测，不能提前确认。",
+    "candidate": "沈砚心里清楚，钥匙的主人正是陆青。",
+    "facts": [
+      "当前场景中沈砚尚不知道钥匙属于谁；陆青将在下一场景才告诉他。"
+    ],
+    "after": "陆青走进屋里，第一次告诉沈砚：那把钥匙是我的。",
+    "expectedStatuses": [
+      "unresolved"
+    ]
+  },
+  {
+    "id": "time-rephrased",
+    "name": "留出样本：时间计算错误仅换措辞",
+    "mode": "review",
+    "original": "九点四十他出门，走了半小时，十点整抵达车站。",
+    "instruction": "九点四十出发走半小时，怎么会十点整到？请改正到站时间。",
+    "candidate": "他九点四十迈出门，步行三十分钟后，正好十点整抵达车站。",
+    "facts": [
+      "他九点四十出发，到车站步行耗时三十分钟，中间没有停留。"
+    ],
+    "expectedStatuses": [
+      "unresolved"
+    ]
+  },
+  {
+    "id": "time-corrected",
+    "name": "留出样本：正确时间修正不应误拦",
+    "mode": "review",
+    "original": "九点四十他出门，走了半小时，十点整抵达车站。",
+    "instruction": "九点四十出发走半小时，怎么会十点整到？请改正到站时间。",
+    "candidate": "九点四十他出门，走了半小时，十点十分抵达车站。",
+    "facts": [
+      "他九点四十出发，到车站步行耗时三十分钟，中间没有停留。"
+    ],
+    "expectedStatuses": [
+      "addressed"
+    ]
+  }
+]

@@ -3,6 +3,7 @@ package model
 // CallRecord 不保存密钥、提示词正文或模型隐藏推理。
 // started 先落库；进程中断后没有 finished 的调用只能标记结果未知。
 type CallRecord struct {
+	Thinking       bool         `json:"thinking,omitempty"`
 	ReservedTokens int          `json:"reservedTokens"`
 	Number         int          `json:"number"`
 	Attempt        int          `json:"attempt"`

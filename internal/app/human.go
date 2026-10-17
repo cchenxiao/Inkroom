@@ -48,6 +48,7 @@ func ExecuteHuman(ctx context.Context, cfg config.Config, r Run, repo HumanRepos
 			raw, _ := json.Marshal(map[string]string{"text": text})
 			chat = model.NewFake([]model.Step{{Role: "planned_writer", Content: string(raw)}, {Role: "hard_consistency", Content: `{"findings":[]}`}, {Role: "ai_taste", Content: `{"findings":[]}`}})
 		}
+		chat = authorReviewFake{next: chat}
 	} else {
 		if cfg.Model != r.Provider || cfg.ModelName != r.Model {
 			return fmt.Errorf("恢复需要与原运行相同的供应商和模型配置")
