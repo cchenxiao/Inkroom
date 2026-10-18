@@ -57,6 +57,7 @@ import { RevisionReceipt } from './revision-receipt';
 import { ContextReviewNotice } from './context-review-notice';
 import { QualitySummary } from './quality-summary';
 import { rewriteRequest } from './rewrite-request';
+import { manuscriptStatus } from '@/features/workspace/manuscript-status';
 
 type Panel = 'review' | 'bible' | 'assembly' | null;
 const panelFrom = (query: URLSearchParams): Panel => {
@@ -244,8 +245,13 @@ function Desk({
   }, [writer.start.isSuccess, writer.start.variables, instructionDraft]);
   const [confirmed, setConfirmed] = useState('');
   const [compact, setCompact] = useState(window.innerWidth < 1200);
+  const [narrow, setNarrow] = useState(window.innerWidth < 600);
+  const [mobileStructure, setMobileStructure] = useState(false);
   useEffect(() => {
-    const resize = () => setCompact(window.innerWidth < 1200);
+    const resize = () => {
+      setCompact(window.innerWidth < 1200);
+      setNarrow(window.innerWidth < 600);
+    };
     window.addEventListener('resize', resize);
     return () => window.removeEventListener('resize', resize);
   }, []);
@@ -371,6 +377,10 @@ function Desk({
           id: b.id,
           title: b.title,
           segments,
+          version:
+            current && sourceSegments.length
+              ? run.draftVersion
+              : (working?.version ?? candidate?.draftVersion),
           adoptedVersion: candidateQuery?.data?.adopted?.version,
           accepted:
             current && sourceSegments.length
@@ -397,6 +407,7 @@ function Desk({
     ) ?? [];
   const selectBeat = (id: string) => {
     if (locked || busy) return;
+    setMobileStructure(false);
     setInspection(null);
     setParams(
       (current) => {
@@ -469,7 +480,10 @@ function Desk({
         },
         { replace: true },
       );
-    } else showReview(part.id);
+    } else {
+      showReview(part.id);
+      if (value.quote) setSide(null);
+    }
   };
   useEffect(() => {
     if (!pendingSelection || pendingSelection.beatId !== beatId || !run) return;
@@ -518,6 +532,7 @@ function Desk({
       }));
       return;
     }
+    setSelectedFinding(null);
     instructionDraft.change('segmentId', segment.id);
     if (pendingSelection.quote) instructionDraft.change('quote', pendingSelection.quote);
     else instructionDraft.remove('quote');
@@ -528,7 +543,11 @@ function Desk({
           ? '请重写选中的内容，保留已确认事实、人物知情范围与前后衔接；不改动选区之外的正文。'
           : '请重写本段，保留已确认事实、人物知情范围与当前情节目标。',
       );
-    document.querySelector<HTMLTextAreaElement>('[data-writing-instruction]')?.focus();
+    requestAnimationFrame(() =>
+      document
+        .querySelector<HTMLTextAreaElement>('[data-writing-instruction]')
+        ?.focus({ preventScroll: true }),
+    );
   }, [
     pendingSelection,
     beatId,
@@ -710,7 +729,8 @@ function Desk({
     await writer.revise();
   };
   const focusInstruction = () => {
-    showReview();
+    if (selection) setSide(null);
+    else showReview();
     requestAnimationFrame(() =>
       document.querySelector<HTMLTextAreaElement>('[data-writing-instruction]')?.focus(),
     );
@@ -765,6 +785,65 @@ function Desk({
     else if (continuingChapter) writer.beginChapter(true);
     else writer.beginChapter();
   };
+  const instructionForm = (
+    <section
+      className="writing-revision-form"
+      aria-label={selection ? '修改选中文字' : '修改当前稿'}
+      hidden={!canRewrite && !instructionDraft.dirty}
+    >
+      <div className="writing-revision-heading">
+        <strong>{selection ? '让模型修改选中文字' : '修改整个情节段'}</strong>
+        <span>{instruction.trim() ? '未发送' : '填写要求'}</span>
+      </div>
+      <p className="writing-revision-target">
+        范围：{selection ? '选中的文字' : `「${beat?.title || '当前情节段'}」全文`}
+      </p>
+      {selection && <blockquote>{selection.quote}</blockquote>}
+      <label>
+        {t.instruction}
+        <textarea
+          aria-label={t.instruction}
+          data-writing-instruction
+          value={instruction}
+          onChange={(e) => setInstruction(e.target.value)}
+          rows={4}
+          placeholder="指出哪里不合理、希望怎样修改；也可以直接提出疑问。"
+          disabled={!canRewrite || instructionDraft.stale}
+        />
+      </label>
+      {instructionDraft.stale && <p role="alert">{t.stale}</p>}
+      <div className="writing-revision-controls">
+        <small>{Array.from(instruction).length}/1000 字</small>
+        <Button
+          variant="ghost"
+          size="sm"
+          disabled={busy || !instructionDraft.dirty}
+          onClick={instructionDraft.clear}
+        >
+          {selection ? '取消这次要求' : '清空'}
+        </Button>
+        <Button
+          variant="default"
+          size="sm"
+          loading={writer.start.isPending || actions.mutation.isPending}
+          disabled={
+            !!rewriteBlock ||
+            !instruction.trim() ||
+            Array.from(instruction).length > 1000 ||
+            instructionDraft.stale
+          }
+          disabledReason={rewriteBlock}
+          onClick={() => void sendRewrite()}
+        >
+          {t.sendInstruction}
+        </Button>
+      </div>
+      {(rewriteFeedback || rewriteBlock) && <p role="status">{rewriteFeedback || rewriteBlock}</p>}
+      {Array.from(instruction).length > 1000 && (
+        <p role="alert">修改要求最多 1000 字，请精简后发送。</p>
+      )}
+    </section>
+  );
   const tree = (
     <aside className="chapter-sidebar" aria-label={t.allChapters}>
       <header className="sidebar-heading">
@@ -774,7 +853,8 @@ function Desk({
           variant="ghost"
           aria-label="收起结构"
           onClick={() => {
-            useUIStore.getState().setPanel('left', false);
+            if (narrow) setMobileStructure(false);
+            else useUIStore.getState().setPanel('left', false);
           }}
         >
           <PanelLeftClose size={16} />
@@ -800,14 +880,25 @@ function Desk({
                     const part = parts.find((p) => p.id === b.id);
                     return (
                       <button
-                        className="writing-tree-beat"
+                        className={`writing-tree-beat state-${part ? manuscriptStatus(part).tone : 'empty'}`}
                         key={b.id}
                         aria-current={beatId === b.id}
                         disabled={locked || busy}
                         onClick={() => selectBeat(b.id)}
                       >
-                        {part?.accepted ? <Check size={13} /> : <Circle size={10} />}
-                        <span>{b.title}</span>
+                        {part?.accepted || part?.adoptedVersion ? (
+                          <Check size={13} />
+                        ) : (
+                          <Circle size={10} />
+                        )}
+                        <span className="writing-tree-beat-text">
+                          <span>{b.title}</span>
+                          {part && (
+                            <span className="writing-tree-state">
+                              {manuscriptStatus(part).label}
+                            </span>
+                          )}
+                        </span>
                         <small>
                           {findings.filter((f) =>
                             part?.segments.some((segment) => segment.id === f.segmentId),
@@ -969,7 +1060,7 @@ function Desk({
         </div>
         <div className={`main-body workspace-body ${side ? 'has-review' : ''}`}>
           {!focus &&
-            (leftOpen ? (
+            (leftOpen && !narrow ? (
               tree
             ) : (
               <aside className="structure-rail">
@@ -978,7 +1069,8 @@ function Desk({
                   size="icon"
                   aria-label="展开结构"
                   onClick={() => {
-                    useUIStore.getState().setPanel('left', true);
+                    if (narrow) setMobileStructure(true);
+                    else useUIStore.getState().setPanel('left', true);
                   }}
                 >
                   <PanelLeftOpen size={17} />
@@ -1083,26 +1175,37 @@ function Desk({
                           />
                         ),
                       }
-                    : latestChange &&
-                        dismissedChange !== latestChange.id &&
-                        !selectedFinding &&
-                        !inspection &&
-                        !draft.dirty
+                    : selection && instructionDraft.dirty && !inspection
                       ? {
-                          id: latestChange.id,
-                          segmentId: latestChange.segmentId,
-                          quote: latestChange.quote,
-                          content: (
-                            <SavedChangeCard
-                              change={latestChange}
-                              onClose={() => setDismissedChange(latestChange.id)}
-                            />
-                          ),
+                          id: `instruction:${run?.id}`,
+                          segmentId: instructionDraft.texts.segmentId,
+                          quote: selection.quote,
+                          content: instructionForm,
                         }
-                      : undefined
+                      : latestChange &&
+                          dismissedChange !== latestChange.id &&
+                          !selectedFinding &&
+                          !inspection &&
+                          !draft.dirty
+                        ? {
+                            id: latestChange.id,
+                            segmentId: latestChange.segmentId,
+                            quote: latestChange.quote,
+                            content: (
+                              <SavedChangeCard
+                                change={latestChange}
+                                onClose={() => setDismissedChange(latestChange.id)}
+                              />
+                            ),
+                          }
+                        : undefined
                 }
                 busy={busy || run?.status === 'running'}
-                onChange={draft.change}
+                onChange={(id, text) => {
+                  if (!draft.stale && sourceSegments.find((s) => s.id === id)?.text === text)
+                    draft.remove(id);
+                  else draft.change(id, text);
+                }}
                 onSelectBeat={selectBeat}
                 onFinding={selectFinding}
                 onSelection={selectText}
@@ -1117,7 +1220,8 @@ function Desk({
                     });
                 }}
                 onSave={() => void saveEdit()}
-                onDiscard={draft.clear}
+                onDiscard={draft.discard}
+                onRestore={draft.restorable && editable ? draft.restore : undefined}
                 saveBlockedReason={
                   draft.stale ? '保存版本已变化，你的修改仍保留，请先核对当前版本。' : undefined
                 }
@@ -1461,20 +1565,6 @@ function Desk({
                       已保存 {run.result.findingChanges?.length ?? 0}{' '}
                       处局部修改。其余意见来自上一版，暂不重新编号；批准前需复审最新正文。
                     </p>
-                    <Button
-                      variant="default"
-                      size="sm"
-                      disabled={
-                        busy ||
-                        !!run.result.findingProposal ||
-                        draft.dirty ||
-                        instructionDraft.dirty ||
-                        !actions.waiting
-                      }
-                      onClick={() => void actions.reviewBatch()}
-                    >
-                      统一复审当前稿
-                    </Button>
                   </section>
                 )}
                 {run?.commitId && (
@@ -1615,173 +1705,14 @@ function Desk({
                   ))}
                 </details>
               )}
-              <section
-                className="writing-revision-form"
-                aria-label="修改当前稿"
-                hidden={!canRewrite && !instructionDraft.dirty}
-              >
-                <div className="writing-revision-heading">
-                  <strong>修改当前稿</strong>
-                  <span>{instruction.trim() ? '未发送' : '填写要求'}</span>
-                </div>
-                <p className="writing-revision-target">
-                  范围：{selection ? '选中的文字' : `「${beat?.title || '当前情节段'}」全文`}
-                </p>
-                {selection && (
-                  <blockquote>
-                    {selection.quote}
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => instructionDraft.remove('quote')}
-                    >
-                      清除选区
-                    </Button>
-                  </blockquote>
-                )}
-                <label>
-                  {t.instruction}
-                  <textarea
-                    aria-label={t.instruction}
-                    data-writing-instruction
-                    value={instruction}
-                    onChange={(e) => setInstruction(e.target.value)}
-                    rows={4}
-                    placeholder="指出哪里不合理、希望怎样修改；也可以直接提出疑问。"
-                    disabled={!canRewrite || instructionDraft.stale}
-                  />
-                </label>
-                {instructionDraft.stale && <p role="alert">{t.stale}</p>}
-                <div className="writing-revision-controls">
-                  <small>{Array.from(instruction).length}/1000 字</small>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={busy || !instructionDraft.dirty}
-                    onClick={instructionDraft.clear}
-                  >
-                    清空
-                  </Button>
-                  <Button
-                    variant="default"
-                    size="sm"
-                    loading={writer.start.isPending || actions.mutation.isPending}
-                    disabled={
-                      !!rewriteBlock ||
-                      !instruction.trim() ||
-                      Array.from(instruction).length > 1000 ||
-                      instructionDraft.stale
-                    }
-                    disabledReason={rewriteBlock}
-                    onClick={() => void sendRewrite()}
-                  >
-                    {t.sendInstruction}
-                  </Button>
-                </div>
-                {(rewriteFeedback || rewriteBlock) && (
-                  <p role="status">{rewriteFeedback || rewriteBlock}</p>
-                )}
-                {Array.from(instruction).length > 1000 && (
-                  <p role="alert">修改要求最多 1000 字，请精简后发送。</p>
-                )}
-              </section>
-              {side === 'review' && !draft.dirty && (
-                <section className="writing-review-actions" aria-label="确认当前稿">
-                  <strong>确认当前稿</strong>
-                  {actions.pending && !actions.mutation.isPending && (
-                    <>
-                      <small>{t.unknown}</small>
-                      <Button onClick={actions.retry}>{t.retry}</Button>
-                    </>
-                  )}
-                  {actions.resumable && (
-                    <Button
-                      disabled={busy || draft.dirty || instructionDraft.dirty}
-                      onClick={actions.resume}
-                    >
-                      恢复未完成的修改
-                    </Button>
-                  )}
-                  {adoptedCurrent ? (
-                    <p>
-                      <Check size={14} />{' '}
-                      {run?.planning?.mode === 'chapter' ? '整章候选已采用' : t.accepted} · v
-                      {adoptedVersion}
-                    </p>
-                  ) : (
-                    <>
-                      {run?.status === 'approved' && (
-                        <label className="writing-check">
-                          <input
-                            type="checkbox"
-                            checked={confirmed === `${run?.id}:${run?.draftVersion}`}
-                            disabled={!actions.current || busy}
-                            onChange={(e) =>
-                              setConfirmed(
-                                e.target.checked ? `${run?.id}:${run?.draftVersion}` : '',
-                              )
-                            }
-                          />
-                          {run?.planning?.mode === 'chapter'
-                            ? '我已核对全部段落的事实与台词含义。'
-                            : '我已核对本段的事实与台词含义。'}
-                        </label>
-                      )}
-                      {instructionDraft.dirty && (
-                        <p className="muted">还有未发送的修改要求，请先发送或清空。</p>
-                      )}
-                      {!instructionDraft.dirty && run?.approvalBlock && (
-                        <p className="muted">
-                          {readableMessage(run.approvalBlock, '请先处理检查结果再批准。')}
-                        </p>
-                      )}
-                      <div className="page-actions">
-                        {run?.status !== 'approved' ? (
-                          <Button
-                            variant="default"
-                            disabled={
-                              !actions.waiting ||
-                              busy ||
-                              instructionDraft.dirty ||
-                              !!run?.approvalBlock
-                            }
-                            disabledReason={run?.approvalBlock || t.stale}
-                            onClick={() => void actions.approve()}
-                          >
-                            {run?.planning?.mode === 'chapter' ? '批准本批候选' : t.approve}
-                          </Button>
-                        ) : (
-                          <Button
-                            variant="default"
-                            disabled={
-                              run?.status !== 'approved' ||
-                              !actions.current ||
-                              busy ||
-                              instructionDraft.dirty ||
-                              confirmed !== `${run?.id}:${run?.draftVersion}`
-                            }
-                            disabledReason={run?.approvalBlock || '先批准当前候选并确认事实'}
-                            onClick={() => void actions.commit()}
-                          >
-                            {run?.planning?.mode === 'chapter' ? '采用整章候选' : t.commit}
-                          </Button>
-                        )}
-                      </div>
-                    </>
-                  )}
-                  {run?.canDismiss && !adoptedCurrent && (
-                    <Button
-                      variant="ghost"
-                      disabled={busy || locked || instructionDraft.dirty}
-                      loading={writer.dismiss.isPending}
-                      onClick={() => writer.dismiss.mutate()}
-                    >
-                      放弃新候选，保留已采用稿
-                    </Button>
-                  )}
-                  {writer.dismiss.isError && <p role="alert">{writer.dismiss.error.message}</p>}
-                  <small>采用候选不会自动定稿整章。</small>
-                </section>
+              {!selection && (
+                <details
+                  open={instructionDraft.dirty || undefined}
+                  className="writing-whole-request"
+                >
+                  <summary>修改整个情节段</summary>
+                  {instructionForm}
+                </details>
               )}
               <details className="writing-review-details">
                 <summary>
@@ -1876,6 +1807,154 @@ function Desk({
                 </Button>
               </details>
             </div>
+            {side === 'review' && !!run && !inspection && !draft.dirty && (
+              <section className="writing-review-actions" aria-label="确认当前稿">
+                <strong>{run.planning?.mode === 'chapter' ? '当前批次决定' : '当前段决定'}</strong>
+                {actions.pending && !actions.mutation.isPending && (
+                  <>
+                    <small>{t.unknown}</small>
+                    <Button onClick={actions.retry}>{t.retry}</Button>
+                  </>
+                )}
+                {actions.resumable && (
+                  <Button
+                    disabled={busy || draft.dirty || instructionDraft.dirty}
+                    onClick={actions.resume}
+                  >
+                    恢复未完成的修改
+                  </Button>
+                )}
+                {adoptedCurrent ? (
+                  <p>
+                    <Check size={14} />{' '}
+                    {run?.planning?.mode === 'chapter' ? '整章候选已采用' : t.accepted} · v
+                    {adoptedVersion}
+                  </p>
+                ) : run.status === 'running' || busy ? (
+                  <p role="status">正在处理当前操作，已保存正文保留。</p>
+                ) : run.result?.findingProposal ? (
+                  <Button
+                    onClick={() => {
+                      setSide(null);
+                      if (run.result?.findingProposal?.findingId)
+                        setSelectedFinding(run.result.findingProposal.findingId);
+                      requestAnimationFrame(() =>
+                        document
+                          .querySelector('main .finding-preview')
+                          ?.scrollIntoView({ block: 'nearest' }),
+                      );
+                    }}
+                  >
+                    查看并确认修改预览
+                  </Button>
+                ) : instructionDraft.dirty ? (
+                  <Button onClick={focusInstruction}>继续填写修改要求</Button>
+                ) : stale ? (
+                  <>
+                    <p>{contextReviewBlock || '当前审核需要更新，正文已保留。'}</p>
+                    <Button
+                      disabled={!!contextReviewBlock}
+                      onClick={() => {
+                        if (retryContext) writer.retryStart();
+                        else void writer.revise();
+                      }}
+                    >
+                      更新本段审核
+                    </Button>
+                  </>
+                ) : run.result?.reviewPending ? (
+                  <>
+                    <p>修改已保存，可继续处理其他问题，完成后统一复审。</p>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      disabled={
+                        busy ||
+                        !!run.result.findingProposal ||
+                        draft.dirty ||
+                        instructionDraft.dirty ||
+                        !actions.waiting
+                      }
+                      onClick={() => void actions.reviewBatch()}
+                    >
+                      统一复审当前稿
+                    </Button>
+                  </>
+                ) : reviewFailure ? (
+                  <p>本次检查未完成，请在上方失败说明中查看原因并重试。</p>
+                ) : (
+                  <>
+                    {run?.status === 'approved' && (
+                      <label className="writing-check">
+                        <input
+                          type="checkbox"
+                          checked={confirmed === `${run?.id}:${run?.draftVersion}`}
+                          disabled={!actions.current || busy}
+                          onChange={(e) =>
+                            setConfirmed(e.target.checked ? `${run?.id}:${run?.draftVersion}` : '')
+                          }
+                        />
+                        {run?.planning?.mode === 'chapter'
+                          ? '我已核对全部段落的事实与台词含义。'
+                          : '我已核对本段的事实与台词含义。'}
+                      </label>
+                    )}
+                    {instructionDraft.dirty && (
+                      <p className="muted">还有未发送的修改要求，请先发送或清空。</p>
+                    )}
+                    {!instructionDraft.dirty && run?.approvalBlock && (
+                      <p className="muted">
+                        {readableMessage(run.approvalBlock, '请先处理检查结果再批准。')}
+                      </p>
+                    )}
+                    <div className="page-actions">
+                      {run?.status !== 'approved' ? (
+                        <Button
+                          variant="default"
+                          disabled={
+                            !actions.waiting ||
+                            busy ||
+                            instructionDraft.dirty ||
+                            !!run?.approvalBlock
+                          }
+                          disabledReason={run?.approvalBlock || t.stale}
+                          onClick={() => void actions.approve()}
+                        >
+                          {run?.planning?.mode === 'chapter' ? '批准本批候选' : t.approve}
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="default"
+                          disabled={
+                            run?.status !== 'approved' ||
+                            !actions.current ||
+                            busy ||
+                            instructionDraft.dirty ||
+                            confirmed !== `${run?.id}:${run?.draftVersion}`
+                          }
+                          disabledReason={run?.approvalBlock || '先批准当前候选并确认事实'}
+                          onClick={() => void actions.commit()}
+                        >
+                          {run?.planning?.mode === 'chapter' ? '采用整章候选' : t.commit}
+                        </Button>
+                      )}
+                    </div>
+                  </>
+                )}
+                {run?.canDismiss && !adoptedCurrent && (
+                  <Button
+                    variant="ghost"
+                    disabled={busy || locked || instructionDraft.dirty}
+                    loading={writer.dismiss.isPending}
+                    onClick={() => writer.dismiss.mutate()}
+                  >
+                    放弃新候选，保留已采用稿
+                  </Button>
+                )}
+                {writer.dismiss.isError && <p role="alert">{writer.dismiss.error.message}</p>}
+                <small>采用候选不会自动定稿整章。</small>
+              </section>
+            )}
           </aside>
           {!focus && !side && (
             <aside className="bible-rail" aria-label={t.knowledge}>
@@ -1915,6 +1994,9 @@ function Desk({
           />
         )}
       </div>
+      <Modal open={narrow && mobileStructure} onOpenChange={setMobileStructure} title="章节目录">
+        {narrow && <div className="writing-shell writing-mobile-directory">{tree}</div>}
+      </Modal>
       <Modal
         open={checkSettings}
         onOpenChange={setCheckSettings}

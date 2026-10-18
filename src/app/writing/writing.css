@@ -1,4 +1,20 @@
 /* Same workspace surfaces and tokens as the original editor; only real-flow additions. */
+.writing-shell {
+  --manuscript-adopted-bg: #edf4ef;
+  --manuscript-adopted-ink: #315c4c;
+  --manuscript-candidate-bg: #fbf4e8;
+  --manuscript-candidate-ink: #70582e;
+  --manuscript-edit-bg: #edf3fa;
+  --manuscript-edit-ink: #365d7d;
+}
+:root[data-theme='night'] .writing-shell {
+  --manuscript-adopted-bg: #293c32;
+  --manuscript-adopted-ink: #b0d2be;
+  --manuscript-candidate-bg: #39352b;
+  --manuscript-candidate-ink: #dfc79e;
+  --manuscript-edit-bg: #2b3746;
+  --manuscript-edit-ink: #b9d0eb;
+}
 .writing-shell .workspace-body {
   position: relative;
 }
@@ -827,4 +843,256 @@
 }
 .writing-run-failure > strong {
   color: var(--p0);
+}
+
+/* Version identity is persistent; selection is an outline, never an adoption colour. */
+.writing-shell .state-adopted {
+  --manuscript-state-bg: var(--manuscript-adopted-bg);
+  --manuscript-state-ink: var(--manuscript-adopted-ink);
+}
+.writing-shell .state-candidate {
+  --manuscript-state-bg: var(--manuscript-candidate-bg);
+  --manuscript-state-ink: var(--manuscript-candidate-ink);
+}
+.writing-shell :is(.state-empty, .state-snapshot, .state-unavailable) {
+  --manuscript-state-bg: var(--panel);
+  --manuscript-state-ink: var(--text-dim);
+}
+.writing-shell .writing-beat {
+  border-left-color: color-mix(in srgb, var(--manuscript-state-ink) 30%, transparent);
+}
+.writing-shell .writing-beat.is-active {
+  border-left-color: var(--manuscript-state-ink);
+}
+.writing-shell .writing-beat .writing-beat-heading {
+  background: var(--manuscript-state-bg);
+  color: var(--manuscript-state-ink);
+  padding: 8px 10px;
+  border-radius: 6px;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+}
+.writing-shell .writing-beat.is-active .writing-beat-heading {
+  outline: 1px solid var(--border);
+  outline-offset: 2px;
+}
+.writing-shell .writing-beat-heading .beat-selection-mark {
+  color: var(--paper-dim);
+  font-weight: 400;
+}
+.writing-shell .writing-beat-heading button {
+  color: var(--manuscript-state-ink);
+}
+.manuscript-version-state {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  font-size: 11px;
+  line-height: 1.6;
+}
+.manuscript-state-label {
+  background: var(--manuscript-state-bg);
+  color: var(--manuscript-state-ink);
+  border: 1px solid color-mix(in srgb, var(--manuscript-state-ink) 20%, transparent);
+  border-radius: 4px;
+  padding: 1px 6px;
+}
+.manuscript-state-detail {
+  color: var(--paper-dim);
+}
+.manuscript-current-context {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--paper);
+  color: var(--paper-dim);
+  font-size: 11px;
+}
+.manuscript-current-title {
+  color: var(--paper-ink);
+  font-weight: 600;
+}
+.manuscript-local-state {
+  color: var(--manuscript-edit-ink);
+}
+.writing-shell .writing-tree-beat {
+  margin-block: 4px;
+  border-radius: 5px;
+  background: var(--manuscript-state-bg);
+  color: var(--manuscript-state-ink);
+  border-left-color: transparent;
+}
+.writing-shell .writing-tree-beat[aria-current='true'] {
+  outline: 1px solid var(--ai);
+  outline-offset: -1px;
+  border-left-color: var(--ai);
+}
+.writing-tree-beat-text {
+  display: grid;
+  gap: 3px;
+  text-align: left;
+}
+.writing-tree-state {
+  font-size: 10px;
+  line-height: 1.5;
+}
+.writing-shell .manuscript-edit-actions,
+.manuscript-discard-receipt {
+  background: var(--manuscript-edit-bg);
+  color: var(--manuscript-edit-ink);
+}
+.manuscript-discard-receipt {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 14px;
+  font-size: 12px;
+}
+.writing-shell .workspace-review > .writing-review-actions {
+  flex: 0 0 auto;
+  display: grid;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--paper);
+  font-size: 12px;
+  line-height: 1.6;
+  max-height: 45%;
+  overflow: auto;
+}
+.workspace-review > .writing-review-actions :is(p, small) {
+  margin: 0;
+}
+.workspace-review > .writing-review-actions .page-actions {
+  margin: 0;
+}
+.workspace-review > .writing-review-actions .page-actions > * {
+  flex: 1;
+}
+.workspace-review > .writing-review-actions label {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.workspace-review > .writing-review-actions input {
+  flex: none;
+  width: auto;
+  margin-top: 4px;
+}
+.inline-review-host .writing-revision-form {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--panel);
+  color: var(--text);
+  font: 13px/1.7 var(--font-ui);
+}
+.inline-review-host .writing-revision-form label {
+  display: grid;
+  gap: 6px;
+}
+.inline-review-host .writing-revision-form textarea {
+  width: 100%;
+  min-height: 100px;
+  font: inherit;
+}
+.inline-review-host .writing-revision-form blockquote {
+  max-height: 6em;
+  overflow: auto;
+  white-space: pre-wrap;
+}
+.inline-review-host .writing-revision-form :is(p, blockquote) {
+  margin: 0;
+}
+.writing-revision-controls {
+  flex-wrap: wrap;
+}
+@media (max-width: 760px) {
+  .manuscript-current-context {
+    padding: 6px 10px;
+    gap: 4px 8px;
+  }
+  .manuscript-current-title {
+    width: 100%;
+  }
+  .writing-shell .writing-beat-heading .beat-actions {
+    gap: 6px;
+  }
+}
+.writing-shell .writing-tree-beat {
+  padding: 9px 8px 9px 12px;
+}
+.writing-tree-beat-text {
+  min-width: 0;
+  flex: 1;
+}
+.writing-tree-state {
+  white-space: nowrap;
+}
+.writing-tree-beat > svg {
+  flex: none;
+}
+.writing-review-scroll .writing-whole-request {
+  border-top: 1px solid var(--border);
+}
+.writing-whole-request[open] > summary {
+  margin-bottom: 10px;
+}
+@media (max-width: 599px) {
+  .writing-shell .bible-rail {
+    display: none;
+  }
+  .writing-shell .structure-rail {
+    width: 30px;
+    flex-basis: 30px;
+  }
+  .writing-shell .manuscript-toolbar {
+    padding-inline: 8px;
+    gap: 8px;
+  }
+  .writing-shell .manuscript-tools span {
+    display: none;
+  }
+  .writing-shell .manuscript-tabs {
+    gap: 10px;
+  }
+  .writing-shell .manuscript-tools {
+    gap: 8px;
+  }
+  .writing-shell .manuscript-page {
+    padding-inline: 32px 14px;
+  }
+  .writing-shell .top-bar {
+    flex-wrap: wrap;
+  }
+  .modal-body .chapter-sidebar {
+    width: 100%;
+    max-height: 65vh;
+  }
+}
+@media (max-width: 599px) {
+  .writing-shell .top-bar {
+    height: auto;
+    min-height: 52px;
+    padding-block: 6px;
+  }
+  .writing-shell .shell-top {
+    flex-shrink: 0;
+  }
+  .writing-shell .manuscript-context {
+    display: none;
+  }
+  .writing-mobile-directory .chapter-sidebar {
+    width: 100%;
+    border: 0;
+  }
 }

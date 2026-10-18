@@ -68,7 +68,7 @@ it('selects readonly prose with a persistent current marker without changing its
     'aria-pressed',
     'true',
   );
-  expect(within(second).getByText('已选中')).toBeVisible();
+  expect(within(second).getByText('当前段')).toBeVisible();
   expect(screen.getByText('已选：门后')).toBeVisible();
   expect(screen.getByText('窗前传来轻响。')).toBeVisible();
 });

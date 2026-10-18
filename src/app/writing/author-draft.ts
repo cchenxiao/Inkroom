@@ -25,6 +25,7 @@ export function useAuthorDraft(
   ownerId?: string,
 ) {
   const [backup, setBackup] = useState<Backup | null>(null);
+  const [discarded, setDiscarded] = useState<Backup | null>(null);
   const key = runId ? `inkloom-author:${runId}` : '';
   useEffect(() => {
     if (!key) {
@@ -75,6 +76,17 @@ export function useAuthorDraft(
     sessionStorage.removeItem(key);
     setBackup(null);
   };
+  const discard = () => {
+    setDiscarded(active);
+    clear();
+  };
+  const restorable = !dirty && discarded?.runId === runId && discarded?.version === version;
+  const restore = () => {
+    if (!restorable || !discarded) return;
+    sessionStorage.setItem(key, JSON.stringify(discarded));
+    setBackup(discarded);
+    setDiscarded(null);
+  };
   const acknowledgeInstruction = (
     sourceRunId: string,
     sourceVersion: number,
@@ -102,6 +114,9 @@ export function useAuthorDraft(
     dirty,
     change,
     clear,
+    discard,
+    restore,
+    restorable,
     remove,
     stale: dirty && active.version !== version,
   };

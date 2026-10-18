@@ -15,6 +15,7 @@ export function EditorToolbar({
   focus,
   onFocus,
   commentCount = 0,
+  liveWriting = false,
 }: {
   title?: string;
   pov: string;
@@ -26,6 +27,7 @@ export function EditorToolbar({
   focus: boolean;
   onFocus: () => void;
   commentCount?: number;
+  liveWriting?: boolean;
 }) {
   return (
     <header className="manuscript-toolbar">
@@ -40,8 +42,8 @@ export function EditorToolbar({
         {(
           [
             ['editor', AlignLeft, m.editor],
-            ['comments', MessageSquare, m.comments],
-            ['final', CheckCheck, m.final],
+            ['comments', MessageSquare, liveWriting ? '审查标记' : m.comments],
+            ['final', CheckCheck, liveWriting ? '净读' : m.final],
           ] as const
         ).map(([value, Icon, label]) => (
           <button

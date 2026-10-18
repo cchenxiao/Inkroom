@@ -10,6 +10,39 @@ import { useWritingActions } from '@/features/prepare/hooks/useWritingActions';
 import { trialApi } from '@/features/prepare/api/backend';
 import type { BackendRun } from '@/features/prepare/types/backend';
 
+it('restores discarded local edits only on the same manuscript version', async () => {
+  sessionStorage.clear();
+  function Probe() {
+    const [version, setVersion] = useState(1);
+    const draft = useAuthorDraft('discard-test', version);
+    return (
+      <>
+        <textarea
+          aria-label="正文草稿"
+          value={draft.texts.s1 ?? '原文'}
+          onChange={(e) => draft.change('s1', e.target.value)}
+        />
+        <button onClick={draft.discard}>放弃</button>
+        <button disabled={!draft.restorable} onClick={draft.restore}>
+          恢复
+        </button>
+        <button onClick={() => setVersion(2)}>服务端新版</button>
+      </>
+    );
+  }
+  render(<Probe />);
+  await userEvent.clear(screen.getByLabelText('正文草稿'));
+  await userEvent.type(screen.getByLabelText('正文草稿'), '作者修改');
+  await userEvent.click(screen.getByText('放弃'));
+  expect(screen.getByLabelText('正文草稿')).toHaveValue('原文');
+  await userEvent.click(screen.getByText('恢复'));
+  expect(screen.getByLabelText('正文草稿')).toHaveValue('作者修改');
+  await userEvent.click(screen.getByText('放弃'));
+  await userEvent.click(screen.getByText('服务端新版'));
+  expect(screen.getByText('恢复')).toBeDisabled();
+  expect(screen.getByLabelText('正文草稿')).toHaveValue('原文');
+});
+
 it('keeps edited prose across an early receipt and only retires it when the visible snapshot catches up', () => {
   const action = {
     id: 'edit-1',

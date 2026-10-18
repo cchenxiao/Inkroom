@@ -7,6 +7,8 @@ import { writingDesk as t } from '@/shared/lib/messages-writing-desk';
 import { EditorToolbar, type EditorMode } from './EditorToolbar';
 import { SegmentEditor, type SelectedText } from '../editor/SegmentEditor';
 import { ManuscriptGutter } from './ManuscriptGutter';
+import { ManuscriptStatus } from './ManuscriptStatus';
+import { manuscriptStatus } from '../manuscript-status';
 import '../workspace.css';
 export interface ManuscriptPart {
   id: string;
@@ -14,6 +16,7 @@ export interface ManuscriptPart {
   segments: Segment[];
   accepted: boolean;
   adoptedVersion?: number;
+  version?: number;
   loading?: boolean;
   loadError?: boolean;
   onRetry?: () => void;
@@ -39,6 +42,7 @@ export function WritingManuscript({
   onSelection,
   onSave,
   onDiscard,
+  onRestore,
   saveBlockedReason,
   saveError,
   onRetrySave,
@@ -71,6 +75,7 @@ export function WritingManuscript({
   onSelection: (selection: SelectedText) => void;
   onSave: () => void;
   onDiscard?: () => void;
+  onRestore?: () => void;
   saveBlockedReason?: string;
   saveError?: string;
   onRetrySave?: () => void;
@@ -82,6 +87,7 @@ export function WritingManuscript({
   onRewrite: (beatId: string) => void;
 }) {
   const [mode, setMode] = useState<EditorMode>('editor');
+  const activePart = parts.find((part) => part.id === activeBeat);
   const initialLoading = parts.length > 0 && parts.every((p) => p.loading && !p.segments.length);
   const incomplete = parts.some((p) => p.loading || p.loadError);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -130,6 +136,7 @@ export function WritingManuscript({
         </div>
       )}
       <EditorToolbar
+        liveWriting
         title={title}
         pov={pov}
         tone={tone}
@@ -143,6 +150,17 @@ export function WritingManuscript({
         focus={focus}
         onFocus={() => useUIStore.getState().setFocus(!focus)}
       />
+      {activePart && (
+        <div className="manuscript-current-context" aria-label="当前正文版本">
+          <span className="manuscript-current-title">当前段 · {activePart.title}</span>
+          <ManuscriptStatus part={activePart} snapshot={snapshot} />
+          {dirty ? (
+            <span className="manuscript-local-state">本机修改未保存</span>
+          ) : (
+            mode === 'final' && <span>净读视图 · 不代表已定稿</span>
+          )}
+        </div>
+      )}
       {reviewNotice}
       {blocked && (
         <div className="manuscript-alert" role="alert">
@@ -166,7 +184,7 @@ export function WritingManuscript({
               parts.map((part) => (
                 <section
                   key={part.id}
-                  className={`writing-beat ${part.id === activeBeat ? 'is-active' : ''}`}
+                  className={`writing-beat state-${manuscriptStatus(part, snapshot).tone} ${part.id === activeBeat ? 'is-active' : ''}`}
                   aria-label={part.title}
                   aria-current={part.id === activeBeat ? 'true' : undefined}
                 >
@@ -180,20 +198,9 @@ export function WritingManuscript({
                     </button>
                     <div className="beat-actions">
                       {part.id === activeBeat && (
-                        <span className="beat-selection-mark">
-                          <Check size={12} />
-                          已选中
-                        </span>
+                        <span className="beat-selection-mark">当前段</span>
                       )}
-                      <span>
-                        {part.accepted
-                          ? t.accepted
-                          : part.segments.length
-                            ? part.adoptedVersion
-                              ? `新候选 · 已采用 v${part.adoptedVersion} 保留`
-                              : t.candidate
-                            : ''}
-                      </span>
+                      <ManuscriptStatus part={part} snapshot={snapshot} />
                       {!snapshot && !!part.segments.length && (
                         <Button
                           size="sm"
@@ -203,7 +210,7 @@ export function WritingManuscript({
                             onReview(part.id);
                           }}
                         >
-                          作者审核
+                          审核
                         </Button>
                       )}
                       {!snapshot && !!part.segments.length && (
@@ -213,7 +220,7 @@ export function WritingManuscript({
                           disabled={dirty || busy}
                           onClick={() => onRewrite(part.id)}
                         >
-                          重写本段
+                          修改本段
                         </Button>
                       )}
                     </div>
@@ -271,7 +278,11 @@ export function WritingManuscript({
                             editRequest?.segmentId === segment.id ? editRequest : undefined
                           }
                           text={localText[segment.id] ?? segment.text}
-                          findings={findings.filter((f) => f.segmentId === segment.id)}
+                          findings={
+                            mode === 'final'
+                              ? []
+                              : findings.filter((f) => f.segmentId === segment.id)
+                          }
                           editable={editable && part.id === activeBeat && mode !== 'final'}
                           heatmap={heatmap && mode !== 'final'}
                           onChange={onChange}
@@ -279,22 +290,25 @@ export function WritingManuscript({
                           onFinding={onFinding}
                           onSelection={(selection) => {
                             selectedInProse.current = part.id !== activeBeat;
-                            if (selection.action === 'edit') setMode('editor');
+                            if (['edit', 'rewrite', 'instruct'].includes(selection.action))
+                              setMode('editor');
                             onSelection(selection);
                           }}
                           review={
-                            selectionPreview?.segmentId === segment.id
-                              ? { ...selectionPreview, keepVisibleOnClose: true }
-                              : selectedFinding && selectedSegment === segment.id && children
-                                ? {
-                                    id: selectedFinding,
-                                    quote: selectedQuote ?? '',
-                                    content: children,
-                                    keepVisibleOnClose: true,
-                                  }
-                                : undefined
+                            mode === 'final'
+                              ? undefined
+                              : selectionPreview?.segmentId === segment.id
+                                ? { ...selectionPreview, keepVisibleOnClose: true }
+                                : selectedFinding && selectedSegment === segment.id && children
+                                  ? {
+                                      id: selectedFinding,
+                                      quote: selectedQuote ?? '',
+                                      content: children,
+                                      keepVisibleOnClose: true,
+                                    }
+                                  : undefined
                           }
-                          availableActions={['edit', 'instruct', 'rewrite', 'review', 'bible']}
+                          availableActions={['edit', 'rewrite', 'review', 'bible']}
                         />
                       </article>
                     ))
@@ -305,7 +319,7 @@ export function WritingManuscript({
         </div>
         <ManuscriptGutter
           scrollRef={scrollRef}
-          findings={findings}
+          findings={mode === 'final' ? [] : findings}
           onSelect={onFinding}
           revision={parts.map((p) => p.segments.map((s) => s.version).join()).join()}
         />
@@ -338,6 +352,14 @@ export function WritingManuscript({
             </p>
           )}
         </section>
+      )}
+      {!dirty && onRestore && (
+        <div className="manuscript-discard-receipt" role="status">
+          <span>已撤销本次本地修改</span>
+          <Button size="sm" variant="ghost" disabled={busy} onClick={onRestore}>
+            恢复刚才的修改
+          </Button>
+        </div>
       )}
       <footer className="manuscript-status">
         <div role="status">
