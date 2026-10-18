@@ -88,6 +88,7 @@ func snapshot(ctx context.Context, q queryRow, id string) (app.Run, error) {
 		stored.ApprovalBlock = "此候选已放弃，当前继续使用已采用稿"
 		stored.InstructionBlock = stored.ApprovalBlock
 	}
+	stored.ActionBlocks = app.HumanActionBlocks(stored)
 	return stored, nil
 }
 

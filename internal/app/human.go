@@ -37,7 +37,16 @@ func ExecuteHuman(ctx context.Context, cfg config.Config, r Run, repo HumanRepos
 	}
 	var chat model.ChatModel
 	var err error
-	if r.Provider == "fake" {
+	localOnly := r.PendingAction == nil
+	if r.PendingAction != nil {
+		switch r.PendingAction.Type {
+		case "save_edits", "approve", "finding_decision", "edit_finding", "apply_finding", "discard_finding":
+			localOnly = true
+		}
+	}
+	if localOnly {
+		chat = model.NewFake(nil)
+	} else if r.Provider == "fake" {
 		chat = lookupFake{next: demo.NewHumanFake(*r.Result)}
 		if r.PendingAction != nil && (r.PendingAction.Type == "rewrite" || r.PendingAction.Type == "propose_finding" || r.PendingAction.Type == "propose_selection") && r.PendingAction.Rewrite != nil {
 			req := r.PendingAction.Rewrite

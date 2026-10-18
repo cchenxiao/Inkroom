@@ -42,7 +42,7 @@ func ExecuteChapter(ctx context.Context, cfg config.Config, scenario string, opt
 	}
 	var chat model.ChatModel = lookupFake{next: authorReviewFake{next: model.NewFake(steps)}}
 	name := "fake"
-	if cfg.Model == "deepseek" {
+	if cfg.Model == "deepseek" && len(bundle.ManualEdits) == 0 {
 		chat, err = adapters.NewDeepSeek(cfg)
 		if err != nil {
 			return orchestration.ChapterState{}, err

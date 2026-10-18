@@ -71,3 +71,23 @@ func TestSelectedRewriteFromAdoptedSourceProducesPreviewWithoutCritics(t *testin
 		t.Fatal("selection application changed outside selection")
 	}
 }
+
+func TestManualCandidateSavesAllTargetsWithoutModelOrReview(t *testing.T) {
+	source := []manuscript.Segment{{ID: "a", Text: "第一处。"}, {ID: "b", Text: "第二处。"}, {ID: "c", Text: "保留。"}}
+	b := manuscript.ContextBundle{ChapterID: "chapter", BranchID: "main", Facts: []manuscript.SourceRef{{ID: "f", Version: 1, Text: "固定事实。"}}, Beat: manuscript.Beat{ID: "beat", SceneID: "scene", Version: 1}, Original: source, ManualEdits: map[string]string{"a": "新的一处。", "b": "新的一处😀。"}}
+	graph, err := NewChapter(context.Background(), model.NewFake(nil), Options{BaseDraftVersion: 4})
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, err := graph.Invoke(context.Background(), b)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if source[0].Text != "第一处。" || out.Segments[0].Text != b.ManualEdits["a"] || out.Segments[1].Text != b.ManualEdits["b"] || out.Segments[2].Text != source[2].Text || !out.ReviewPending || len(out.CriticReviews) != 0 || len(out.Revisions[0].Patches) != 2 || ApprovalReason(out) == "" {
+		t.Fatal("save changed source, reviewed or omitted a target", out)
+	}
+	b.ManualEdits["foreign"] = "不存在。"
+	if _, err = graph.Invoke(context.Background(), b); err == nil {
+		t.Fatal("accepted partial save with invalid target")
+	}
+}

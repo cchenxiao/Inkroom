@@ -42,8 +42,12 @@ export function useWritingActions(run: BackendRun | undefined, currentVersion?: 
   const waiting = current && run?.status === 'waiting_human';
   const send = async (operation: Operation) => {
     if (!run || !current || pending || mutation.isPending) return false;
-    if (operation.kind === 'action' && !waiting) return false;
-    if (operation.kind === 'commit' && (run.status !== 'approved' || run.approvalBlock))
+    if (operation.kind === 'action' && (!waiting || run.actionBlocks?.[operation.input.type]))
+      return false;
+    if (
+      operation.kind === 'commit' &&
+      (run.status !== 'approved' || run.approvalBlock || run.actionBlocks?.commit)
+    )
       return false;
     if (operation.kind === 'action' && operation.input.type === 'approve' && run.approvalBlock)
       return false;
@@ -76,6 +80,14 @@ export function useWritingActions(run: BackendRun | undefined, currentVersion?: 
     mutation.mutate(request);
   };
   return {
+    block: (type: HumanAction['type'] | 'commit') =>
+      run?.actionBlocks?.[type] ??
+      (type === 'commit'
+        ? run?.approvalBlock || (run?.status !== 'approved' ? '请先批准当前候选。' : '')
+        : !waiting
+          ? '当前稿不在可操作状态，请更新状态。'
+          : ''),
+    save: (edits: Record<string, string>) => action({ type: 'save_edits', edits }),
     resumable,
     resume,
     current,

@@ -202,7 +202,7 @@ export function WritingFinding({
   const [sending, setSending] = useState(false);
   const [notice, setNotice] = useState('');
   const decision = findingDecision(run, id);
-  const local = !!f && ['P2', 'P3'].includes(f.severity) && id !== 'author-request-review';
+  const local = !!f && id !== 'author-request-review';
   const proposal =
     run?.result?.findingProposal?.findingId === id ? run.result.findingProposal : undefined;
   const changed = run?.result?.findingChanges?.find((c) => c.findingId === id);
@@ -236,7 +236,7 @@ export function WritingFinding({
               ? mode === 'rewrite'
                 ? ''
                 : '已提交局部修改，处理完其他问题后请统一复审。'
-              : '已提交，正在复检；完成后请核对新稿。',
+              : '修改已提交；保存后可继续修改，处理完后统一复检。',
         );
       } else setNotice('操作未提交，请核对当前稿状态；输入已保留，可以重试。');
     } catch (error) {
@@ -405,7 +405,7 @@ export function WritingFinding({
             {mode === 'edit'
               ? local
                 ? '只保存这处修改，保留其他问题，处理完后统一复审。'
-                : '只替换上方引用的文字；保存后重新检查，不自动采用。'
+                : '只保存上方引用的修改；处理完后主动复检，不自动采用。'
               : local
                 ? run?.commitId || run?.status === 'committed' || run?.status === 'approved'
                   ? '基于当前稿生成这句话的修改预览；原采用稿保留，确认替换后再复审新候选。'
@@ -459,10 +459,10 @@ export function WritingFinding({
                   {mode === 'edit'
                     ? local
                       ? '保存这处修改'
-                      : '保存修改并复检'
+                      : '保存这处修改'
                     : local
                       ? '生成修改预览'
-                      : '发送给模型'}
+                      : '生成修改预览'}
                 </Button>
                 <Button
                   type="button"

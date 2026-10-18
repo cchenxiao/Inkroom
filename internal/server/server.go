@@ -405,6 +405,12 @@ func (s *service) calls(w http.ResponseWriter, r *http.Request) {
 	send(w, 200, calls)
 }
 func storageError(w http.ResponseWriter, err error) {
+	var validation app.ActionValidationError
+	if errors.As(err, &validation) {
+		fail(w, 409, "gate_blocked", validation.Reason)
+		return
+	}
+
 	switch {
 	case errors.Is(err, app.ErrPlanningNotReady):
 		fail(w, 422, "planning_not_ready", err.Error())

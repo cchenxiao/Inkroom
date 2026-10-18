@@ -28,6 +28,7 @@ type FindingDecision struct {
 
 // ID 是作者一次操作的稳定业务键；网络重试沿用 ID，不是模型 attempt。
 type HumanAction struct {
+	Edits        map[string]string         `json:"edits,omitempty"`
 	ProposalID   string                    `json:"proposalId,omitempty"`
 	FindingID    string                    `json:"findingId,omitempty"`
 	Decision     string                    `json:"decision,omitempty"`
@@ -119,12 +120,43 @@ func InstructionReason(s ChapterState) string {
 	}
 	return ""
 }
+
+// HumanActionBlock is shared by read-side capabilities and write validation.
+// Payload-specific checks (quote, replacement and version) still run under the lock.
+func HumanActionBlock(s ChapterState, kind string) string {
+	if s.FindingProposal != nil && kind != "apply_finding" && kind != "discard_finding" {
+		return "请先确认或放弃当前修改预览"
+	}
+	switch kind {
+	case "approve":
+		return ApprovalReason(s)
+	case "instruct":
+		return InstructionReason(s)
+	case "review_batch":
+		if !s.ReviewPending {
+			return "当前没有待统一复审的修改"
+		}
+	case "apply_finding", "discard_finding":
+		if s.FindingProposal == nil {
+			return "当前没有待确认的修改预览"
+		}
+	case "propose_finding", "edit_finding", "finding_decision":
+		if s.Report.DraftVersion != s.DraftVersion && !s.ReviewPending {
+			return "请先完成当前稿评审"
+		}
+	case "save_edits", "inline_edit", "rewrite", "propose_selection":
+	default:
+		return "不支持的人工操作"
+	}
+	return ""
+}
+
 func ValidateHumanAction(s ChapterState, a HumanAction) error {
 	if a.ID == "" || len(a.ID) > 100 || a.DraftVersion != s.DraftVersion {
 		return fmt.Errorf("操作标识或稿本版本无效")
 	}
-	if s.FindingProposal != nil && a.Type != "apply_finding" && a.Type != "discard_finding" {
-		return fmt.Errorf("请先确认或放弃当前修改预览")
+	if reason := HumanActionBlock(s, a.Type); reason != "" {
+		return fmt.Errorf("%s", reason)
 	}
 	if isFindingAction(a.Type) {
 		return validateFindingAction(s, a)
@@ -166,6 +198,9 @@ func ValidateHumanAction(s ChapterState, a HumanAction) error {
 			return fmt.Errorf("缺少重写目标")
 		}
 		return a.Rewrite.Validate(s.Segments)
+	case "save_edits":
+		_, err := manuscript.ApplyManualEdits(s.Segments, a.Edits)
+		return err
 	case "inline_edit":
 		if strings.TrimSpace(a.Text) == "" || utf8.RuneCountInString(a.Text) > 20000 {
 			return fmt.Errorf("正文需为 1–20000 字")
@@ -251,6 +286,30 @@ func RunHuman(ctx context.Context, initial ChapterState, chat model.ChatModel, o
 			s.Status, s.CurrentNode, s.NodePhase = "waiting_human", "human_gate", "finished"
 			s.StopReason = "作者判断已保存，正文保持不变"
 			if err := opts.Save(ctx, key, expected, s, "human_decision"); err != nil {
+				return in, err
+			}
+			in.Chapter = s
+			return in, nil
+		}
+		if in.Action.Type == "save_edits" {
+			updated, err := manuscript.ApplyManualEdits(s.Segments, in.Action.Edits)
+			if err != nil {
+				return in, err
+			}
+			patches := []revision.Patch{}
+			for i := range updated {
+				if updated[i].Text != s.Segments[i].Text {
+					patches = append(patches, revision.Patch{SegmentID: updated[i].ID, OldText: s.Segments[i].Text, NewText: updated[i].Text, Reason: "作者直接修改"})
+					updated[i].Version = expected + 1
+				}
+			}
+			s.Segments = updated
+			s.DraftVersion++
+			s.ReviewPending = true
+			s.Revisions = append(append([]revision.Revision{}, s.Revisions...), revision.Revision{Kind: "author_save", FromVersion: expected, ToVersion: s.DraftVersion, Patches: patches})
+			s.Status, s.CurrentNode, s.NodePhase = "waiting_human", "human_gate", "finished"
+			s.StopReason = "正文修改已保存，尚未复检；可以继续修改，完成后统一复检"
+			if err := opts.Save(ctx, key, expected, s, "human_inline"); err != nil {
 				return in, err
 			}
 			in.Chapter = s
@@ -394,7 +453,7 @@ func RunHuman(ctx context.Context, initial ChapterState, chat model.ChatModel, o
 		if in.Action.Type == "approve" {
 			return compose.END, nil
 		}
-		if in.Action.Type == "finding_decision" || isFindingAction(in.Action.Type) {
+		if in.Action.Type == "save_edits" || in.Action.Type == "finding_decision" || isFindingAction(in.Action.Type) {
 			return "human_gate", nil
 		}
 		return "recheck", nil

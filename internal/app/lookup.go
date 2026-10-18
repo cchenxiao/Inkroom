@@ -17,6 +17,11 @@ func LookupContext(ctx context.Context, cfg config.Config, base manuscript.Froze
 	if err := base.Validate(); err != nil {
 		return manuscript.FrozenInput{}, err
 	}
+	// Manual saves need no model or retrieval. Context will be refreshed when
+	// the author explicitly requests review of this saved candidate.
+	if len(base.Bundle.ManualEdits) > 0 {
+		return base, nil
+	}
 	// Fake 也走真实工具循环，检索本身由配置决定使用关键词/向量。
 	var err error
 	steps := []model.Step{}

@@ -50,13 +50,10 @@ export async function submitFindingRewrite(
     ) => Promise<boolean | undefined>;
   },
 ) {
-  const { finding } = findingTarget(run, id);
   const request = findingRewrite(run, id, instruction, whole);
-  if (['P2', 'P3'].includes(finding.severity) && id !== 'author-request-review') {
+  if (!whole && id !== 'author-request-review') {
     return waiting ? handlers.propose(id, request) : handlers.revise({ ...request, preview: true });
   }
-  return waiting &&
-    (run?.planning?.neighborPolicy === 'working-v1' || run?.planning?.mode === 'chapter')
-    ? handlers.rewrite(request)
-    : handlers.revise(request);
+  // Explicit whole-range requests still preview before changing manuscript.
+  return handlers.revise({ ...request, preview: true });
 }

@@ -46,8 +46,8 @@ func (s *Store) Finalize(ctx context.Context, id string, in app.FinalizeInput) (
 	if r.DraftVersion != in.DraftVersion {
 		return app.FinalCommit{}, app.ErrVersionMismatch
 	}
-	if r.Status != "approved" || r.PendingAction != nil || r.Result == nil || orchestration.ApprovalReason(*r.Result) != "" {
-		return app.FinalCommit{}, app.ErrGateBlocked
+	if reason := app.CommitBlock(r); reason != "" {
+		return app.FinalCommit{}, app.ActionValidationError{Reason: reason}
 	}
 	frozen, err := frozenContext(ctx, tx, id)
 	if err != nil {
@@ -63,7 +63,7 @@ func (s *Store) Finalize(ctx context.Context, id string, in app.FinalizeInput) (
 	var approval string
 	err = tx.QueryRow(ctx, `SELECT action_id FROM run_actions WHERE run_id=$1 AND status='completed' AND request->>'type'='approve' AND (request->>'draftVersion')::int=$2 ORDER BY created_at DESC LIMIT 1`, id, in.DraftVersion).Scan(&approval)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return app.FinalCommit{}, app.ErrGateBlocked
+		return app.FinalCommit{}, app.ActionValidationError{Reason: "当前版本尚未保存批准记录，请更新状态后重新批准"}
 	}
 	if err != nil {
 		return app.FinalCommit{}, err
@@ -83,7 +83,7 @@ func (s *Store) Finalize(ctx context.Context, id string, in app.FinalizeInput) (
 	}
 	err = tx.QueryRow(ctx, "SELECT report FROM reviews WHERE run_id=$1 AND draft_version=$2", id, in.DraftVersion).Scan(&reportRaw)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return app.FinalCommit{}, app.ErrGateBlocked
+		return app.FinalCommit{}, app.ActionValidationError{Reason: "当前版本没有已保存的审核结果，请先复检当前稿"}
 	}
 	if err != nil {
 		return app.FinalCommit{}, err
@@ -93,7 +93,7 @@ func (s *Store) Finalize(ctx context.Context, id string, in app.FinalizeInput) (
 		return app.FinalCommit{}, err
 	}
 	if !reflect.DeepEqual(report, r.Result.Report) {
-		return app.FinalCommit{}, app.ErrGateBlocked
+		return app.FinalCommit{}, app.ActionValidationError{Reason: "审核结果已变化，请更新状态并核对最新结果后采用"}
 	}
 	for _, f := range report.Findings {
 		if (f.RequiresHuman || f.PossibleDialogueLie) && !orchestration.FindingKept(*r.Result, f.ID) {

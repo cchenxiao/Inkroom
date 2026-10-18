@@ -87,6 +87,26 @@ export function useAuthorDraft(
     setBackup(discarded);
     setDiscarded(null);
   };
+  const acknowledgeEdits = (
+    sourceRunId: string,
+    sourceVersion: number,
+    edits: Record<string, string>,
+  ) => {
+    const sourceKey = `inkloom-author:${sourceRunId}`;
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(sourceKey) ?? 'null') as Backup | null;
+      if (!saved || saved.version !== sourceVersion) return;
+      const texts = { ...saved.texts };
+      for (const [id, text] of Object.entries(edits)) if (texts[id] === text) delete texts[id];
+      const next = { ...saved, texts };
+      sessionStorage.setItem(sourceKey, JSON.stringify(next));
+      setBackup((old) =>
+        old?.runId === sourceRunId && old.version === sourceVersion ? next : old,
+      );
+    } catch {
+      /* Preserve unrecognized backups. */
+    }
+  };
   const acknowledgeInstruction = (
     sourceRunId: string,
     sourceVersion: number,
@@ -110,6 +130,7 @@ export function useAuthorDraft(
   };
   return {
     acknowledgeInstruction,
+    acknowledgeEdits,
     texts: active?.texts ?? {},
     dirty,
     change,

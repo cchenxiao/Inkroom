@@ -339,6 +339,7 @@ func TestChapterPlanFrozenInputAndAuthorVersion(t *testing.T) {
 		t.Fatal("committed manuscript did not block initialization replacement", e)
 	}
 
+	exerciseManualCandidate(t, s, scope, selected, cfg, plannedRun.ID)
 	exerciseChapterAssembly(t, s, scope, selected, cfg, commit)
 	exerciseWritingScopes(t, s, scope, selected, cfg)
 	exerciseMiddleWorkingDraft(t, s, scope, selected, cfg)

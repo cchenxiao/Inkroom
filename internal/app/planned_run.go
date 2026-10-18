@@ -16,6 +16,7 @@ import (
 
 // PlannedRunRequest 只传预期版本和操作权限；上游材料由仓储读取。
 type PlannedRunRequest struct {
+	Edits              map[string]string            `json:"edits,omitempty"`
 	Remaining          bool                         `json:"remaining,omitempty"`
 	EnhancedContinuity bool                         `json:"enhancedContinuity,omitempty"`
 	Recheck            bool                         `json:"recheck,omitempty"`
@@ -187,10 +188,30 @@ func plannedFakeSteps(b manuscript.ContextBundle) []model.Step {
 }
 func mustJSON(v any) string { raw, _ := json.Marshal(v); return string(raw) }
 func ValidPlannedRequest(r PlannedRunRequest) bool {
-	return (!r.Remaining || (r.Mode == "chapter" && !r.Recheck && r.Rewrite == nil)) && (r.Mode == "" || r.Mode == "beat" || r.Mode == "chapter") && (!(r.Rewrite != nil || r.Recheck) || (r.FromRunID != "" && r.SourceVersion > 0 && (r.Mode != "chapter" || r.Recheck) && !r.AutoRevise)) && !(r.Rewrite != nil && r.Recheck) && (r.FromRunID == "" || r.Rewrite != nil || r.Recheck) && len(r.FromRunID) <= 100 && len(r.BeatID) <= 80 && len(r.RequestID) > 0 && len(r.RequestID) <= 80 && strings.TrimSpace(r.ChapterID) != "" && len(r.ChapterID) <= 80 && r.PlanVersion > 0 && r.DraftVersion >= 0
+	operations := 0
+	if r.Rewrite != nil {
+		operations++
+	}
+	if r.Recheck {
+		operations++
+	}
+	if len(r.Edits) > 0 {
+		operations++
+	}
+	if operations > 1 || (operations > 0 && (r.FromRunID == "" || r.SourceVersion < 1 || r.AutoRevise)) {
+		return false
+	}
+	if r.FromRunID != "" && operations == 0 {
+		return false
+	}
+	if r.Mode == "chapter" && (r.Rewrite != nil || len(r.Edits) > 0) {
+		return false
+	}
+	return (!r.Remaining || (r.Mode == "chapter" && operations == 0)) && (r.Mode == "" || r.Mode == "beat" || r.Mode == "chapter") && len(r.FromRunID) <= 100 && len(r.BeatID) <= 80 && len(r.RequestID) > 0 && len(r.RequestID) <= 80 && strings.TrimSpace(r.ChapterID) != "" && len(r.ChapterID) <= 80 && r.PlanVersion > 0 && r.DraftVersion >= 0
 }
 
 type PlannedRunSource struct {
+	ManualEdits        map[string]string            `json:"manualEdits,omitempty"`
 	TargetBeatIDs      []string                     `json:"targetBeatIds,omitempty"`
 	Remaining          bool                         `json:"remaining,omitempty"`
 	Publications       []manuscript.PublicationRef  `json:"publications,omitempty"`

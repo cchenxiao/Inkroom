@@ -10,6 +10,40 @@ import { useWritingActions } from '@/features/prepare/hooks/useWritingActions';
 import { trialApi } from '@/features/prepare/api/backend';
 import type { BackendRun } from '@/features/prepare/types/backend';
 
+it('uses backend action reasons for both buttons and request guards', async () => {
+  const run = {
+    id: 'blocked',
+    status: 'approved',
+    draftVersion: 3,
+    inputDigest: 'digest',
+    actionBlocks: { commit: '当前版本尚未保存批准记录，请更新状态后重新批准' },
+  } as BackendRun;
+  const finalize = vi.spyOn(trialApi, 'finalize');
+  function Probe() {
+    const actions = useWritingActions(run, 3);
+    return (
+      <>
+        <button disabled={!!actions.block('commit')}>采用</button>
+        <p>{actions.block('commit')}</p>
+        <button onClick={() => void actions.commit()}>模拟过期点击</button>
+      </>
+    );
+  }
+  const client = new QueryClient();
+  const view = render(
+    <QueryClientProvider client={client}>
+      <Probe />
+    </QueryClientProvider>,
+  );
+  expect(screen.getByRole('button', { name: '采用' })).toBeDisabled();
+  expect(screen.getByText(run.actionBlocks!.commit!)).toBeVisible();
+  await userEvent.click(screen.getByRole('button', { name: '模拟过期点击' }));
+  expect(finalize).not.toHaveBeenCalled();
+  view.unmount();
+  client.clear();
+  finalize.mockRestore();
+});
+
 it('restores discarded local edits only on the same manuscript version', async () => {
   sessionStorage.clear();
   function Probe() {

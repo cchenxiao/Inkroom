@@ -52,7 +52,7 @@ func lockHuman(ctx context.Context, tx pgx.Tx, id string) (app.Run, error) {
 		return r, err
 	}
 	if r.Dismissed {
-		return r, app.ErrGateBlocked
+		return r, app.ActionValidationError{Reason: "此候选已放弃，请回到当前稿"}
 	}
 	if r.DraftVersion != head || r.Status == "stale" {
 		return r, app.ErrVersionMismatch
@@ -136,22 +136,31 @@ func (s *Store) ClaimAction(ctx context.Context, id string, a orchestration.Huma
 	if err = tx.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM run_checkpoints WHERE run_id=$1 AND workflow_version=$2)", id, orchestration.HumanWorkflowVersion).Scan(&checkpoint); err != nil {
 		return r, false, err
 	}
-	if !checkpoint || r.Result == nil {
-		return r, false, app.ErrGateBlocked
+	if r.Result == nil {
+		return r, false, app.ActionValidationError{Reason: "正在读取正文，请稍候"}
+	}
+	if !checkpoint {
+		return r, false, app.ActionValidationError{Reason: "审核状态尚未就绪，请更新状态"}
 	}
 	if exists {
 		if r.Status != "interrupted" && r.Status != "failed" {
 			return r, false, app.ErrRunBusy
 		}
 	} else {
-		if r.Status != "waiting_human" {
-			return r, false, app.ErrRunBusy
+		if current, e := planningRunCurrent(ctx, tx, r.Planning); e != nil {
+			return r, false, e
+		} else if !current {
+			return r, false, app.ActionValidationError{Reason: "创作设定或采用版本已变化，请基于当前正文建立新候选"}
+		}
+		r.CanResume = checkpoint
+		if reason := app.HumanActionBlocks(r)[a.Type]; reason != "" {
+			return r, false, app.ActionValidationError{Reason: reason}
 		}
 		if a.DraftVersion != r.DraftVersion {
 			return r, false, app.ErrVersionMismatch
 		}
 		if err = orchestration.ValidateHumanAction(*r.Result, a); err != nil {
-			return r, false, app.ErrGateBlocked
+			return r, false, app.ActionValidationError{Reason: err.Error()}
 		}
 		raw, _ := json.Marshal(a)
 		if _, err = tx.Exec(ctx, "INSERT INTO run_actions(run_id,action_id,request,status) VALUES($1,$2,$3,'pending')", id, a.ID, raw); err != nil {

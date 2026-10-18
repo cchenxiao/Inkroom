@@ -75,8 +75,8 @@ func validateFindingAction(s ChapterState, a HumanAction) error {
 			break
 		}
 	}
-	if finding == nil || finding.ID == "author-request-review" || (finding.Severity != review.P2 && finding.Severity != review.P3) || finding.SegmentID != a.Rewrite.SegmentID || finding.Quote == "" {
-		return fmt.Errorf("此入口只处理当前稿中的单条 P2/P3 问题")
+	if finding == nil || finding.ID == "author-request-review" || finding.SegmentID != a.Rewrite.SegmentID || finding.Quote == "" {
+		return fmt.Errorf("此入口需要当前稿中可定位的单条问题；请在正文中选择需要修改的范围")
 	}
 	// Local review does not silently widen to a whole beat. An expanded change uses
 	// the separate full rewrite flow and its full review contract.

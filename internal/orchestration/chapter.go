@@ -98,6 +98,25 @@ func NewChapter(ctx context.Context, chat model.ChatModel, opts Options) (compos
 			emit(state)
 			return state, err
 		}
+		if len(frozen.ManualEdits) > 0 {
+			segments, err = manuscript.ApplyManualEdits(frozen.Original, frozen.ManualEdits)
+			if err != nil {
+				return state, err
+			}
+			patches := []revision.Patch{}
+			for i, seg := range segments {
+				if seg.Text != frozen.Original[i].Text {
+					patches = append(patches, revision.Patch{SegmentID: seg.ID, OldText: frozen.Original[i].Text, NewText: seg.Text, Reason: "作者直接修改"})
+				}
+			}
+			fromVersion := frozen.ManualSourceVersion
+			if fromVersion == 0 {
+				fromVersion = opts.BaseDraftVersion
+			}
+			state.Revisions = []revision.Revision{{Kind: "author_save", FromVersion: fromVersion, ToVersion: opts.BaseDraftVersion + 1, Patches: patches}}
+			state.ReviewPending = true
+			state.StopReason = "修改已保存为新候选，已采用稿保留；完成修改后请统一复检"
+		}
 		if frozen.Rewrite != nil && frozen.Rewrite.Preview {
 			req := *frozen.Rewrite
 			for _, segment := range segments {
@@ -240,7 +259,7 @@ func NewChapter(ctx context.Context, chat model.ChatModel, opts Options) (compos
 		}
 	}
 	if err := g.AddBranch("writer", compose.NewGraphBranch(func(_ context.Context, s ChapterState) (string, error) {
-		if s.FindingProposal != nil {
+		if s.FindingProposal != nil || s.ReviewPending {
 			return compose.END, nil
 		}
 		return "critic", nil

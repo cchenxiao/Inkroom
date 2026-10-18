@@ -134,7 +134,14 @@ function Desk({
     !!plan?.confirmed &&
     sameChapterPlanVersions(plan.versions, chapterPlanVersions(planning));
   const instructionOwner = useId();
-  const writer = usePlannedWriting(chapterId, beatId, !ready || planningError, instructionOwner);
+  const draftOwner = useId();
+  const writer = usePlannedWriting(
+    chapterId,
+    beatId,
+    !ready || planningError,
+    instructionOwner,
+    draftOwner,
+  );
   const chapterBeats = plan?.content.scenes.flatMap((scene) => scene.beats) ?? [];
   const candidates = useChapterCandidates(
     chapterId,
@@ -146,7 +153,7 @@ function Desk({
       ? undefined
       : writer.draft.data?.draftVersion;
   const actions = useWritingActions(run, currentVersion);
-  const draft = useAuthorDraft(run?.id, run?.draftVersion);
+  const draft = useAuthorDraft(run?.id, run?.draftVersion, draftOwner);
   const [pendingSelection, setPendingSelection] = useState<
     (SelectedText & { beatId: string }) | null
   >(null);
@@ -211,6 +218,15 @@ function Desk({
       return;
     const action = acknowledged.operation.input;
     if (
+      action.type === 'save_edits' &&
+      action.edits &&
+      run.draftVersion > action.draftVersion &&
+      Object.entries(action.edits).every(([id, text]) =>
+        run.result?.segments.some((s) => s.id === id && s.text === text),
+      )
+    )
+      draft.acknowledgeEdits(run.id, action.draftVersion, action.edits);
+    if (
       action.type === 'inline_edit' &&
       action.segmentId &&
       draft.texts[action.segmentId] === action.text &&
@@ -233,6 +249,18 @@ function Desk({
     const request = writer.start.variables;
     if (
       writer.start.isSuccess &&
+      request?.edits &&
+      request.fromRunId &&
+      request.sourceVersion !== undefined &&
+      run?.id === request.requestId &&
+      run.result &&
+      Object.entries(request.edits).every(([id, text]) =>
+        run.result?.segments.some((s) => s.id === id && s.text === text),
+      )
+    )
+      draft.acknowledgeEdits(request.fromRunId, request.sourceVersion, request.edits);
+    if (
+      writer.start.isSuccess &&
       request?.rewrite &&
       request.fromRunId &&
       request.sourceVersion !== undefined
@@ -242,7 +270,7 @@ function Desk({
         request.sourceVersion,
         request.rewrite.instruction,
       );
-  }, [writer.start.isSuccess, writer.start.variables, instructionDraft]);
+  }, [writer.start.isSuccess, writer.start.variables, instructionDraft, draft, run]);
   const [confirmed, setConfirmed] = useState('');
   const [compact, setCompact] = useState(window.innerWidth < 1200);
   const [narrow, setNarrow] = useState(window.innerWidth < 600);
@@ -314,7 +342,22 @@ function Desk({
       writer.gate.data?.working?.runId === run?.id &&
       writer.gate.data?.working?.version === run?.draftVersion);
   const adoptedVersion = run?.commitId ? run.draftVersion : writer.gate.data?.adopted?.version;
-  const editable = actions.waiting && !busy && !stale && !run?.result?.findingProposal;
+  const directSave = actions.waiting && !stale && !actions.block('save_edits');
+  const forkSaveBlock = writer.revisionBlock(true, true);
+  const editable =
+    !!run?.result?.segments.length &&
+    !busy &&
+    !draft.stale &&
+    !run.dismissed &&
+    run.status !== 'running' &&
+    !run.result.findingProposal &&
+    (directSave || !forkSaveBlock);
+  const manualStart =
+    writer.start.variables?.edits &&
+    !run?.pendingAction &&
+    writer.start.variables.requestId === run?.id
+      ? writer.start.variables
+      : undefined;
   const sourceSegments = (run?.result?.segments ?? []).map((segment) =>
     run?.pendingAction?.type === 'inline_edit' && run.pendingAction.segmentId === segment.id
       ? { ...segment, text: run.pendingAction.text ?? segment.text }
@@ -353,7 +396,12 @@ function Desk({
         const texts = allTexts.filter((segment) => !segment.beatId || segment.beatId === b.id);
         const segments: Segment[] = texts.map((text) => ({
           id: text.id,
-          text: text.text,
+          text:
+            current && (writer.failedManual || (manualStart && run?.status === 'running'))
+              ? (writer.failedManual?.manualEdits?.[text.id] ??
+                manualStart?.edits?.[text.id] ??
+                text.text)
+              : text.text,
           version: text.version,
           chapterId,
           sceneId: s.id,
@@ -513,14 +561,16 @@ function Desk({
       (pendingSelection.action !== 'edit' && instructionDraft.stale)
     ) {
       setSelectionNotice(
-        run.commitId
-          ? '这是已采用稿。原稿保留；请用下方「重新生成本段」建立新候选，再修改、审核和采用。'
-          : '当前稿暂不可修改。请先处理版本或运行状态，再选择正文。',
+        draft.stale
+          ? '本地修改对应的版本已变化，请对照当前正文后再保存。'
+          : run.result?.findingProposal
+            ? '请先确认或放弃当前修改预览。'
+            : forkSaveBlock || actions.block('save_edits') || '当前操作正在进行，请等待完成。',
       );
       return;
     }
     if (draft.dirty && pendingSelection.action !== 'edit') {
-      setSelectionNotice('请先保存并复检正文，再发送修改要求。');
+      setSelectionNotice('请先保存正文修改，再发送修改要求。');
       return;
     }
     setSelectionNotice('');
@@ -559,14 +609,17 @@ function Desk({
     busy,
     instructionDraft,
     draft.dirty,
+    draft.stale,
+    actions,
+    forkSaveBlock,
   ]);
   // Model completion updates data, not the author's reading position or panel.
   const saveEdit = async () => {
-    const entry = Object.entries(draft.texts)[0];
-    if (!entry || !editable || draft.stale) return;
+    if (!draft.dirty || !editable || draft.stale) return;
     // An action receipt can arrive before the SSE snapshot with the saved text.
     // Keep the local text until the acknowledgement effect sees it in that snapshot.
-    await actions.edit(entry[0], entry[1]);
+    if (directSave) await actions.save(draft.texts);
+    else await writer.revise(undefined, draft.texts);
   };
   const startDisabled =
     !!block || !writer.gate.data?.ready || locked || busy || run?.status === 'running';
@@ -648,6 +701,8 @@ function Desk({
     !run.result.findingProposal;
   const rewriteInPlace =
     actions.waiting &&
+    !stale &&
+    !actions.block('propose_selection') &&
     (run?.planning?.neighborPolicy === 'working-v1' || run?.planning?.mode === 'chapter');
   const rewriteBlock = !canRewrite
     ? draft.dirty
@@ -675,11 +730,9 @@ function Desk({
     }
     try {
       const request = rewriteRequest(segment, instruction, quote);
-      if (quote) request.preview = true;
+      request.preview = true;
       const ok = await (rewriteInPlace
-        ? quote
-          ? actions.proposeSelection(request)
-          : actions.rewrite(request)
+        ? actions.proposeSelection(request)
         : writer.revise(request));
       if (ok) {
         instructionDraft.clear();
@@ -765,13 +818,15 @@ function Desk({
   const primaryLabel = writer.loading
     ? '读取中…'
     : run?.status === 'running'
-      ? selectionPreviewRunning
-        ? '正在生成选区预览'
-        : localActionRunning
-          ? run?.pendingAction?.type === 'propose_finding'
-            ? '正在生成修改预览'
-            : '正在保存局部处理'
-          : t.running
+      ? manualStart || run.pendingAction?.type === 'save_edits'
+        ? '正在保存修改'
+        : selectionPreviewRunning
+          ? '正在生成选区预览'
+          : localActionRunning
+            ? run?.pendingAction?.type === 'propose_finding'
+              ? '正在生成修改预览'
+              : '正在保存局部处理'
+            : t.running
       : run?.status === 'committed'
         ? t.assembly
         : run
@@ -1080,6 +1135,21 @@ function Desk({
             ))}
           <main className="route-content">
             <ReviewProgress run={run} />
+            {writer.failedManual && (
+              <section className="manuscript-edit-actions" aria-label="恢复正文保存">
+                <div className="manuscript-edit-summary">
+                  <strong>这次修改尚未保存，输入已保留</strong>
+                  <span>{readableMessage(run?.error, '保存未完成，请重试。')}</span>
+                </div>
+                <Button
+                  disabled={busy || !!forkSaveBlock}
+                  disabledReason={forkSaveBlock}
+                  onClick={() => void writer.retryManualSave()}
+                >
+                  重新保存这次修改
+                </Button>
+              </section>
+            )}
             {(localActionRunning || selectionPreviewRunning) && (
               <div className="writing-operation-progress" role="status" aria-label="局部处理进度">
                 {selectionPreviewRunning
@@ -1220,6 +1290,18 @@ function Desk({
                     });
                 }}
                 onSave={() => void saveEdit()}
+                reviewing={run?.status === 'running' && run.pendingAction?.type === 'review_batch'}
+                reviewPending={
+                  !inspection && !!run?.result?.reviewPending && !run.result.findingProposal
+                }
+                recheckBlock={
+                  contextReviewBlock ||
+                  (actions.waiting && !stale ? actions.block('review_batch') : '')
+                }
+                onRecheck={() => {
+                  if (actions.waiting && !stale) void actions.reviewBatch();
+                  else void writer.revise();
+                }}
                 onDiscard={draft.discard}
                 onRestore={draft.restorable && editable ? draft.restore : undefined}
                 saveBlockedReason={
@@ -1228,19 +1310,28 @@ function Desk({
                 saveError={
                   actions.mutation.isError &&
                   actions.mutation.variables?.operation.kind === 'action' &&
-                  actions.mutation.variables.operation.input.type === 'inline_edit'
+                  ['inline_edit', 'save_edits'].includes(
+                    actions.mutation.variables.operation.input.type,
+                  )
                     ? readableMessage(
                         actions.mutation.error?.message,
                         '保存未完成，修改仍保留，请重试。',
                       )
-                    : undefined
+                    : writer.start.isError && writer.start.variables?.edits
+                      ? readableMessage(
+                          writer.start.error?.message,
+                          '保存未完成，修改仍保留，请重试。',
+                        )
+                      : undefined
                 }
                 onRetrySave={
                   actions.pending?.operation.kind === 'action' &&
-                  actions.pending.operation.input.type === 'inline_edit' &&
+                  ['inline_edit', 'save_edits'].includes(actions.pending.operation.input.type) &&
                   !actions.mutation.isPending
                     ? actions.retry
-                    : undefined
+                    : writer.pendingStart?.edits && !writer.start.isPending
+                      ? writer.retryStart
+                      : undefined
                 }
                 onStart={start}
                 onReview={showReview}
@@ -1270,7 +1361,7 @@ function Desk({
                         ? draft.dirty || instructionDraft.dirty
                           ? '请先保存或放弃已有修改，再处理这条问题。'
                           : run?.commitId
-                            ? '这是已采用稿。请先在作者审核中生成新候选，再直接修改。'
+                            ? forkSaveBlock || '正在核对采用版本，请稍候。'
                             : stale
                               ? '相邻正文或当前稿已变化，更新审核后可继续修改。'
                               : '正在同步当前稿状态，请稍候。'
@@ -1289,12 +1380,12 @@ function Desk({
                                 ? '模型正在处理当前请求，完成后可继续修改。'
                                 : busy
                                   ? '当前请求尚未完成，请等待结果或重试原请求。'
-                                  : stale
-                                    ? '当前正文版本已变化，请更新状态后重新选择原文。'
+                                  : draft.stale
+                                    ? '本地修改版本已变化，请先对照当前正文。'
                                     : rewriteBlock
                     }
                     decisionBlock={
-                      !editable ||
+                      !!actions.block('finding_decision') ||
                       draft.dirty ||
                       instructionDraft.dirty ||
                       selectedFinding === 'author-request-review'
@@ -1310,11 +1401,7 @@ function Desk({
                     onEdit={async (replacement) => {
                       if (!editable || draft.dirty || instructionDraft.dirty) return false;
                       const f = run?.result?.report.findings.find((f) => f.id === selectedFinding);
-                      if (
-                        f &&
-                        ['P2', 'P3'].includes(f.severity) &&
-                        f.id !== 'author-request-review'
-                      ) {
+                      if (directSave && f && f.id !== 'author-request-review') {
                         const ok = await actions.editFinding(
                           selectedFinding,
                           findingRewrite(run, selectedFinding, '作者直接修改这处原文', false),
@@ -1324,16 +1411,18 @@ function Desk({
                         return ok;
                       }
                       const change = replaceFindingQuote(run, selectedFinding, replacement);
-                      return actions.edit(change.segmentId, change.text);
+                      return directSave
+                        ? actions.save({ [change.segmentId]: change.text })
+                        : writer.revise(undefined, { [change.segmentId]: change.text });
                     }}
                     onInstruct={async (instruction, whole) => {
-                      if (!canRewrite || stale || instructionDraft.dirty) return false;
+                      if (!canRewrite || draft.stale || instructionDraft.dirty) return false;
                       const ok = await submitFindingRewrite(
                         run,
                         selectedFinding,
                         instruction,
                         whole,
-                        actions.waiting,
+                        actions.waiting && !stale,
                         {
                           propose: actions.proposeFinding,
                           rewrite: actions.rewrite,
@@ -1345,12 +1434,7 @@ function Desk({
                         const finding = run?.result?.report.findings.find(
                           (f) => f.id === selectedFinding,
                         );
-                        if (
-                          !finding ||
-                          !['P2', 'P3'].includes(finding.severity) ||
-                          finding.id === 'author-request-review'
-                        )
-                          showReview();
+                        if (!finding || finding.id === 'author-request-review') showReview();
                       }
                       return ok;
                     }}
@@ -1481,11 +1565,13 @@ function Desk({
                           ? '正在保存局部处理，不会重新审核整段。'
                           : '正在生成或复检正文，完成后会停在这里等你判断。'
                       : draft.dirty
-                        ? '正文有你的修改，下一步保存并复检。'
+                        ? '正文有你的修改，请先保存；处理完后可统一复检。'
                         : adoptedCurrent
-                          ? run?.planning?.mode === 'chapter'
-                            ? '整章候选已采用，可进入整章复审。'
-                            : '本段已采用。可继续下一段，或进入整章审核。'
+                          ? !run?.commitId
+                            ? '本候选正文与已采用稿相同。可以继续修改，或返回已采用稿。'
+                            : run?.planning?.mode === 'chapter'
+                              ? '整章候选已采用，可进入整章复审。'
+                              : '本段已采用。可继续下一段，或进入整章审核。'
                           : run?.status === 'approved'
                             ? run.planning?.mode === 'chapter'
                               ? '整章候选已批准，核对事实后采用全部段落。'
@@ -1562,8 +1648,7 @@ function Desk({
                 {run?.result?.reviewPending && !stale && (
                   <section className="finding-batch-status" aria-label="待统一复审">
                     <p>
-                      已保存 {run.result.findingChanges?.length ?? 0}{' '}
-                      处局部修改。其余意见来自上一版，暂不重新编号；批准前需复审最新正文。
+                      修改已保存；可在修改对照中核对。现有意见保留供参考，批准前需复审最新正文。
                     </p>
                   </section>
                 )}
@@ -1827,8 +1912,12 @@ function Desk({
                 {adoptedCurrent ? (
                   <p>
                     <Check size={14} />{' '}
-                    {run?.planning?.mode === 'chapter' ? '整章候选已采用' : t.accepted} · v
-                    {adoptedVersion}
+                    {!run?.commitId
+                      ? '正文与已采用稿相同'
+                      : run?.planning?.mode === 'chapter'
+                        ? '整章候选已采用'
+                        : t.accepted}{' '}
+                    · v{adoptedVersion}
                   </p>
                 ) : run.status === 'running' || busy ? (
                   <p role="status">正在处理当前操作，已保存正文保留。</p>
@@ -1873,8 +1962,10 @@ function Desk({
                         !!run.result.findingProposal ||
                         draft.dirty ||
                         instructionDraft.dirty ||
-                        !actions.waiting
+                        !actions.waiting ||
+                        !!actions.block('review_batch')
                       }
+                      disabledReason={actions.block('review_batch')}
                       onClick={() => void actions.reviewBatch()}
                     >
                       统一复审当前稿
@@ -1915,9 +2006,10 @@ function Desk({
                             !actions.waiting ||
                             busy ||
                             instructionDraft.dirty ||
-                            !!run?.approvalBlock
+                            !!run?.approvalBlock ||
+                            !!actions.block('approve')
                           }
-                          disabledReason={run?.approvalBlock || t.stale}
+                          disabledReason={actions.block('approve') || run?.approvalBlock || t.stale}
                           onClick={() => void actions.approve()}
                         >
                           {run?.planning?.mode === 'chapter' ? '批准本批候选' : t.approve}
@@ -1930,9 +2022,10 @@ function Desk({
                             !actions.current ||
                             busy ||
                             instructionDraft.dirty ||
+                            !!actions.block('commit') ||
                             confirmed !== `${run?.id}:${run?.draftVersion}`
                           }
-                          disabledReason={run?.approvalBlock || '先批准当前候选并确认事实'}
+                          disabledReason={actions.block('commit') || '先批准当前候选并确认事实'}
                           onClick={() => void actions.commit()}
                         >
                           {run?.planning?.mode === 'chapter' ? '采用整章候选' : t.commit}
@@ -1941,7 +2034,7 @@ function Desk({
                     </div>
                   </>
                 )}
-                {run?.canDismiss && !adoptedCurrent && (
+                {run?.canDismiss && (
                   <Button
                     variant="ghost"
                     disabled={busy || locked || instructionDraft.dirty}

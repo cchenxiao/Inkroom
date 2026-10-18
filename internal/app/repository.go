@@ -34,6 +34,7 @@ type Run struct {
 	ActiveCalls       []model.CallRecord          `json:"activeCalls,omitempty"`
 	ActiveRoles       []string                    `json:"activeRoles"`
 	CanResume         bool                        `json:"canResume"`
+	ActionBlocks      map[string]string           `json:"actionBlocks"`
 	ApprovalBlock     string                      `json:"approvalBlock,omitempty"`
 	InstructionBlock  string                      `json:"instructionBlock,omitempty"`
 	PendingAction     *orchestration.HumanAction  `json:"pendingAction,omitempty"`
@@ -105,3 +106,10 @@ type HumanRepository interface {
 	CommitArtifact(context.Context, string, string, string, int, orchestration.ChapterState, string) error
 	Approve(context.Context, string, string, int) error
 }
+
+// ActionValidationError contains only our validated, author-facing reason.
+// Provider and database errors never enter this envelope.
+type ActionValidationError struct{ Reason string }
+
+func (e ActionValidationError) Error() string { return e.Reason }
+func (e ActionValidationError) Unwrap() error { return ErrGateBlocked }

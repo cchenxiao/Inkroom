@@ -42,7 +42,7 @@ it('refuses ambiguous quotes and oversize requests without silently changing sco
   expect(() => findingRewrite(run, 'f1', '字'.repeat(1000), true)).toThrow(/1000/);
 });
 
-it.each(['P2', 'P3'] as const)(
+it.each(['P0', 'P1', 'P2', 'P3'] as const)(
   'creates an isolated %s preview from an adopted manuscript without rechecking it first',
   async (severity) => {
     const adopted = structuredClone(run);
@@ -70,15 +70,22 @@ it.each(['P2', 'P3'] as const)(
     expect(adopted.result!.segments[0].text).toBe(run.result!.segments[0].text);
   },
 );
-it('keeps pending P2 edits on the existing version-bound local preview protocol', async () => {
-  const waiting = structuredClone(run);
-  waiting.status = 'waiting_human';
-  waiting.result!.report.findings[0].severity = 'P2';
-  const handlers = { propose: vi.fn().mockResolvedValue(true), rewrite: vi.fn(), revise: vi.fn() };
-  await submitFindingRewrite(waiting, 'f1', '只改这句', false, true, handlers);
-  expect(handlers.propose).toHaveBeenCalledWith(
-    'f1',
-    expect.objectContaining({ start: 3, end: 7 }),
-  );
-  expect(handlers.revise).not.toHaveBeenCalled();
-});
+it.each(['P0', 'P1', 'P2', 'P3'] as const)(
+  'keeps pending %s edits on the same preview protocol',
+  async (severity) => {
+    const waiting = structuredClone(run);
+    waiting.status = 'waiting_human';
+    waiting.result!.report.findings[0].severity = severity;
+    const handlers = {
+      propose: vi.fn().mockResolvedValue(true),
+      rewrite: vi.fn(),
+      revise: vi.fn(),
+    };
+    await submitFindingRewrite(waiting, 'f1', '只改这句', false, true, handlers);
+    expect(handlers.propose).toHaveBeenCalledWith(
+      'f1',
+      expect.objectContaining({ start: 3, end: 7 }),
+    );
+    expect(handlers.revise).not.toHaveBeenCalled();
+  },
+);

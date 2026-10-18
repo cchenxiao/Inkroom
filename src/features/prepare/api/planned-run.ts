@@ -21,6 +21,7 @@ export interface PlannedRunReadiness {
   runs: BackendRun[];
 }
 export interface PlannedRunRequest {
+  edits?: Record<string, string>;
   remaining?: boolean;
   enhancedContinuity?: boolean;
   mode?: 'beat' | 'chapter';

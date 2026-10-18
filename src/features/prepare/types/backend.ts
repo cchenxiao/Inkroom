@@ -6,6 +6,9 @@ export interface BackendRun extends Omit<RunState, 'status' | 'currentNode'> {
   canDismiss?: boolean;
   neighborsChanged?: boolean;
   planning?: {
+    manualEdits?: Record<string, string>;
+    fromRunId?: string;
+    sourceVersion?: number;
     targetBeatIds?: string[];
     remaining?: boolean;
     enhancedContinuity?: boolean;
@@ -45,6 +48,7 @@ export interface BackendRun extends Omit<RunState, 'status' | 'currentNode'> {
   activeCalls?: ModelCall[];
   status: RunState['status'] | 'needs_human' | 'stale' | 'interrupted' | 'approved' | 'committed';
   canResume: boolean;
+  actionBlocks?: Partial<Record<HumanAction['type'] | 'commit', string>>;
   approvalBlock?: string;
   instructionBlock?: string;
   pendingAction?: HumanAction;
@@ -233,11 +237,13 @@ export interface ModelCall {
 }
 
 export interface HumanAction {
+  edits?: Record<string, string>;
   id: string;
   type:
     | 'approve'
     | 'instruct'
     | 'inline_edit'
+    | 'save_edits'
     | 'rewrite'
     | 'finding_decision'
     | 'propose_selection'

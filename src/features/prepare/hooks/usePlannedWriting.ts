@@ -16,10 +16,12 @@ export function usePlannedWriting(
   beatId: string,
   editing: boolean,
   instructionOwner?: string,
+  draftOwner?: string,
 ) {
   const client = useQueryClient();
   const localEdit = useWritingLocked();
   const otherRevisionEdits = useWritingLocked(instructionOwner);
+  const otherSaveEdits = useWritingLocked(draftOwner);
   const planning = usePlanning();
   const [selection, setSelection] = useState<{ target: string; id: string | null } | null>(null);
   const target = chapterId + ':' + beatId;
@@ -222,7 +224,7 @@ export function usePlannedWriting(
   };
   // A rewrite consumes its own instruction draft. It must still respect every
   // other editor and unresolved request; rechecks consume no author input.
-  const revisionBlock = (rewriting = false) => {
+  const revisionBlock = (rewriting = false, saving = false) => {
     const reviewReady = !rewriting && run?.planning?.mode === 'chapter' ? chapterGate.data : ready;
     if (editing) return '请先完成创作准备。';
     if (
@@ -233,7 +235,7 @@ export function usePlannedWriting(
       (!rewriting && run?.planning?.mode === 'chapter' && chapterGate.isError)
     )
       return '暂时无法核对最新状态，请恢复连接并刷新后重试。';
-    if (rewriting ? otherRevisionEdits : localEdit)
+    if (saving ? otherSaveEdits : rewriting ? otherRevisionEdits : localEdit)
       return '还有其他未保存的修改或未完成请求，请先处理。';
     if (pendingStart || start.isPending || run?.status === 'running')
       return '当前操作尚未完成，请等待或重试原请求。';
@@ -242,10 +244,10 @@ export function usePlannedWriting(
       return reviewReady?.reason || '正在核对最新上下文，请稍候再试。';
     return '';
   };
-  const revise = async (rewrite?: AuthorRewrite) => {
-    const wholeChapter = !rewrite && run?.planning?.mode === 'chapter';
+  const revise = async (rewrite?: AuthorRewrite, edits?: Record<string, string>) => {
+    const wholeChapter = !rewrite && !edits && run?.planning?.mode === 'chapter';
     const reviewReady = wholeChapter ? chapterGate.data : ready;
-    if (revisionBlock(!!rewrite) || !reviewReady || !run) return false;
+    if (revisionBlock(!!rewrite || !!edits, !!edits) || !reviewReady || !run) return false;
     const request: PlannedRunRequest = {
       requestId: crypto.randomUUID(),
       chapterId,
@@ -258,7 +260,42 @@ export function usePlannedWriting(
       enhancedContinuity,
       fromRunId: run.id,
       sourceVersion: run.draftVersion,
-      ...(rewrite ? { rewrite } : { recheck: true }),
+      ...(edits ? { edits } : rewrite ? { rewrite } : { recheck: true }),
+    };
+    setPendingStart(request);
+    try {
+      await start.mutateAsync(request);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  const failedManual =
+    run?.planning?.manualEdits &&
+    !run.result?.segments.length &&
+    ['failed', 'interrupted'].includes(run.status)
+      ? run.planning
+      : undefined;
+  const retryManualSave = async () => {
+    if (
+      !failedManual?.fromRunId ||
+      !failedManual.sourceVersion ||
+      !ready ||
+      revisionBlock(true, true)
+    )
+      return false;
+    const request: PlannedRunRequest = {
+      requestId: crypto.randomUUID(),
+      chapterId,
+      beatId,
+      mode: 'beat',
+      fromRunId: failedManual.fromRunId,
+      sourceVersion: failedManual.sourceVersion,
+      edits: failedManual.manualEdits,
+      expected: ready.expected,
+      planVersion: ready.planVersion,
+      draftVersion: ready.draftVersion,
+      autoRevise: false,
     };
     setPendingStart(request);
     try {
@@ -269,6 +306,8 @@ export function usePlannedWriting(
     }
   };
   return {
+    failedManual,
+    retryManualSave,
     dismiss,
     chapterGate,
     beginChapter,

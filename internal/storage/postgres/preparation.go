@@ -104,7 +104,7 @@ func (s *Store) SealPreparedContext(ctx context.Context, id string, in manuscrip
 	if err != nil {
 		return err
 	}
-	if r.Status != "running" || r.CurrentNode != "context_assemble" || r.Lookup == nil || r.Lookup.Stop != "ready" {
+	if r.Status != "running" || r.CurrentNode != "context_assemble" || (len(base.Bundle.ManualEdits) == 0 && (r.Lookup == nil || r.Lookup.Stop != "ready")) {
 		return app.ErrGateBlocked
 	}
 	if existing, readErr := frozenContext(ctx, tx, id); r.Planning != nil {

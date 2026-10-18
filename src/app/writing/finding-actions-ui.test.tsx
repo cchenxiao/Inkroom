@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterAll, afterEach, beforeAll, expect, it } from 'vitest';
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
@@ -73,12 +73,12 @@ function Example({ local = false }: { local?: boolean }) {
               replacement,
             );
           const change = replaceFindingQuote(run, 'finding', replacement);
-          return actions.edit(change.segmentId, change.text);
+          return actions.save({ [change.segmentId]: change.text });
         }}
         onInstruct={async (instruction, whole) =>
           local
             ? actions.proposeFinding('finding', findingRewrite(run, 'finding', instruction, false))
-            : actions.rewrite(findingRewrite(run, 'finding', instruction, whole))
+            : actions.proposeFinding('finding', findingRewrite(run, 'finding', instruction, whole))
         }
         onApply={async (id) => actions.applyFinding(id)}
         onDiscard={async (id) => actions.discardFinding(id)}
@@ -134,22 +134,22 @@ it('submits versioned quote edits, model requests and reversible author decision
   await user.click(screen.getByRole('button', { name: '我来修改' }));
   await user.clear(screen.getByLabelText('替换为'));
   await user.type(screen.getByLabelText('替换为'), '新句。');
-  await user.click(screen.getByRole('button', { name: '保存修改并复检' }));
-  await screen.findByText('已提交，正在复检；完成后请核对新稿。');
+  await user.click(screen.getByRole('button', { name: '保存这处修改' }));
+  await screen.findByText('已提交局部修改，处理完其他问题后请统一复审。');
   expect(requests[0]).toMatchObject({
-    type: 'inline_edit',
-    segmentId: 'segment',
-    text: '前文。新句。后文。',
+    type: 'save_edits',
+    edits: { segment: '前文。新句。后文。' },
     draftVersion: 1,
   });
   await user.click(screen.getByRole('button', { name: '让模型修改' }));
-  await user.selectOptions(screen.getByLabelText('修改范围'), 'segment');
-  await user.click(screen.getByRole('button', { name: '发送给模型' }));
-  await screen.findByText('已提交，正在复检；完成后请核对新稿。');
+  expect(screen.queryByLabelText('修改范围')).not.toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: '生成修改预览' }));
+  await waitFor(() => expect(requests).toHaveLength(2));
   expect(requests[1]).toMatchObject({
-    type: 'rewrite',
+    type: 'propose_finding',
+    findingId: 'finding',
     draftVersion: 1,
-    rewrite: { segmentId: 'segment', start: 0, end: 9 },
+    rewrite: { segmentId: 'segment', start: 3, end: 6 },
   });
   expect(requests[1].rewrite?.instruction).toContain('动作衔接有误');
   await user.click(screen.getByRole('button', { name: '保留原文' }));
@@ -180,7 +180,7 @@ it('preserves the author input and reports version conflicts instead of silently
   await user.click(screen.getByRole('button', { name: '我来修改' }));
   await user.clear(screen.getByLabelText('替换为'));
   await user.type(screen.getByLabelText('替换为'), '保留输入');
-  await user.click(screen.getByRole('button', { name: '保存修改并复检' }));
+  await user.click(screen.getByRole('button', { name: '保存这处修改' }));
   await screen.findByText(/操作未提交/);
   expect(screen.getByLabelText('替换为')).toHaveValue('保留输入');
   cleanup();

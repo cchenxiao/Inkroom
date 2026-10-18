@@ -41,6 +41,10 @@ export function WritingManuscript({
   onFinding,
   onSelection,
   onSave,
+  reviewPending,
+  reviewing,
+  recheckBlock,
+  onRecheck,
   onDiscard,
   onRestore,
   saveBlockedReason,
@@ -74,6 +78,10 @@ export function WritingManuscript({
   onFinding: (id: string) => void;
   onSelection: (selection: SelectedText) => void;
   onSave: () => void;
+  reviewPending?: boolean;
+  reviewing?: boolean;
+  recheckBlock?: string;
+  onRecheck?: () => void;
   onDiscard?: () => void;
   onRestore?: () => void;
   saveBlockedReason?: string;
@@ -343,7 +351,7 @@ export function WritingManuscript({
               disabledReason={saveBlockedReason}
               onClick={onRetrySave ?? onSave}
             >
-              {onRetrySave ? t.retry : busy ? '正在保存…' : t.recheck}
+              {onRetrySave ? t.retry : busy ? '正在保存…' : '保存修改'}
             </Button>
           </div>
           {(saveError || saveBlockedReason) && (
@@ -351,6 +359,26 @@ export function WritingManuscript({
               {saveError || saveBlockedReason}
             </p>
           )}
+        </section>
+      )}
+      {!dirty && reviewPending && onRecheck && (
+        <section className="manuscript-edit-actions" aria-label="已保存待复检">
+          <div className="manuscript-edit-summary" role="status">
+            <strong>{reviewing ? '正在复检已保存正文' : '修改已保存 · 待复检'}</strong>
+            <span>
+              {reviewing
+                ? '正文保持不变，完成后查看审查结果。'
+                : '可以继续修改，处理完后统一复检。'}
+            </span>
+          </div>
+          <Button
+            size="sm"
+            disabled={busy || !!recheckBlock}
+            disabledReason={recheckBlock}
+            onClick={onRecheck}
+          >
+            {reviewing ? '正在复检…' : '复检当前稿'}
+          </Button>
         </section>
       )}
       {!dirty && onRestore && (

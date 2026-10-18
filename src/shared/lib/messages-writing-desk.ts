@@ -20,7 +20,7 @@ export const writingDesk = {
   candidate: '待审核候选',
   empty: '这一段还没有正文',
   emptyHint: '按当前情节生成候选，在正文旁审核后采用。',
-  saveLocal: '修改已暂存在本机，点击「保存并复检」提交',
+  saveLocal: '修改已暂存在本机，点击「保存修改」提交',
   saved: '稿件已保存',
   stale: '本段、相邻段正文或创作设定已变化，旧审核需要更新。你的修改仍保留，请按最新上下文复检。',
   discard: '放弃本地修改',

@@ -268,3 +268,80 @@ it('keeps the adopted working run after dismissing a newer candidate and refresh
   reopened.unmount();
   client.clear();
 });
+
+it.each(['stale', 'committed'])(
+  'submits %s manual saves with their own text, but blocks unrelated edits',
+  async (status) => {
+    const expected = {
+      planning: { input: 1, direction: 1, style: 1, core: 1 },
+      outline: 1,
+      bindings: 1,
+    };
+    const run = {
+      id: 'source',
+      chapterId: 'draft',
+      status,
+      draftVersion: 4,
+      planning: { mode: 'beat', planVersion: 1, expected },
+    } as unknown as BackendRun;
+    vi.spyOn(plannedRunApi, 'get').mockResolvedValue({
+      ready: true,
+      draftVersion: 4,
+      planVersion: 1,
+      expected,
+      runs: [run],
+    } as PlannedRunReadiness);
+    vi.spyOn(trialApi, 'get').mockResolvedValue(run);
+    vi.spyOn(plannedRunApi, 'draft').mockResolvedValue({
+      draftVersion: 4,
+      segments: [],
+    } as unknown as StoredDraft);
+    const start = vi
+      .spyOn(plannedRunApi, 'start')
+      .mockResolvedValue({ ...run, id: 'new', status: 'running' });
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const view = renderHook(
+      ({ other }) => {
+        const owner = useId();
+        useWritingPending(true, owner);
+        useWritingPending(other);
+        return usePlannedWriting('chapter', 'middle', false, undefined, owner);
+      },
+      {
+        initialProps: { other: true },
+        wrapper: ({ children }: { children: ReactNode }) => (
+          <QueryClientProvider client={client}>
+            <RouterProvider
+              router={createMemoryRouter([
+                { path: '/', element: <PendingWritingProvider>{children}</PendingWritingProvider> },
+              ])}
+            />
+          </QueryClientProvider>
+        ),
+      },
+    );
+    await waitFor(() => expect(view.result.current.run?.id).toBe('source'));
+    const edits = { s: '作者手工修改。' };
+    expect(view.result.current.revisionBlock(true, true)).toContain('其他未保存');
+    await act(async () => {
+      expect(await view.result.current.revise(undefined, edits)).toBe(false);
+    });
+    expect(start).not.toHaveBeenCalled();
+    view.rerender({ other: false });
+    await waitFor(() => expect(view.result.current.revisionBlock(true, true)).toBe(''));
+    expect(view.result.current.revisionBlock()).toContain('其他未保存');
+    await act(async () => {
+      expect(await view.result.current.revise(undefined, edits)).toBe(true);
+    });
+    expect(start).toHaveBeenCalledTimes(1);
+    expect(start.mock.calls[0][0]).toMatchObject({
+      fromRunId: 'source',
+      sourceVersion: 4,
+      edits,
+    });
+    expect(start.mock.calls[0][0]).not.toHaveProperty('recheck');
+    expect(start.mock.calls[0][0]).not.toHaveProperty('rewrite');
+    view.unmount();
+    client.clear();
+  },
+);

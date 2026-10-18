@@ -181,8 +181,15 @@ func (s *Store) StartPlannedRun(ctx context.Context, scope string, req app.Plann
 			}
 			if req.Rewrite != nil {
 				if e := req.Rewrite.Validate(frozen.Bundle.Original); e != nil {
-					err = fmt.Errorf("%w: %v", app.ErrInvalidWrite, e)
+					err = app.ActionValidationError{Reason: e.Error()}
 				}
+			}
+			if len(req.Edits) > 0 {
+				if _, e := manuscript.ApplyManualEdits(frozen.Bundle.Original, req.Edits); e != nil {
+					return r, false, app.ActionValidationError{Reason: e.Error()}
+				}
+				frozen.Bundle.ManualEdits = req.Edits
+				frozen.Bundle.ManualSourceVersion = req.SourceVersion
 			}
 			frozen.Bundle.Rewrite = req.Rewrite
 			if req.Recheck {
@@ -206,6 +213,7 @@ func (s *Store) StartPlannedRun(ctx context.Context, scope string, req app.Plann
 	}
 	source := &app.PlannedRunSource{Publications: frozen.Bundle.WritingTask.Publications, EnhancedContinuity: req.EnhancedContinuity, NeighborPolicy: "working-v1", Mode: req.Mode, Neighbors: frozen.Bundle.Neighbors, Knowledge: frozen.Bundle.WritingTask.Knowledge, Scope: scope, ChapterID: p.ChapterID, BeatID: frozen.Bundle.Beat.ID, Expected: versions, PlanVersion: p.Version}
 	source.FromRunID, source.SourceVersion = req.FromRunID, req.SourceVersion
+	source.ManualEdits = req.Edits
 	source.Remaining = req.Remaining
 	if req.Mode == "chapter" {
 		for _, t := range frozen.Bundle.Targets {

@@ -139,3 +139,50 @@ func TestAuthorSelectionWithoutFindingPreservesOtherIssues(t *testing.T) {
 		t.Fatal("author selection did not retain surrounding prose and issues")
 	}
 }
+
+func TestHardFindingsUsePreviewWithoutWeakeningApproval(t *testing.T) {
+	for _, severity := range []review.Severity{review.P0, review.P1} {
+		s := localFindingState()
+		s.Report.Findings[0].Severity = severity
+		a := HumanAction{ID: "preview", Type: "propose_finding", FindingID: "f1", DraftVersion: s.DraftVersion, Rewrite: localRequest(s, "f1")}
+		out, err := applyFindingAction(context.Background(), s, a, model.NewFake([]model.Step{{Role: "planned_writer", Content: `{"text":"甲说"}`}}))
+		if err != nil || out.FindingProposal == nil || !reflect.DeepEqual(out.Segments, s.Segments) {
+			t.Fatal("hard finding has no preview", err)
+		}
+		out, err = applyFindingAction(context.Background(), out, HumanAction{Type: "apply_finding", ProposalID: "preview"}, model.NewFake(nil))
+		if err != nil || !out.ReviewPending || ApprovalReason(out) == "" || out.Report.Findings[0].Severity != severity {
+			t.Fatal("hard finding bypassed approval", err)
+		}
+	}
+}
+
+func TestManualSavesRetainWorklistUntilExplicitReview(t *testing.T) {
+	ctx := context.Background()
+	initial := localFindingState()
+	current := initial
+	cp := decisionCheckpoints{}
+	artifacts := map[string]ChapterState{}
+	opts := HumanOptions{RunID: "manual-batch", Checkpoints: cp, Usage: func() model.Usage { return model.Usage{Known: true} }, Pause: func(s ChapterState, _ string) { current = s }, Load: func(_ context.Context, k string) (ChapterState, bool, error) {
+		s, ok := artifacts[k]
+		return s, ok, nil
+	}, Save: func(_ context.Context, k string, _ int, s ChapterState, _ string) error { artifacts[k] = s; return nil }}
+	run := func(a *HumanAction, chat model.ChatModel) {
+		t.Helper()
+		opts.Action = a
+		_, e := RunHuman(ctx, current, chat, opts)
+		if _, ok := compose.ExtractInterruptInfo(e); !ok {
+			t.Fatal("gate not restored", e)
+		}
+	}
+	run(nil, model.NewFake(nil))
+	for i, text := range []string{"作者保存第一版。", "作者继续修改第二版。"} {
+		run(&HumanAction{ID: []string{"one", "two"}[i], Type: "save_edits", DraftVersion: current.DraftVersion, Edits: map[string]string{"segment": text}}, model.NewFake(nil))
+		if current.Segments[0].Text != text || !reflect.DeepEqual(current.Report, initial.Report) || !current.ReviewPending || ApprovalReason(current) == "" {
+			t.Fatal("save discarded worklist or bypassed approval")
+		}
+	}
+	run(&HumanAction{ID: "review", Type: "review_batch", DraftVersion: current.DraftVersion}, model.NewFake([]model.Step{{Role: "hard_consistency", Content: `{"findings":[]}`}, {Role: "ai_taste", Content: `{"findings":[]}`}}))
+	if current.ReviewPending || current.Report.DraftVersion != 3 || ApprovalReason(current) != "" || len(current.Revisions) != 2 {
+		t.Fatal("explicit review did not finish", current)
+	}
+}

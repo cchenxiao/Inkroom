@@ -121,6 +121,14 @@ func (b ContextBundle) Freeze() (ContextBundle, error) {
 			return frozen, fmt.Errorf("invalid neighboring passage")
 		}
 	}
+	if len(b.ManualEdits) > 0 {
+		if b.Rewrite != nil {
+			return frozen, fmt.Errorf("手工保存不能同时要求模型重写")
+		}
+		if _, err := ApplyManualEdits(b.Original, b.ManualEdits); err != nil {
+			return frozen, err
+		}
+	}
 	if b.Rewrite != nil {
 		if err := b.Rewrite.Validate(b.Original); err != nil {
 			return frozen, err
