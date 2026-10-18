@@ -237,3 +237,54 @@ it('does not show an adoption failure on a different paragraph', async () => {
   client.clear();
   spy.mockRestore();
 });
+
+it('adopts the clicked candidate instead of another active beat and deduplicates rapid clicks', async () => {
+  const active = {
+    id: 'active',
+    status: 'approved',
+    draftVersion: 1,
+    inputDigest: 'active-digest',
+  } as BackendRun;
+  const target = {
+    id: 'clicked',
+    status: 'approved',
+    draftVersion: 4,
+    inputDigest: 'clicked-digest',
+  } as BackendRun;
+  const get = vi.spyOn(trialApi, 'get').mockResolvedValue(target);
+  const finalize = vi.spyOn(trialApi, 'finalize').mockResolvedValue({} as never);
+  function Probe() {
+    const actions = useWritingActions(active, 1);
+    return (
+      <button
+        onClick={() => {
+          void actions.adopt(target, 4);
+          void actions.adopt(target, 4);
+        }}
+      >
+        采用另一段
+      </button>
+    );
+  }
+  const client = new QueryClient();
+  const view = render(
+    <QueryClientProvider client={client}>
+      <Probe />
+    </QueryClientProvider>,
+  );
+  await userEvent.click(screen.getByRole('button', { name: '采用另一段' }));
+  await waitFor(() => expect(finalize).toHaveBeenCalledTimes(1));
+  expect(finalize).toHaveBeenCalledWith(
+    'clicked',
+    expect.objectContaining({
+      draftVersion: 4,
+      inputDigest: 'clicked-digest',
+      factsConfirmed: true,
+    }),
+  );
+  expect(get).not.toHaveBeenCalledWith('active');
+  view.unmount();
+  client.clear();
+  get.mockRestore();
+  finalize.mockRestore();
+});

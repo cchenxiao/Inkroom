@@ -1157,3 +1157,21 @@
   margin-top: 12px;
   line-height: 1.7;
 }
+
+/* Keep the primary action visually distinct from the beat title and review link. */
+.writing-shell .writing-beat .writing-beat-heading button.manuscript-adopt {
+  background: var(--ai);
+  color: var(--on-accent);
+  padding: 5px 10px;
+  border-radius: 6px;
+  text-align: center;
+}
+.manuscript-action-notice {
+  padding: 10px 16px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.manuscript-action-notice p {
+  margin: 0;
+}

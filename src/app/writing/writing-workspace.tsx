@@ -1,3 +1,4 @@
+import { adoptionBlock, adoptionLabel } from '@/features/prepare/api/candidate-adoption';
 import { ChapterContinuation } from './chapter-continuation';
 import { savedChanges, SavedChangeCard, type SavedChange } from './saved-changes';
 import { SelectionRewritePreview } from './selection-rewrite-preview';
@@ -283,7 +284,7 @@ function Desk({
         request.rewrite.instruction,
       );
   }, [writer.start.isSuccess, writer.start.variables, instructionDraft, draft, run]);
-  const [confirmed, setConfirmed] = useState('');
+  const [reviewRequest, setReviewRequest] = useState(0);
   const [compact, setCompact] = useState(window.innerWidth < 1200);
   const [narrow, setNarrow] = useState(window.innerWidth < 600);
   const [mobileStructure, setMobileStructure] = useState(false);
@@ -325,7 +326,6 @@ function Desk({
     setEditOnOpen(null);
     setResumeFinding(null);
     setRewriteFeedback('');
-    setConfirmed('');
   }, [beatId]);
   const assembly = useQuery({
     queryKey: ['chapter-assembly', chapterId, {}],
@@ -433,7 +433,28 @@ function Desk({
             repeatedPhrases: [],
           },
         }));
+        const target = current
+          ? run
+          : (candidateQuery?.data?.runs.find((item) => item.id === working?.runId) ?? candidate);
+        const targetVersion = current
+          ? currentVersion
+          : (working?.version ?? candidate?.draftVersion);
         return {
+          adoption: {
+            label: adoptionLabel(target),
+            block:
+              !ready || planningError
+                ? t.prerequisite
+                : locked || busy
+                  ? '请先处理当前修改或运行。'
+                  : adoptionBlock(target, targetVersion),
+            onAdopt: () => {
+              if (!ready || planningError || locked || busy || adoptionBlock(target, targetVersion))
+                return;
+              selectBeat(b.id, false);
+              void actions.adopt(target, targetVersion);
+            },
+          },
           id: b.id,
           title: b.title,
           segments,
@@ -498,11 +519,18 @@ function Desk({
   }));
   const selectFinding = (id: string) => {
     setEditOnOpen(null);
-    setSelectedFinding(id);
+    setSelectedFinding((current) => (current === id ? null : id));
     if (compact) setSide(null);
   };
+  useEffect(() => {
+    if (!reviewRequest || side !== 'review') return;
+    const panel = reviewPanel.current?.querySelector<HTMLElement>('.writing-review-scroll');
+    if (panel) panel.scrollTop = 0;
+    panel?.querySelector<HTMLElement>('[data-review-title]')?.focus({ preventScroll: true });
+  }, [reviewRequest, side, beatId, writer.loading]);
   const showReview = (targetBeat?: string) => {
     if (targetBeat && targetBeat !== beatId && (locked || busy)) return;
+    setReviewRequest((value) => value + 1);
     setInspection(null);
     setParams(
       (current) => {
@@ -850,7 +878,7 @@ function Desk({
       : run?.status === 'committed'
         ? t.assembly
         : run
-          ? t.review
+          ? '查看审查意见'
           : continuingChapter
             ? '继续生成剩余段落'
             : '生成整章';
@@ -1336,6 +1364,17 @@ function Desk({
                       action: 'edit',
                     });
                 }}
+                actionNotice={
+                  actions.mutation.variables?.operation.kind === 'adopt' &&
+                  (actions.busy ? (
+                    <p role="status">正在采用候选，完成后会更新正文状态…</p>
+                  ) : actions.mutation.isError ? (
+                    <div role="alert">
+                      {actions.mutation.error?.message}
+                      {actions.pending && <Button onClick={actions.retry}>重试本次采用</Button>}
+                    </div>
+                  ) : null)
+                }
                 onFinding={selectFinding}
                 onSelection={selectText}
                 onRewrite={(id) => {
@@ -1631,8 +1670,8 @@ function Desk({
                 aria-label="当前稿与下一步"
                 aria-live="polite"
               >
-                <strong>
-                  {run?.planning?.mode === 'chapter' ? chapter?.title : beat?.title || '当前情节段'}
+                <strong tabIndex={-1} data-review-title>
+                  {beat?.title || '当前情节段'} · 审查意见
                   {run ? ` · v${run.draftVersion}` : ''}
                 </strong>
                 <p>
@@ -1663,7 +1702,7 @@ function Desk({
                               : run?.result?.reviewPending
                                 ? '局部修改已保存。可继续处理其他问题，完成后统一复审。'
                                 : actions.waiting
-                                  ? '核对正文，提出修改或批准当前稿。'
+                                  ? '核对正文与审查意见后可直接采用，或继续修改。'
                                   : reason || '生成候选后，在正文旁完成审核。'}
                 </p>
                 {!!writer.gate.data?.adopted && !adoptedCurrent && (
@@ -1767,8 +1806,25 @@ function Desk({
                     .join('；')}
                 </p>
               )}
+              <p className="muted">这里查看已有的审查意见，不会重新运行检查。</p>
+              {!!run?.result &&
+                !reviewFailure &&
+                run.status !== 'running' &&
+                !findings.some(
+                  (f) =>
+                    f.status === 'open' &&
+                    parts
+                      .find((p) => p.id === beatId)
+                      ?.segments.some((segment) => segment.id === f.segmentId),
+                ) &&
+                !writer.loading && <p>本段没有待处理的审查意见。</p>}
               <div className="writing-findings">
                 {findings
+                  .filter((f) =>
+                    parts
+                      .find((p) => p.id === beatId)
+                      ?.segments.some((segment) => segment.id === f.segmentId),
+                  )
                   .filter((f) => f.id !== 'author-request-review' && f.status === 'open')
                   .map((f) => (
                     <button key={f.id} onClick={() => selectFinding(f.id)}>
@@ -2048,21 +2104,6 @@ function Desk({
                   <p>本次检查未完成，请在上方失败说明中查看原因并重试。</p>
                 ) : (
                   <>
-                    {run?.status === 'approved' && (
-                      <label className="writing-check">
-                        <input
-                          type="checkbox"
-                          checked={confirmed === `${run?.id}:${run?.draftVersion}`}
-                          disabled={!actions.current || busy}
-                          onChange={(e) =>
-                            setConfirmed(e.target.checked ? `${run?.id}:${run?.draftVersion}` : '')
-                          }
-                        />
-                        {run?.planning?.mode === 'chapter'
-                          ? '我已核对本批段落的事实与台词含义。'
-                          : '我已核对本段的事实与台词含义。'}
-                      </label>
-                    )}
                     {instructionDraft.dirty && (
                       <p className="muted">还有未发送的修改要求，请先发送或清空。</p>
                     )}
@@ -2071,39 +2112,20 @@ function Desk({
                         {readableMessage(run.approvalBlock, '请先处理检查结果再批准。')}
                       </p>
                     )}
+                    <p className="muted">点击采用，即确认已核对正文、事实与台词含义。</p>
                     <div className="page-actions">
-                      {run?.status !== 'approved' ? (
-                        <Button
-                          variant="default"
-                          disabled={
-                            !actions.waiting ||
-                            busy ||
-                            instructionDraft.dirty ||
-                            !!run?.approvalBlock ||
-                            !!actions.block('approve')
-                          }
-                          disabledReason={actions.block('approve') || run?.approvalBlock || t.stale}
-                          onClick={() => void actions.approve()}
-                        >
-                          {run?.planning?.mode === 'chapter' ? '批准本批候选' : t.approve}
-                        </Button>
-                      ) : (
-                        <Button
-                          variant="default"
-                          disabled={
-                            run?.status !== 'approved' ||
-                            !actions.current ||
-                            busy ||
-                            instructionDraft.dirty ||
-                            !!actions.block('commit') ||
-                            confirmed !== `${run?.id}:${run?.draftVersion}`
-                          }
-                          disabledReason={actions.block('commit') || '先批准当前候选并确认事实'}
-                          onClick={() => void actions.commit()}
-                        >
-                          {run?.planning?.mode === 'chapter' ? '采用本批候选' : t.commit}
-                        </Button>
-                      )}
+                      <Button
+                        variant="default"
+                        disabled={busy || locked || !!adoptionBlock(run, currentVersion)}
+                        disabledReason={
+                          adoptionBlock(run, currentVersion) || '请先处理未保存的修改。'
+                        }
+                        onClick={() => {
+                          if (!busy && !locked) void actions.adopt();
+                        }}
+                      >
+                        {adoptionLabel(run)}
+                      </Button>
                     </div>
                   </>
                 )}

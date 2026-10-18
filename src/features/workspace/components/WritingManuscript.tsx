@@ -20,6 +20,7 @@ export interface ManuscriptPart {
   loading?: boolean;
   loadError?: boolean;
   onRetry?: () => void;
+  adoption?: { label: string; block: string; onAdopt: () => void };
 }
 export function WritingManuscript({
   parts,
@@ -34,6 +35,7 @@ export function WritingManuscript({
   dirty,
   blocked,
   reviewNotice,
+  actionNotice,
   editRequest,
   busy,
   onChange,
@@ -77,6 +79,7 @@ export function WritingManuscript({
   dirty: boolean;
   blocked: string;
   reviewNotice?: ReactNode;
+  actionNotice?: ReactNode;
   editRequest?: { segmentId: string; quote: string; requestId: number };
   busy: boolean;
   onChange: (id: string, text: string) => void;
@@ -219,6 +222,7 @@ export function WritingManuscript({
         </div>
       )}
       {reviewNotice}
+      {actionNotice && <div className="manuscript-action-notice">{actionNotice}</div>}
       {blocked && (
         <div className="manuscript-alert" role="alert">
           {blocked}
@@ -268,7 +272,19 @@ export function WritingManuscript({
                             onReview(part.id);
                           }}
                         >
-                          审核
+                          查看审查意见
+                        </Button>
+                      )}
+                      {!snapshot && !part.accepted && part.adoption && (
+                        <Button
+                          size="sm"
+                          variant="default"
+                          className="manuscript-adopt"
+                          disabled={dirty || busy || !!part.adoption.block}
+                          disabledReason={part.adoption.block || '请先处理当前修改或运行。'}
+                          onClick={part.adoption.onAdopt}
+                        >
+                          {part.adoption.label}
                         </Button>
                       )}
                     </div>
@@ -313,6 +329,7 @@ export function WritingManuscript({
                             !busy &&
                             part.id !== activeBeat &&
                             (event.target as HTMLElement).closest('.tiptap') &&
+                            !(event.target as HTMLElement).closest('[data-finding-id]') &&
                             !window.getSelection()?.toString()
                           ) {
                             onSelectBeat(part.id, false);
@@ -367,6 +384,7 @@ export function WritingManuscript({
           scrollRef={scrollRef}
           findings={mode === 'final' ? [] : findings}
           onSelect={onFinding}
+          selectedFinding={selectedFinding}
           revision={parts.map((p) => p.segments.map((s) => s.version).join()).join()}
         />
       </div>

@@ -1,17 +1,24 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { ApiError } from '@/shared/api/client';
 import { useWritingPending } from '@/shared/lib/pending-writing';
 import { trialApi } from '../api/backend';
+import { adoptCandidate, adoptionBlock, type AdoptionOperation } from '../api/candidate-adoption';
 import { newerRun } from '../api/run-events';
 import type { AuthorRewrite, BackendRun, HumanAction, FinalizeInput } from '../types/backend';
 type Request = { runId: string; operation: Operation };
-type Operation = { kind: 'action'; input: HumanAction } | { kind: 'commit'; input: FinalizeInput };
+type Operation =
+  | { kind: 'action'; input: HumanAction }
+  | { kind: 'commit'; input: FinalizeInput }
+  | AdoptionOperation;
 export function useWritingActions(run: BackendRun | undefined, currentVersion?: number) {
   const client = useQueryClient();
   const [pending, setPending] = useState<Request | null>(null);
+  const submitting = useRef(false);
   const mutation = useMutation({
     mutationFn: async (request: Request) => {
+      if (request.operation.kind === 'adopt')
+        return adoptCandidate(request.runId, request.operation);
       if (request.operation.kind === 'commit') {
         await trialApi.finalize(request.runId, request.operation.input);
         return trialApi.get(request.runId);
@@ -53,13 +60,19 @@ export function useWritingActions(run: BackendRun | undefined, currentVersion?: 
       return false;
     if (operation.kind === 'action' && operation.input.type === 'instruct' && run.instructionBlock)
       return false;
-    const request = { runId: run.id, operation };
+    return submit({ runId: run.id, operation });
+  };
+  const submit = async (request: Request) => {
+    if (submitting.current || pending || mutation.isPending) return false;
+    submitting.current = true;
     setPending(request);
     try {
       await mutation.mutateAsync(request);
       return true;
     } catch {
       return false;
+    } finally {
+      submitting.current = false;
     }
   };
   const action = (input: Omit<HumanAction, 'id' | 'draftVersion'>) =>
@@ -100,6 +113,25 @@ export function useWritingActions(run: BackendRun | undefined, currentVersion?: 
     },
     busy: !!pending || mutation.isPending,
     approve: () => action({ type: 'approve' }),
+    adopt: (target = run, version = currentVersion) => {
+      if (!target || adoptionBlock(target, version)) return Promise.resolve(false);
+      return submit({
+        runId: target.id,
+        operation: {
+          kind: 'adopt',
+          approval:
+            target.status === 'waiting_human'
+              ? { id: crypto.randomUUID(), type: 'approve', draftVersion: target.draftVersion }
+              : undefined,
+          input: {
+            id: crypto.randomUUID(),
+            draftVersion: target.draftVersion,
+            inputDigest: target.inputDigest!,
+            factsConfirmed: true,
+          },
+        },
+      });
+    },
     proposeSelection: (rewrite: AuthorRewrite) => action({ type: 'propose_selection', rewrite }),
     proposeFinding: (findingId: string, rewrite: AuthorRewrite) =>
       action({ type: 'propose_finding', findingId, rewrite }),

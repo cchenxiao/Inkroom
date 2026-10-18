@@ -13,12 +13,14 @@ export function ManuscriptGutter({
   scrollRef,
   findings,
   onSelect,
+  selectedFinding,
   revision,
 }: {
   scrollRef: RefObject<HTMLDivElement>;
   findings: Finding[];
   onSelect: (id: string) => void;
   revision: string;
+  selectedFinding?: string | null;
 }) {
   const [lines, setLines] = useState<{ number: number; top: number }[]>([]);
   const [markers, setMarkers] = useState<Marker[]>([]);
@@ -113,6 +115,7 @@ export function ManuscriptGutter({
               key={f.id}
               className={`gutter-dot dot-${f.critic === 'reader' ? 'p3' : f.severity.toLowerCase()}`}
               aria-label={`${f.critic === 'reader' ? 'P3' : f.severity} ${m.critics[f.critic]} ${m.details}`}
+              aria-expanded={selectedFinding === f.id}
               title={f.reason}
               onClick={() => onSelect(f.id)}
             >
