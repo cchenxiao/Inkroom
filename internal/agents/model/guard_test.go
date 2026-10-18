@@ -77,3 +77,55 @@ func TestAuthorOperationBudgetKeepsHistoryAndBoundsResume(t *testing.T) {
 		t.Fatal("resume reset budget", err)
 	}
 }
+
+func TestConcurrentReservationWaitsForActualUsage(t *testing.T) {
+	g := NewGuard(&policyProbe{}, Limits{Calls: 3, Tokens: 1000})
+	if _, err := g.reserve(context.Background(), 700); err != nil {
+		t.Fatal(err)
+	}
+	done := make(chan error, 1)
+	go func() { _, err := g.reserve(context.Background(), 700); done <- err }()
+	select {
+	case err := <-done:
+		t.Fatalf("reservation rejected before active call settled: %v", err)
+	case <-time.After(20 * time.Millisecond):
+	}
+	g.mu.Lock()
+	g.reserved += 100 - 700
+	g.releaseLocked()
+	g.mu.Unlock()
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("waiting reservation stuck")
+	}
+	g.mu.Lock()
+	g.releaseLocked() // unknown usage keeps the full reservation
+	g.mu.Unlock()
+	if _, err := g.reserve(context.Background(), 700); err != ErrBudgetExhausted {
+		t.Fatal("exceeded settled budget", err)
+	}
+}
+
+func TestWaitingReservationCanBeCanceled(t *testing.T) {
+	g := NewGuard(&policyProbe{}, Limits{Calls: 3, Tokens: 1000})
+	_, _ = g.reserve(context.Background(), 700)
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() { _, err := g.reserve(ctx, 700); done <- err }()
+	cancel()
+	select {
+	case err := <-done:
+		if err != context.Canceled {
+			t.Fatal(err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("cancellation stuck")
+	}
+	if g.budgetCalls != 1 {
+		t.Fatal("waiting call consumed budget")
+	}
+}

@@ -20,13 +20,20 @@ export function QualitySummary({
     run.status === 'failed'
       ? undefined
       : reviews?.find((r) => r.critic === 'hard_consistency')?.continuity;
-  if (!length && !continuity?.length) return null;
+  const comparison = run.result?.reviewComparison;
+  if (!length && !continuity?.length && !comparison) return null;
   const issues = continuity?.filter((c) => c.status !== 'clear').length || 0;
   return (
     <section className="writing-quality-summary" aria-label="篇幅与衔接">
+      {comparison && comparison.toVersion === run.draftVersion && (
+        <p>
+          与上轮对比：新增 {comparison.added} 条 · 原引用仍有意见 {comparison.continued} 条 ·
+          本轮未再报出 {comparison.notRepeated} 条。未再报出不等于作者确认已解决。
+        </p>
+      )}
       {length && (
         <p className={length.status === 'within' ? 'muted' : 'writing-length-notice'}>
-          {length.scope === 'chapter' ? '全章' : '本段'}{' '}
+          {length.scope === 'chapter' ? '本批候选' : '本段'}{' '}
           <span className="stat-number">{length.actual.toLocaleString()}</span> 字 · 目标{' '}
           <span className="stat-number">{length.target.toLocaleString()}</span> 字
           {length.status !== 'within' && (

@@ -91,3 +91,10 @@ it('explains an unmatched author-check quote and preserves the successful parall
   await userEvent.click(screen.getByRole('button'));
   expect(retry).toHaveBeenCalledTimes(1);
 });
+
+it('offers recovery when a saved draft is waiting for the author after failed critics', () => {
+  render(
+    <ReviewFailure run={{ ...run, status: 'waiting_human' }} onRetry={vi.fn()} disabled={false} />,
+  );
+  expect(screen.getByRole('button', { name: '保留正文，重新检查整章' })).toBeEnabled();
+});

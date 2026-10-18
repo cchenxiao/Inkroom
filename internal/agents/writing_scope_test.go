@@ -107,3 +107,28 @@ func TestSingleBeatWriterKeepsEndingAndDoesNotConsumeChapterOutcome(t *testing.T
 		t.Fatal("mutated frozen chapter plan")
 	}
 }
+
+func TestLocalRewriteRejectsCopiedNeighborSentence(t *testing.T) {
+	prefix, selected, suffix := "他把笔记本放在桌上。", "需要修改的复述。", "陆青那边也是这样。话往外推。"
+	ss := []manuscript.Segment{{ID: "s", Text: prefix + selected + suffix, Version: 1}}
+	req := manuscript.AuthorRewrite{SegmentID: "s", Original: ss[0].Text, Start: len([]rune(prefix)), End: len([]rune(prefix + selected)), Instruction: "删除复述，直接接下文"}
+	for _, replacement := range []string{suffix, prefix + "新句。"} {
+		raw, _ := json.Marshal(map[string]string{"text": replacement})
+		chat := model.NewFake([]model.Step{{Role: "planned_writer", Content: string(raw)}})
+		if _, _, err := RewriteAuthor(context.Background(), chat, ss, manuscript.ContextBundle{}, req); err == nil || !strings.Contains(err.Error(), "选区外") {
+			t.Fatal(err)
+		}
+	}
+	chat := &scopeRecorder{next: model.NewFake([]model.Step{{Role: "planned_writer", Content: `{"text":""}`}})}
+	got, _, err := RewriteAuthor(context.Background(), chat, ss, manuscript.ContextBundle{}, req)
+	if err != nil || got[0].Text != prefix+suffix {
+		t.Fatal(got, err)
+	}
+	var input map[string]any
+	if err = json.Unmarshal(chat.inputs[0].Material, &input); err != nil {
+		t.Fatal(err)
+	}
+	if input["selectedText"] != selected || input["readOnlyAfter"] != suffix || input["readOnlyBefore"] != prefix {
+		t.Fatal(input)
+	}
+}

@@ -35,6 +35,7 @@ func localRequest(s ChapterState, id string) *manuscript.AuthorRewrite {
 func TestLocalFindingPreviewBatchPreservesWorklistAndOnlyReviewsOnRequest(t *testing.T) {
 	ctx := context.Background()
 	initial := localFindingState()
+	initial.Report.Findings[0].Severity = review.P2
 	current := initial
 	cp := decisionCheckpoints{}
 	artifacts := map[string]ChapterState{}
@@ -88,6 +89,9 @@ func TestLocalFindingPreviewBatchPreservesWorklistAndOnlyReviewsOnRequest(t *tes
 		t.Fatal("keep bypassed batch review")
 	}
 	run(&HumanAction{ID: "review", Type: "review_batch", DraftVersion: 3}, model.NewFake([]model.Step{{Role: "hard_consistency", Content: `{"findings":[]}`}, {Role: "ai_taste", Content: `{"findings":[]}`}}))
+	if len(current.Revisions) != 2 || current.Revisions[0].Patches[0].OldText != "甲说完，又补了半句" || current.Revisions[0].Patches[0].NewText != "甲又说了半句" {
+		t.Fatal("local diff lost after review", current.Revisions)
+	}
 	if current.ReviewPending || current.FindingChanges != nil || FindingKept(current, "f3") || current.Report.DraftVersion != 3 || ApprovalReason(current) != "" {
 		t.Fatalf("full review did not clear gate: %s", ApprovalReason(current))
 	}

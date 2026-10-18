@@ -17,6 +17,7 @@ type WritingTask struct {
 	// ExperimentalContinuity is frozen per run; planned requests opt in explicitly, default off.
 	ExperimentalContinuity bool `json:"experimentalContinuity,omitempty"`
 	// Soft length guidance derived from the confirmed chapter and its Beat count.
+	PreservedWords     int                  `json:"preservedWords,omitempty"`
 	ChapterTargetWords int                  `json:"chapterTargetWords,omitempty"`
 	BeatTargetWords    int                  `json:"beatTargetWords,omitempty"`
 	Knowledge          *memory.KnowledgeRef `json:"knowledge,omitempty"`

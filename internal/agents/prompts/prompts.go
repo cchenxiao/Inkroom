@@ -75,7 +75,8 @@ func render(in model.Input, candidate string) (model.Input, error) {
 	default:
 		return in, fmt.Errorf("unsupported prompt role %q", name)
 	}
-	// Author corrections and verification use thinking. Experimental object
+	// Bounded replacements use direct generation; reasoning can consume the entire
+	// output allowance before a tiny replacement is returned. Experimental object
 	// checks retain thinking; the character pass uses normal generation.
 	in.Thinking = false
 	var narrative struct {
@@ -90,7 +91,7 @@ func render(in model.Input, candidate string) (model.Input, error) {
 			AuthorRequest *json.RawMessage `json:"authorRequest"`
 		}
 		if json.Unmarshal(in.Material, &material) == nil {
-			in.Thinking = (name == "planned_writer" && material.Rewrite != nil) || (name == "hard_consistency" && (material.AuthorRequest != nil || (continuityPass && narrative.Focus != "characters")))
+			in.Thinking = (name == "hard_consistency" && (material.AuthorRequest != nil || (continuityPass && narrative.Focus != "characters")))
 		}
 	}
 	if in.Purpose == model.Repair {
@@ -110,6 +111,9 @@ func render(in model.Input, candidate string) (model.Input, error) {
 			promptVersion = "hard_consistency.v13"
 		}
 	}
+	if name == "story_architect" {
+		promptVersion = "story_architect.v2"
+	}
 	if name == "showrunner" {
 		promptVersion = "showrunner.v2"
 	}
@@ -117,7 +121,7 @@ func render(in model.Input, candidate string) (model.Input, error) {
 		promptVersion = "chapter_facts.v3"
 	}
 	if name == "planned_writer" {
-		promptVersion = "planned_writer.v8"
+		promptVersion = "planned_writer.v9"
 	}
 	if name == "writer" {
 		promptVersion = "writer.v2"

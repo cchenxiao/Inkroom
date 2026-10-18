@@ -32,3 +32,19 @@ func (s *service) bookArchive(w http.ResponseWriter, r *http.Request) {
 	}
 	send(w, 200, out)
 }
+
+func (s *service) bookQuality(w http.ResponseWriter, r *http.Request) {
+	repo, ok := s.repo.(interface {
+		BookQuality(context.Context, string) (app.BookQuality, error)
+	})
+	if !ok {
+		fail(w, 503, "reports_unavailable", "质量评测存储暂不可用")
+		return
+	}
+	out, err := repo.BookQuality(r.Context(), planningScope)
+	if err != nil {
+		storageError(w, err)
+		return
+	}
+	send(w, 200, out)
+}

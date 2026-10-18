@@ -383,13 +383,21 @@ export interface ReportOverview {
     chapter: string;
     status: ChapterStatus;
     words: number;
-    style: number;
-    aiTaste: number;
+    style: number | null;
+    aiTaste: number | null;
   }[];
-  foreshadowRate: number;
+  foreshadowRate: number | null;
   voiceScores: { name: string; values: number[]; calibrated: boolean }[];
   sentenceDistribution: { range: string; count: number }[];
-  samples: { id: ID; title: string; quote: string; reason: string }[];
+  samples: {
+    id: ID;
+    title: string;
+    quote: string;
+    reason: string;
+    chapterId?: string;
+    beatId?: string;
+    kept?: boolean;
+  }[];
 }
 export interface Experiment {
   id: ID;

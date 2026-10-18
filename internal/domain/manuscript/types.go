@@ -33,6 +33,7 @@ type SourceRef struct {
 
 // ContextBundle 是一次运行的冻结材料；角色只取需要的子集，不自行查询最新值。
 type ContextBundle struct {
+	CompactTargets  bool                     `json:"compactTargets,omitempty"`
 	RevisionRequest *AuthorRewrite           `json:"revisionRequest,omitempty"` // Recheck only; never replays Writer.
 	Targets         []ContextBundle          `json:"targets,omitempty"`
 	Neighbors       []Passage                `json:"neighbors,omitempty"`

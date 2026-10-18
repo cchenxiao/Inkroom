@@ -81,3 +81,19 @@ it('does not interpret missing critic results as a successful review', () => {
   );
   expect(view.container).toBeEmptyDOMElement();
 });
+
+it('shows version-bound review comparison without calling missing findings resolved', () => {
+  const withComparison = {
+    ...run,
+    result: {
+      ...run.result!,
+      criticReviews: [],
+      reviewComparison: { fromVersion: 2, toVersion: 3, added: 1, continued: 2, notRepeated: 3 },
+    },
+  };
+  const view = render(<QualitySummary run={withComparison} />);
+  expect(screen.getByText(/新增 1 条/)).toHaveTextContent('原引用仍有意见 2 条');
+  expect(screen.getByText(/未再报出不等于作者确认已解决/)).toBeInTheDocument();
+  view.rerender(<QualitySummary run={{ ...withComparison, draftVersion: 4 }} />);
+  expect(screen.queryByText(/新增 1 条/)).not.toBeInTheDocument();
+});

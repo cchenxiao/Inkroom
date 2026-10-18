@@ -186,10 +186,10 @@ it('preserves the author input and reports version conflicts instead of silently
   cleanup();
 });
 
-it('previews a P3 without changing text, applies only on confirmation, and reviews only explicitly', async () => {
+it('previews a P2 without changing text, applies only on confirmation, and reviews only explicitly', async () => {
   const requests: HumanAction[] = [];
   let current = structuredClone(initial);
-  current.result!.report.findings[0].severity = 'P3';
+  current.result!.report.findings[0].severity = 'P2';
   server.use(
     http.post('*/go-api/runs/finding-run/actions', async ({ request }) => {
       const action = (await request.json()) as HumanAction;

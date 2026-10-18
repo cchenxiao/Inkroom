@@ -78,7 +78,7 @@ func (s *Store) BookArchive(ctx context.Context, scope string) (app.BookArchive,
 		c.Text = strings.Join(parts, "\n\n")
 		c.Statistics = style.Analyze([]manuscript.Segment{{ID: p.ID, Text: c.Text}}, nil)[0]
 		if p.FactSelection != nil {
-			c.Facts = p.FactSelection.Package.Facts
+			c.Facts = append(c.Facts, p.FactSelection.Package.Facts...)
 		}
 		if p.Review.Output != nil {
 			for _, critic := range p.Review.Output.Critics {
@@ -86,7 +86,7 @@ func (s *Store) BookArchive(ctx context.Context, scope string) (app.BookArchive,
 			}
 		}
 		if p.Review.Decision != nil {
-			c.KeptFindings = p.Review.Decision.KeptFindings
+			c.KeptFindings = append(c.KeptFindings, p.Review.Decision.KeptFindings...)
 		}
 		out.Chapters = append(out.Chapters, c)
 	}

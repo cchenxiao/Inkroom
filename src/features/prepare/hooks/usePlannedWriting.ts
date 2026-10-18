@@ -187,7 +187,7 @@ export function usePlannedWriting(
     setPendingStart(req);
     start.mutate(req);
   };
-  const beginChapter = () => {
+  const beginChapter = (remaining = false) => {
     const ready = chapterGate.data;
     if (
       !ready?.ready ||
@@ -199,17 +199,21 @@ export function usePlannedWriting(
     )
       return;
     if (
-      ready.draftVersion > 0 &&
-      !window.confirm('生成整章新候选？已采用正文会保留，新稿需要重新审核后采用。')
+      !remaining &&
+      (ready.missingBeatIds?.length ?? 0) < (ready.unadoptedBeatIds?.length ?? 0) &&
+      !window.confirm(
+        '为尚未采用的段落生成整章新候选？已采用正文保持不变；已有待审核候选会保留在历史中。',
+      )
     )
       return;
     const request: PlannedRunRequest = {
       requestId: crypto.randomUUID(),
       chapterId,
       mode: 'chapter',
+      remaining,
       expected: ready.expected,
       planVersion: ready.planVersion,
-      draftVersion: ready.draftVersion,
+      draftVersion: 0,
       autoRevise,
       enhancedContinuity,
     };
@@ -249,7 +253,7 @@ export function usePlannedWriting(
       mode: wholeChapter ? 'chapter' : 'beat',
       expected: reviewReady.expected,
       planVersion: reviewReady.planVersion,
-      draftVersion: reviewReady.draftVersion,
+      draftVersion: wholeChapter ? run.draftVersion : reviewReady.draftVersion,
       autoRevise: false,
       enhancedContinuity,
       fromRunId: run.id,

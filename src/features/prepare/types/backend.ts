@@ -6,6 +6,8 @@ export interface BackendRun extends Omit<RunState, 'status' | 'currentNode'> {
   canDismiss?: boolean;
   neighborsChanged?: boolean;
   planning?: {
+    targetBeatIds?: string[];
+    remaining?: boolean;
     enhancedContinuity?: boolean;
     mode?: 'beat' | 'chapter';
     neighborPolicy?: string;
@@ -58,6 +60,13 @@ export interface BackendRun extends Omit<RunState, 'status' | 'currentNode'> {
   usage?: { inputTokens: number; outputTokens: number; known: boolean };
   result?: {
     reviewPending?: boolean;
+    reviewComparison?: {
+      fromVersion: number;
+      toVersion: number;
+      added: number;
+      continued: number;
+      notRepeated: number;
+    };
     findingProposal?: {
       id: string;
       findingId: string;

@@ -1,3 +1,4 @@
+import { TextChange } from './text-change';
 import { useState } from 'react';
 import { Button } from '@/shared/ui';
 import type { BackendRun } from '@/features/prepare/types/backend';
@@ -33,18 +34,12 @@ export function SelectionRewritePreview({
     <aside className="finding-popover" aria-label="选区修改预览">
       <section className="finding-preview">
         <strong>选区修改预览 · 正文尚未改变</strong>
-        <div>
-          <span>修改前</span>
-          <blockquote>
-            {Array.from(proposal.request.original)
-              .slice(proposal.request.start, proposal.request.end)
-              .join('')}
-          </blockquote>
-        </div>
-        <div>
-          <span>修改后</span>
-          <blockquote>{proposal.replacement || '（删除选中文字）'}</blockquote>
-        </div>
+        <TextChange
+          before={Array.from(proposal.request.original)
+            .slice(proposal.request.start, proposal.request.end)
+            .join('')}
+          after={proposal.replacement}
+        />
         <p className="muted">只替换所选文字，选区外正文保持不变。处理完修改后，再统一复审。</p>
         <div className="page-actions">
           <Button size="sm" disabled={busy || sending} onClick={() => void submit(true)}>

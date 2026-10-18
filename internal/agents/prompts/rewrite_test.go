@@ -13,7 +13,7 @@ func TestThinkingOnlyForStatelessAuthorCorrectionAndVerification(t *testing.T) {
 	}{
 		{name: "initial writing", role: "planned_writer", material: `{"beat":{"id":"b"}}`},
 		{name: "null request", role: "planned_writer", material: `{"rewrite":null}`},
-		{name: "rewrite", role: "planned_writer", material: `{"rewrite":{"instruction":"修正余额"}}`, want: true},
+		{name: "rewrite", role: "planned_writer", material: `{"rewrite":{"instruction":"修正余额"}}`, want: false},
 		{name: "verification", role: "hard_consistency", material: `{"authorRequest":{"instruction":"修正余额"}}`, want: true},
 		{name: "dedicated narrative pairs", role: "hard_consistency", material: `{"continuityPass":true}`, want: true},
 		{name: "bounded character reading", role: "hard_consistency", material: `{"continuityPass":true,"focus":"characters"}`, want: false},

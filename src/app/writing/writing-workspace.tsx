@@ -1,5 +1,6 @@
+import { savedChanges, SavedChangeCard } from './saved-changes';
 import { SelectionRewritePreview } from './selection-rewrite-preview';
-import { findingRewrite, replaceFindingQuote } from './finding-actions';
+import { findingRewrite, replaceFindingQuote, submitFindingRewrite } from './finding-actions';
 import { ContinuityOption } from '@/features/prepare/components/continuity-option';
 import { ReviewProgress } from '@/features/prepare/components/review-progress';
 import { ReviewFailure, reviewFailureInfo } from './review-failure';
@@ -154,6 +155,9 @@ function Desk({
     quote: string;
     requestId: number;
   }>();
+  const [dismissedChange, setDismissedChange] = useState('');
+  const changes = savedChanges(run);
+  const latestChange = changes.find((change) => change.current);
   const [selectedFinding, setSelectedFinding] = useState<string | null>(null);
   const [rewriteFeedback, setRewriteFeedback] = useState('');
   const [resumeFinding, setResumeFinding] = useState<{
@@ -331,7 +335,11 @@ function Desk({
         const candidate = candidateQuery?.data?.runs.find(
           (candidate) => !candidate.dismissed && candidate.result?.segments.length,
         );
-        const current = !!run && (b.id === beatId || run.planning?.mode === 'chapter');
+        const current =
+          !!run &&
+          (run.planning?.targetBeatIds
+            ? run.planning.targetBeatIds.includes(b.id)
+            : b.id === beatId || run.planning?.mode === 'chapter');
         const allTexts =
           current && sourceSegments.length
             ? sourceSegments
@@ -567,14 +575,14 @@ function Desk({
     window.addEventListener('keydown', key);
     return () => window.removeEventListener('keydown', key);
   }, [setSide]);
-  const reviewFailure = reviewFailureInfo(run);
+  const reviewFailure = actions.busy || run?.status === 'running' ? null : reviewFailureInfo(run);
   const reason = stale
     ? t.stale
     : reviewFailure
       ? `${reviewFailure.title}：${reviewFailure.detail}`
       : planningError
         ? '暂时无法读取真实规划，请确认 Go 服务已启动。'
-        : run?.error
+        : run?.error && !actions.busy && run.status !== 'running'
           ? readableMessage(run.error, '本次修改或复检未完成，请检查结果后重试。')
           : writer.blockIsProgress
             ? ''
@@ -725,6 +733,15 @@ function Desk({
     />
   );
   const continuingChapter = parts.some((part) => part.segments.length > 0);
+  const missingCount =
+    writer.chapterGate.data?.missingBeatIds?.length ??
+    parts.filter((p) => !p.segments.length).length;
+  const batchDisabled =
+    locked ||
+    busy ||
+    !!writer.pendingStart ||
+    !writer.chapterGate.data?.ready ||
+    run?.status === 'running';
   const primaryLabel = writer.loading
     ? '读取中…'
     : run?.status === 'running'
@@ -740,12 +757,12 @@ function Desk({
         : run
           ? t.review
           : continuingChapter
-            ? '生成本段'
+            ? '继续生成剩余段落'
             : '生成整章';
   const primary = () => {
     if (run?.status === 'committed') setSide('assembly');
     else if (run) showReview();
-    else if (continuingChapter) start();
+    else if (continuingChapter) writer.beginChapter(true);
     else writer.beginChapter();
   };
   const tree = (
@@ -807,12 +824,42 @@ function Desk({
       <footer className="writing-sidebar-footer">
         <span>
           {parts.filter((p) => p.accepted || p.adoptedVersion).length}/{parts.length} 段已有采用稿 ·
-          目标 {(plan?.content.targetWords || chapter?.targetWords)?.toLocaleString() ?? '—'} 字
+          目标{' '}
+          {(
+            plan?.content.targetWords ||
+            (chapter?.targetWords ? Math.min(chapter.targetWords, 3000) : undefined)
+          )?.toLocaleString() ?? '—'}{' '}
+          字
         </span>
         {parts.some((p) => p.adoptedVersion && !p.accepted) && (
           <small>
             其中 {parts.filter((p) => p.adoptedVersion && !p.accepted).length} 段有新修改待采用
           </small>
+        )}
+        <Button
+          size="sm"
+          disabled={batchDisabled || writer.chapterGate.data?.unadoptedBeatIds?.length === 0}
+          disabledReason={
+            writer.chapterGate.data?.reason || '已采用正文会保留；全部段落已采用时无需生成'
+          }
+          onClick={() => writer.beginChapter()}
+        >
+          {continuingChapter ? '生成整章候选（保留已采用）' : '生成整章'}
+        </Button>
+        {continuingChapter && (
+          <Button
+            size="sm"
+            variant="secondary"
+            disabled={batchDisabled || !missingCount}
+            disabledReason={
+              !missingCount
+                ? '所有段落已有正文，请继续审核；不会重复生成'
+                : writer.chapterGate.data?.reason
+            }
+            onClick={() => writer.beginChapter(true)}
+          >
+            {missingCount ? `继续生成剩余 ${missingCount} 段` : '全部段落已有正文'}
+          </Button>
         )}
         <Link to={livePreparePath('outline', chapterId)}>{t.prepare} →</Link>
       </footer>
@@ -890,6 +937,19 @@ function Desk({
                 <Command size={14} />
                 <kbd>K</kbd>
               </Button>
+              {run && missingCount > 0 && (
+                <Button
+                  size="sm"
+                  disabled={batchDisabled}
+                  disabledReason={
+                    writer.chapterGate.data?.reason ||
+                    (locked ? '请先保存或撤销本地修改' : undefined)
+                  }
+                  onClick={() => writer.beginChapter(true)}
+                >
+                  继续生成剩余 {missingCount} 段
+                </Button>
+              )}
               <Button
                 size="sm"
                 variant={run && run.status !== 'running' ? 'human' : 'default'}
@@ -1023,7 +1083,23 @@ function Desk({
                           />
                         ),
                       }
-                    : undefined
+                    : latestChange &&
+                        dismissedChange !== latestChange.id &&
+                        !selectedFinding &&
+                        !inspection &&
+                        !draft.dirty
+                      ? {
+                          id: latestChange.id,
+                          segmentId: latestChange.segmentId,
+                          quote: latestChange.quote,
+                          content: (
+                            <SavedChangeCard
+                              change={latestChange}
+                              onClose={() => setDismissedChange(latestChange.id)}
+                            />
+                          ),
+                        }
+                      : undefined
                 }
                 busy={busy || run?.status === 'running'}
                 onChange={draft.change}
@@ -1075,7 +1151,11 @@ function Desk({
                     busy={busy || run?.status === 'running'}
                     initialEdit={editOnOpen === selectedFinding}
                     onRecover={
-                      !editable && !busy && run?.status !== 'running'
+                      (stale || !editable) &&
+                      !busy &&
+                      !draft.dirty &&
+                      !instructionDraft.dirty &&
+                      run?.status !== 'running'
                         ? () => void recoverFinding()
                         : undefined
                     }
@@ -1093,19 +1173,21 @@ function Desk({
                         : ''
                     }
                     rewriteBlock={
-                      !canRewrite ||
-                      stale ||
-                      instructionDraft.dirty ||
-                      instructionDraft.stale ||
-                      (!actions.waiting &&
-                        run?.result?.report.findings.some(
-                          (f) =>
-                            f.id === selectedFinding &&
-                            f.severity === 'P3' &&
-                            f.id !== 'author-request-review',
-                        ))
-                        ? '请先处理未保存的修改或当前运行，再发送这条问题。'
-                        : ''
+                      draft.dirty
+                        ? '正文有未保存修改，请先保存或撤销，再生成预览。'
+                        : run?.result?.findingProposal
+                          ? '已有待确认的修改预览，请先确认或放弃。'
+                          : instructionDraft.dirty
+                            ? '右侧还有未发送的修改要求，请先发送或清空。'
+                            : instructionDraft.stale
+                              ? '修改要求对应的正文版本已变化，请先核对并清空旧要求。'
+                              : run?.status === 'running'
+                                ? '模型正在处理当前请求，完成后可继续修改。'
+                                : busy
+                                  ? '当前请求尚未完成，请等待结果或重试原请求。'
+                                  : stale
+                                    ? '当前正文版本已变化，请更新状态后重新选择原文。'
+                                    : rewriteBlock
                     }
                     decisionBlock={
                       !editable ||
@@ -1124,7 +1206,11 @@ function Desk({
                     onEdit={async (replacement) => {
                       if (!editable || draft.dirty || instructionDraft.dirty) return false;
                       const f = run?.result?.report.findings.find((f) => f.id === selectedFinding);
-                      if (f?.severity === 'P3' && f.id !== 'author-request-review') {
+                      if (
+                        f &&
+                        ['P2', 'P3'].includes(f.severity) &&
+                        f.id !== 'author-request-review'
+                      ) {
                         const ok = await actions.editFinding(
                           selectedFinding,
                           findingRewrite(run, selectedFinding, '作者直接修改这处原文', false),
@@ -1138,18 +1224,30 @@ function Desk({
                     }}
                     onInstruct={async (instruction, whole) => {
                       if (!canRewrite || stale || instructionDraft.dirty) return false;
-                      const request = findingRewrite(run, selectedFinding, instruction, whole);
-                      const f = run?.result?.report.findings.find((f) => f.id === selectedFinding);
-                      if (f?.severity === 'P3' && f.id !== 'author-request-review')
-                        return actions.proposeFinding(selectedFinding, request);
-                      const inPlace =
-                        actions.waiting &&
-                        (run?.planning?.neighborPolicy === 'working-v1' ||
-                          run?.planning?.mode === 'chapter');
-                      const ok = await (inPlace
-                        ? actions.rewrite(request)
-                        : writer.revise(request));
-                      if (ok) showReview();
+                      const ok = await submitFindingRewrite(
+                        run,
+                        selectedFinding,
+                        instruction,
+                        whole,
+                        actions.waiting,
+                        {
+                          propose: actions.proposeFinding,
+                          rewrite: actions.rewrite,
+                          revise: writer.revise,
+                        },
+                      );
+                      if (ok) {
+                        if (!actions.waiting) setSelectedFinding(null);
+                        const finding = run?.result?.report.findings.find(
+                          (f) => f.id === selectedFinding,
+                        );
+                        if (
+                          !finding ||
+                          !['P2', 'P3'].includes(finding.severity) ||
+                          finding.id === 'author-request-review'
+                        )
+                          showReview();
+                      }
                       return ok;
                     }}
                     onApply={async (id) => {
@@ -1332,6 +1430,23 @@ function Desk({
                     )}
                   </div>
                 )}
+                {latestChange && (
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setDismissedChange('');
+                      setSelectedFinding(null);
+                      setSide(null);
+                      requestAnimationFrame(() =>
+                        document
+                          .querySelector('main .saved-change-card')
+                          ?.scrollIntoView({ block: 'center' }),
+                      );
+                    }}
+                  >
+                    在正文旁查看本次差异
+                  </Button>
+                )}
                 {run?.result?.findingProposal?.findingId && (
                   <Button
                     size="sm"
@@ -1393,7 +1508,9 @@ function Desk({
               )}
               {run?.planning?.mode === 'chapter' && (
                 <p className="muted">
-                  当前是整章候选：批准与采用覆盖全部情节段；选区修改只影响指定正文。
+                  本次为批量候选：批准与采用仅覆盖本次生成的{' '}
+                  {run.planning.targetBeatIds?.length ?? parts.length}{' '}
+                  段，其他已采用正文保持不变；选区修改只影响指定正文。
                 </p>
               )}
               {!!run?.planning?.neighbors?.length && (
@@ -1490,6 +1607,14 @@ function Desk({
                 !localActionRunning &&
                 !run?.result?.findingProposal &&
                 !run?.result?.reviewPending && <RevisionReceipt run={run} />}
+              {!!changes.length && (
+                <details className="writing-saved-changes">
+                  <summary>修改记录与差异 · {changes.length}</summary>
+                  {changes.map((change) => (
+                    <SavedChangeCard key={change.id} change={change} />
+                  ))}
+                </details>
+              )}
               <section
                 className="writing-revision-form"
                 aria-label="修改当前稿"
@@ -1623,7 +1748,7 @@ function Desk({
                             disabledReason={run?.approvalBlock || t.stale}
                             onClick={() => void actions.approve()}
                           >
-                            {run?.planning?.mode === 'chapter' ? '批准整章候选' : t.approve}
+                            {run?.planning?.mode === 'chapter' ? '批准本批候选' : t.approve}
                           </Button>
                         ) : (
                           <Button
@@ -1721,7 +1846,7 @@ function Desk({
                     !!block ||
                     !writer.chapterGate.data?.ready
                   }
-                  onClick={writer.beginChapter}
+                  onClick={() => writer.beginChapter()}
                 >
                   生成整章候选
                 </Button>

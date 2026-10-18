@@ -18,6 +18,16 @@ func exerciseWritingScopes(t *testing.T, s *Store, scope string, p planning.Chap
 	t.Helper()
 	ctx := context.Background()
 	cfg.MaxCalls, cfg.MaxTokens, cfg.ContextTokens = 20, 128000, 32768
+	// Exercise whole-chapter generation on a new plan, not by overwriting adopted beats.
+	for i := range p.Content.Scenes[0].Beats {
+		p.Content.Scenes[0].Beats[i].ID = "scope-test-" + rand.Text()
+	}
+	p.Content.Brief.SelectedBeatID = p.Content.Scenes[0].Beats[0].ID
+	var planErr error
+	p, planErr = s.SaveChapterPlan(ctx, scope, planning.ChapterPlanSaveRequest{Expected: p.Versions, ChapterID: p.ChapterID, ExpectedVersion: p.Version, SourceVersion: p.Version, JobID: p.JobID, CandidateVersion: p.CandidateVersion, Content: p.Content, Confirmed: true})
+	if planErr != nil {
+		t.Fatal(planErr)
+	}
 	first, second := p.Content.Scenes[0].Beats[0].ID, p.Content.Scenes[0].Beats[1].ID
 	start := func(mode, beat string, from *app.Run, rewrite *manuscript.AuthorRewrite) app.Run {
 		t.Helper()
@@ -31,6 +41,9 @@ func exerciseWritingScopes(t *testing.T, s *Store, scope string, p planning.Chap
 			req.SourceVersion = from.DraftVersion
 			req.Rewrite = rewrite
 			req.Recheck = rewrite == nil
+			if req.Recheck && mode == "chapter" {
+				req.DraftVersion = from.DraftVersion
+			}
 		}
 		r, created, err := s.StartPlannedRun(ctx, scope, req, cfg)
 		if err != nil || !created {
@@ -211,7 +224,7 @@ func exerciseWritingScopes(t *testing.T, s *Store, scope string, p planning.Chap
 	}
 	// Adoption and review-only saves are separate: a version bump without a prose
 	// change still assembles; editing the second beat must not revoke the first.
-	finalChapter := start("chapter", "", nil, nil)
+	finalChapter := start("chapter", "", &chapter, nil)
 	finalCommit := adopt(finalChapter)
 	secondPart := finalCommit.Segments[1]
 	same := start("chapter", "", &finalChapter, nil)

@@ -24,15 +24,16 @@ type Limits struct {
 	ModelName                   string
 }
 type Guard struct {
-	inner                        ChatModel
-	limits                       Limits
-	mu                           sync.Mutex
-	calls, budgetCalls, reserved int
-	usage                        Usage
+	inner                                  ChatModel
+	limits                                 Limits
+	mu                                     sync.Mutex
+	calls, budgetCalls, reserved, inflight int
+	changed                                chan struct{}
+	usage                                  Usage
 }
 
 func NewGuard(inner ChatModel, limits Limits) *Guard {
-	g := &Guard{inner: inner, limits: limits, usage: Usage{Known: true}}
+	g := &Guard{inner: inner, limits: limits, usage: Usage{Known: true}, changed: make(chan struct{})}
 	for _, c := range limits.History {
 		if c.Number > g.calls {
 			g.calls = c.Number
@@ -79,19 +80,16 @@ func (g *Guard) Generate(ctx context.Context, in Input) (Output, Usage, error) {
 		history, _ := json.Marshal(in.Messages)
 		tools, _ := json.Marshal(in.Tools)
 		estimate := len(history) + len(tools) + len(in.SystemPrompt) + len(in.UserPrompt) + in.OutputTokens + 128
-		g.mu.Lock()
-		if g.budgetCalls >= g.limits.Calls || g.reserved+estimate > g.limits.Tokens {
-			g.mu.Unlock()
-			return Output{}, total, ErrBudgetExhausted
+		call, err := g.reserve(ctx, estimate)
+		if err != nil {
+			return Output{}, total, err
 		}
-		g.calls++
-		g.budgetCalls++
-		g.reserved += estimate
-		call := g.calls
-		g.mu.Unlock()
 		record := CallRecord{StartedAt: time.Now().UTC(), TimeoutMs: in.CallTimeout.Milliseconds(), OutputLimit: in.OutputTokens, Activity: callActivity(in), Thinking: in.Thinking, ReservedTokens: estimate, Number: call, Attempt: attempt + 1, Role: in.Role, Purpose: in.Purpose, PromptVersion: in.PromptVersion, SchemaVersion: in.SchemaVersion, Model: g.limits.ModelName, Phase: "started"}
 		if g.limits.OnCall != nil {
 			if err := g.limits.OnCall(ctx, record); err != nil {
+				g.mu.Lock()
+				g.releaseLocked()
+				g.mu.Unlock()
 				return Output{}, total, fmt.Errorf("record model call intent: %w", err)
 			}
 		}
@@ -112,6 +110,7 @@ func (g *Guard) Generate(ctx context.Context, in Input) (Output, Usage, error) {
 		g.usage.InputTokens += usage.InputTokens
 		g.usage.OutputTokens += usage.OutputTokens
 		g.usage.Known = g.usage.Known && usage.Known
+		g.releaseLocked()
 		g.mu.Unlock()
 		slog.InfoContext(ctx, "llm_call", "role", in.Role, "purpose", in.Purpose, "prompt_version", in.PromptVersion, "schema_version", in.SchemaVersion, "thinking", in.Thinking, "model", g.limits.ModelName, "call", call, "attempt", attempt+1, "elapsed_ms", time.Since(started).Milliseconds(), "input_tokens", usage.InputTokens, "output_tokens", usage.OutputTokens, "usage_known", usage.Known, "finish", out.FinishReason, "success", err == nil && (out.FinishReason == Complete || out.FinishReason == ToolRequested))
 		record.Phase = "finished"
@@ -170,4 +169,45 @@ func callActivity(in Input) string {
 		return "author_verification"
 	}
 	return "consistency"
+}
+
+// Wait for active calls to settle their conservative reservations before
+// rejecting a concurrent critic. This never increases the operation budget.
+func (g *Guard) reserve(ctx context.Context, estimate int) (int, error) {
+	for {
+		if err := ctx.Err(); err != nil {
+			return 0, err
+		}
+		g.mu.Lock()
+		if g.budgetCalls >= g.limits.Calls || estimate > g.limits.Tokens {
+			g.mu.Unlock()
+			return 0, ErrBudgetExhausted
+		}
+		if g.reserved+estimate <= g.limits.Tokens {
+			g.calls++
+			g.budgetCalls++
+			g.reserved += estimate
+			g.inflight++
+			call := g.calls
+			g.mu.Unlock()
+			return call, nil
+		}
+		if g.inflight == 0 {
+			g.mu.Unlock()
+			return 0, ErrBudgetExhausted
+		}
+		changed := g.changed
+		g.mu.Unlock()
+		select {
+		case <-ctx.Done():
+			return 0, ctx.Err()
+		case <-changed:
+		}
+	}
+}
+
+func (g *Guard) releaseLocked() {
+	g.inflight--
+	close(g.changed)
+	g.changed = make(chan struct{})
 }

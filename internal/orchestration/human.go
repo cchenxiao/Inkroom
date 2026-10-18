@@ -308,6 +308,17 @@ func RunHuman(ctx context.Context, initial ChapterState, chat model.ChatModel, o
 			s.ReviseRound++
 			s.Revisions = append(append([]revision.Revision{}, s.Revisions...), revision.Revision{Kind: s.Route.Kind, Round: s.ReviseRound, FromVersion: expected, ToVersion: expected + 1, Patches: p.Patches})
 		}
+		if in.Action.Type == "rewrite" || in.Action.Type == "inline_edit" {
+			patches := []revision.Patch{}
+			for _, before := range in.Chapter.Segments {
+				for _, after := range s.Segments {
+					if before.ID == after.ID && before.Text != after.Text {
+						patches = append(patches, revision.Patch{SegmentID: before.ID, OldText: before.Text, NewText: after.Text, Reason: "作者修改"})
+					}
+				}
+			}
+			s.Revisions = append(append([]revision.Revision{}, s.Revisions...), revision.Revision{Kind: "author_" + in.Action.Type, FromVersion: expected, ToVersion: expected + 1, Patches: patches})
+		}
 		s.DraftVersion++
 		s.Report = review.Report{DraftVersion: s.DraftVersion, Findings: []review.Finding{}}
 		s.CriticReviews = []CriticReview{}
@@ -352,6 +363,7 @@ func RunHuman(ctx context.Context, initial ChapterState, chat model.ChatModel, o
 		if err != nil {
 			return in, err
 		}
+		s.ReviewComparison = compareReviews(priorReview(s), report)
 		s.Report = report
 		s.ReviewPending = false
 		s.FindingChanges = nil

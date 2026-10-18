@@ -2,6 +2,8 @@ import { backendApi } from '@/shared/api/client';
 import type { AuthorRewrite, BackendRun, StoredDraft } from '../types/backend';
 import type { ChapterPlanVersions } from '../types/chapter-plan';
 export interface PlannedRunReadiness {
+  missingBeatIds?: string[];
+  unadoptedBeatIds?: string[];
   adopted?: { version: number; matchesWorking: boolean };
   working?: {
     runId: string;
@@ -19,6 +21,7 @@ export interface PlannedRunReadiness {
   runs: BackendRun[];
 }
 export interface PlannedRunRequest {
+  remaining?: boolean;
   enhancedContinuity?: boolean;
   mode?: 'beat' | 'chapter';
   fromRunId?: string;

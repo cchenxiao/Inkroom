@@ -6,7 +6,7 @@ const criticName = (name: string) => (name === 'hard_consistency' ? '一致性�
 
 /** Use the failed check's persisted evidence, not the generic run stop message. */
 export function reviewFailureInfo(run?: BackendRun) {
-  if (!run || run.status !== 'failed') return null;
+  if (!run || !['failed', 'waiting_human'].includes(run.status)) return null;
   const reviews =
     run.result?.criticReviews?.filter((r) => r.draftVersion === run.draftVersion) ?? [];
   const failed = reviews.filter((r) => r.status === 'failed');

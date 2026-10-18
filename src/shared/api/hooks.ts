@@ -40,14 +40,14 @@ export function useProject() {
   const id = useUIStore((s) => s.projectId);
   return useResource<Project>(endpoints.project(id));
 }
-export function useTree() {
+export function useTree(enabled = true) {
   const branch = useUIStore((s) => s.branchId);
   const projectId = useUIStore((s) => s.projectId);
-  return useResource<Chapter[]>(endpoints.tree(projectId) + '?branchId=' + branch);
+  return useResource<Chapter[]>(endpoints.tree(projectId) + '?branchId=' + branch, enabled);
 }
-export function useBible() {
+export function useBible(enabled = true) {
   const branch = useUIStore((s) => s.branchId);
-  return useResource<Bible>(endpoints.bible() + '?branchId=' + branch);
+  return useResource<Bible>(endpoints.bible() + '?branchId=' + branch, enabled);
 }
 export const useBranches = () => useResource<Branch[]>(endpoints.branches);
 export function useChapter(enabled = true) {

@@ -59,7 +59,7 @@ func (s *Store) BookOverview(ctx context.Context, scope string) (app.BookOvervie
 		return out, nil
 	}
 	for i, ch := range ol.Content.Chapters {
-		c := app.BookChapter{ID: ch.ID, Title: ch.Title, Number: i + 1, TargetWords: ch.TargetWords, Status: "planned", Reason: "请先确认本章细纲", ReviewSummary: "尚无当前整章复审"}
+		c := app.BookChapter{ID: ch.ID, Title: ch.Title, Number: i + 1, TargetWords: planning.ChapterWordTarget(ch.TargetWords, 0), Status: "planned", Reason: "请先确认本章细纲", ReviewSummary: "尚无当前整章复审"}
 		for _, a := range ol.Content.Acts {
 			if a.ID == ch.ActID {
 				c.Act = a.Title
@@ -76,6 +76,7 @@ func (s *Store) BookOverview(ctx context.Context, scope string) (app.BookOvervie
 			c.Reason = p.Reason
 			for _, plan := range state.ChapterPlans {
 				if plan.ChapterID == ch.ID && plan.Confirmed && plan.Versions == (planning.ChapterPlanVersions{Planning: versions, Outline: state.OutlineVersion, Bindings: ol.BindingsVersion}) {
+					c.TargetWords = planning.ChapterWordTarget(ch.TargetWords, plan.Content.TargetWords)
 					if i == 0 {
 						head, e := planningKnowledgeHead(ctx, tx, scope)
 						if e != nil {

@@ -238,3 +238,12 @@ type ChapterPlanSelection struct {
 	Confirmed        bool                `json:"confirmed"`
 	CreatedAt        time.Time           `json:"createdAt"`
 }
+
+// ChapterWordTarget is a soft writing target; it never truncates saved prose.
+// A per-chapter author override remains explicit and takes precedence.
+func ChapterWordTarget(outline, override int) int {
+	if override > 0 {
+		return override
+	}
+	return min(outline, 3000)
+}

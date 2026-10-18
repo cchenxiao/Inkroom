@@ -1,3 +1,5 @@
+import { savedChanges } from './saved-changes';
+import { TextChange } from './text-change';
 import type { BackendRun } from '@/features/prepare/types/backend';
 
 /** Show submitted requirements separately from the locally unsent editor. */
@@ -29,9 +31,11 @@ export function RevisionReceipt({ run }: { run?: BackendRun }) {
         : check.status === 'unresolved'
           ? '修改尚未解决问题'
           : '需要你补充判断';
+  const change = savedChanges(run).find((change) => change.current);
   return (
     <section className="writing-revision-receipt" aria-label="本次修改结果" aria-live="polite">
       <strong>{label}</strong>
+      {change && <TextChange before={change.before} after={change.after} />}
       <p className="writing-submitted-request">{request.instruction}</p>
       <p>
         {running

@@ -72,6 +72,7 @@ func Serve(ctx context.Context) error {
 	mux.HandleFunc("GET /api/planning", s.getPlanning)
 	mux.HandleFunc("GET /api/planning/overview", s.bookOverview)
 	mux.HandleFunc("GET /api/planning/archive", s.bookArchive)
+	mux.HandleFunc("GET /api/planning/quality", s.bookQuality)
 	mux.HandleFunc("GET /api/planning/knowledge-preview", s.planningKnowledgePreview)
 	mux.HandleFunc("POST /api/planning/knowledge-publications", s.publishPlanningKnowledge)
 	mux.HandleFunc("POST /api/planning/chapter-assemblies/preview", s.previewChapterAssembly)

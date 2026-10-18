@@ -121,7 +121,7 @@ func reviewTogether(ctx context.Context, chat model.ChatModel, state ChapterStat
 				assessment, usage, err := agents.AssessConsistency(ctx, chat, state.Segments, state.DraftVersion, state.Context, state.RewriteRequest())
 				fs, results[i].AuthorCheck, results[i].Continuity, usages[i], errs[i] = assessment.Findings, assessment.AuthorCheck, assessment.Continuity, usage, err
 			} else {
-				fs, usages[i], errs[i] = agents.Critique(ctx, chat, state.Segments, state.DraftVersion, state.Metrics, state.Context)
+				fs, usages[i], errs[i] = agents.CritiqueWithBaseline(ctx, chat, state.Segments, state.DraftVersion, state.Metrics, state.Context, priorReview(state).Findings)
 				if errs[i] == nil {
 					fs = style.AddFindings(fs, state.Metrics, state.DraftVersion)
 				}

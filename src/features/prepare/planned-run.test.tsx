@@ -100,8 +100,17 @@ function ScopeProbe() {
   const w = usePlannedWriting('first', 'middle', false);
   return (
     <>
-      <button disabled={!w.chapterGate.data?.ready || !!w.pendingStart} onClick={w.beginChapter}>
+      <button
+        disabled={!w.chapterGate.data?.ready || !!w.pendingStart}
+        onClick={() => w.beginChapter()}
+      >
         生成整章候选
+      </button>
+      <button
+        disabled={!w.chapterGate.data?.ready || !!w.pendingStart}
+        onClick={() => w.beginChapter(true)}
+      >
+        继续生成剩余段落
       </button>
       <button
         disabled={!w.run || !w.current || !!w.pendingStart}
@@ -112,6 +121,7 @@ function ScopeProbe() {
             start: 0,
             end: 2,
             instruction: '重写开头',
+            preview: true,
           })
         }
       >
@@ -122,7 +132,7 @@ function ScopeProbe() {
   );
 }
 vi.mock('./hooks/useBackendEvents', () => ({ useBackendEvents: () => undefined }));
-it.each(['chapter', 'rewrite'] as const)(
+it.each(['chapter', 'remaining', 'rewrite'] as const)(
   'preserves %s scope and source versions across a failed start',
   async (scope) => {
     const expected = {
@@ -170,7 +180,12 @@ it.each(['chapter', 'rewrite'] as const)(
     );
     const user = userEvent.setup();
     const button = screen.getByRole('button', {
-      name: scope === 'chapter' ? '生成整章候选' : '修改已采用选区',
+      name:
+        scope === 'chapter'
+          ? '生成整章候选'
+          : scope === 'remaining'
+            ? '继续生成剩余段落'
+            : '修改已采用选区',
     });
     await waitFor(() => expect(button).toBeEnabled());
     await user.click(button);
@@ -178,8 +193,13 @@ it.each(['chapter', 'rewrite'] as const)(
     await user.click(screen.getByRole('button', { name: '重试范围请求' }));
     await waitFor(() => expect(requests).toHaveLength(2));
     expect(requests[1]).toEqual(requests[0]);
-    if (scope === 'chapter')
-      expect(requests[0]).toMatchObject({ mode: 'chapter', draftVersion: 0, expected });
+    if (scope !== 'rewrite')
+      expect(requests[0]).toMatchObject({
+        mode: 'chapter',
+        remaining: scope === 'remaining',
+        draftVersion: 0,
+        expected,
+      });
     else
       expect(requests[0]).toMatchObject({
         mode: 'beat',
@@ -188,7 +208,7 @@ it.each(['chapter', 'rewrite'] as const)(
         fromRunId: 'adopted',
         sourceVersion: 7,
         autoRevise: false,
-        rewrite: { segmentId: 's2', original: '中间正文', start: 0, end: 2 },
+        rewrite: { segmentId: 's2', original: '中间正文', start: 0, end: 2, preview: true },
       });
     view.unmount();
     client.clear();

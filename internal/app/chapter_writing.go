@@ -33,6 +33,7 @@ func PrepareChapterWriting(cfg config.Config, scope, runID string, base int, p p
 	b := targets[0]
 	b.ChapterID = PlannedDraftID(scope, p.ChapterID, ChapterBeatID)
 	b.Targets = targets
+	b.CompactTargets = true
 	in := manuscript.FrozenInput{Bundle: b, Manifest: manuscript.ContextManifest{RunID: runID, BaseDraftVersion: base, Budget: cfg.ContextTokens, ReservedOutputTokens: cfg.MaxOutputTokens}}
 	if in.Manifest.Budget == 0 {
 		in.Manifest.Budget = config.DefaultContextTokens

@@ -1,3 +1,4 @@
+import { TextChange } from './text-change';
 import { repairScopeLabels } from '@/shared/lib/business-labels';
 import { TechnicalDetails } from '@/shared/ui/technical-details';
 import { sourceLabel } from '@/features/prepare/writing';
@@ -201,7 +202,7 @@ export function WritingFinding({
   const [sending, setSending] = useState(false);
   const [notice, setNotice] = useState('');
   const decision = findingDecision(run, id);
-  const local = f?.severity === 'P3' && id !== 'author-request-review';
+  const local = !!f && ['P2', 'P3'].includes(f.severity) && id !== 'author-request-review';
   const proposal =
     run?.result?.findingProposal?.findingId === id ? run.result.findingProposal : undefined;
   const changed = run?.result?.findingChanges?.find((c) => c.findingId === id);
@@ -277,6 +278,13 @@ export function WritingFinding({
       <blockquote>{f.quote}</blockquote>
       <p>{f.reason}</p>
       <p>{f.suggestion}</p>
+      {f.evidenceRefs.some(
+        (ref) => ref !== f.segmentId && run?.result?.segments?.some((s) => s.id === ref),
+      ) && (
+        <p className="muted">
+          这条意见涉及其他段落。本次只修改上方引用所属的情节段；其他段落作为核对依据。如需两边一起调整，请分别选择要改的正文。
+        </p>
+      )}
       <details>
         <summary>证据与修复范围</summary>
         {f.evidenceRefs.map((ref) => (
@@ -289,25 +297,22 @@ export function WritingFinding({
       </details>
       {kept && decision.reason && <p className="finding-decision">保留理由：{decision.reason}</p>}
       {changed && (
-        <p role="status" className="finding-decision">
-          本条已修改，待统一复审；尚未判定问题已解决。
-        </p>
+        <section aria-label="已保存修改对照">
+          <p role="status" className="finding-decision">
+            本条已修改，待统一复审；尚未判定问题已解决。
+          </p>
+          <TextChange before={changed.before} after={changed.after} />
+        </section>
       )}
       {proposal && (
         <section className="finding-preview" aria-label="局部修改对照">
           <strong>修改预览 · 正文尚未改变</strong>
-          <div>
-            <span>修改前</span>
-            <blockquote>
-              {Array.from(proposal.request.original)
-                .slice(proposal.request.start, proposal.request.end)
-                .join('')}
-            </blockquote>
-          </div>
-          <div>
-            <span>修改后</span>
-            <blockquote>{proposal.replacement || '（删除这处文字）'}</blockquote>
-          </div>
+          <TextChange
+            before={Array.from(proposal.request.original)
+              .slice(proposal.request.start, proposal.request.end)
+              .join('')}
+            after={proposal.replacement}
+          />
           <p className="muted">
             范围与边界已校验；请核对表达。确认后仅保存这处修改，暂不重新审核整段。
           </p>
@@ -402,7 +407,9 @@ export function WritingFinding({
                 ? '只保存这处修改，保留其他问题，处理完后统一复审。'
                 : '只替换上方引用的文字；保存后重新检查，不自动采用。'
               : local
-                ? '仅生成这条问题的修改预览；你确认后才替换正文，不自动重新审核整段。'
+                ? run?.commitId || run?.status === 'committed' || run?.status === 'approved'
+                  ? '基于当前稿生成这句话的修改预览；原采用稿保留，确认替换后再复审新候选。'
+                  : '仅生成这条问题的修改预览；你确认后才替换正文，不自动重新审核整段。'
                 : '将携带这条问题、原文和你的要求；不会自动修改其他情节段。'}
           </p>
           {unavailable ? (
@@ -471,7 +478,11 @@ export function WritingFinding({
           )}
         </form>
       )}
-      {notice && <p role="status">{notice}</p>}
+      {run?.status === 'failed' ? (
+        <p role="alert">本次操作已停止，请从运行提示查看原因并恢复；此前保存的正文保留。</p>
+      ) : (
+        notice && <p role="status">{notice}</p>
+      )}
     </aside>
   );
 }

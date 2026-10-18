@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"inkloom/internal/app"
 	"inkloom/internal/config"
+	"inkloom/internal/domain/manuscript"
 	"inkloom/internal/domain/planning"
 	"reflect"
 	"strings"
@@ -91,6 +92,40 @@ func (s *Store) StartPlannedRun(ctx context.Context, scope string, req app.Plann
 	}
 	if req.Mode == "chapter" {
 		frozen, err = app.PrepareChapterWriting(cfg, scope, req.RequestID, req.DraftVersion, p, current.Snapshot, history...)
+		if err == nil && !req.Recheck {
+			// Each batch has its own draft head. A later partial batch must never
+			// erase segments belonging to a previous batch or an adopted version.
+			if req.DraftVersion != 0 {
+				return r, false, app.ErrVersionMismatch
+			}
+			frozen.Bundle.ChapterID = app.PlannedDraftID(scope, p.ChapterID, "batch/"+req.RequestID)
+			targets := []manuscript.ContextBundle{}
+			preserved := []manuscript.Passage{}
+			for _, t := range frozen.Bundle.Targets {
+				adopted, e := adoptedPassage(ctx, tx, scope, p.ChapterID, t.Beat.ID)
+				if e != nil {
+					return r, false, e
+				}
+				working, e := workingPassage(ctx, tx, scope, p.ChapterID, t.Beat.ID)
+				if e != nil {
+					return r, false, e
+				}
+				if len(adopted.Segments) > 0 || (req.Remaining && len(working.Segments) > 0) {
+					working.Title = t.Beat.Title
+					if len(adopted.Segments) > 0 {
+						working = adopted
+						working.Title = t.Beat.Title
+					}
+					preserved = append(preserved, working)
+				} else {
+					targets = append(targets, t)
+				}
+			}
+			if len(targets) == 0 {
+				return r, false, fmt.Errorf("%w: 没有需要生成的段落，已有正文已保留，请继续审核或定稿", app.ErrPlanningNotReady)
+			}
+			setBatchTargets(&frozen.Bundle, targets, preserved, p)
+		}
 	} else {
 		frozen.Bundle.Neighbors, err = freezeNeighbors(ctx, tx, scope, p, frozen.Bundle.Beat.ID)
 	}
@@ -105,6 +140,30 @@ func (s *Store) StartPlannedRun(ctx context.Context, scope string, req app.Plann
 			err = app.ErrVersionMismatch
 		}
 		if err == nil && req.Mode == "chapter" {
+			if len(origin.Planning.TargetBeatIDs) > 0 {
+				wanted := map[string]bool{}
+				for _, id := range origin.Planning.TargetBeatIDs {
+					wanted[id] = true
+				}
+				targets := []manuscript.ContextBundle{}
+				for _, t := range frozen.Bundle.Targets {
+					if wanted[t.Beat.ID] {
+						targets = append(targets, t)
+					}
+				}
+				frozen.Bundle.Targets = targets
+				frozen.Bundle.ChapterID = origin.ChapterID
+				// Refresh the preserved context while retaining this batch's exact output scope.
+				for _, prior := range origin.Planning.Neighbors {
+					neighbor, e := workingPassage(ctx, tx, scope, p.ChapterID, prior.BeatID)
+					if e != nil {
+						return r, false, e
+					}
+					neighbor.Title = prior.Title
+					frozen.Bundle.Neighbors = append(frozen.Bundle.Neighbors, neighbor)
+				}
+				setBatchTargets(&frozen.Bundle, frozen.Bundle.Targets, frozen.Bundle.Neighbors, p)
+			}
 			err = app.ValidateChapterRecheck(frozen.Bundle, origin)
 			if req.SourceVersion != req.DraftVersion {
 				err = app.ErrVersionMismatch
@@ -147,6 +206,12 @@ func (s *Store) StartPlannedRun(ctx context.Context, scope string, req app.Plann
 	}
 	source := &app.PlannedRunSource{Publications: frozen.Bundle.WritingTask.Publications, EnhancedContinuity: req.EnhancedContinuity, NeighborPolicy: "working-v1", Mode: req.Mode, Neighbors: frozen.Bundle.Neighbors, Knowledge: frozen.Bundle.WritingTask.Knowledge, Scope: scope, ChapterID: p.ChapterID, BeatID: frozen.Bundle.Beat.ID, Expected: versions, PlanVersion: p.Version}
 	source.FromRunID, source.SourceVersion = req.FromRunID, req.SourceVersion
+	source.Remaining = req.Remaining
+	if req.Mode == "chapter" {
+		for _, t := range frozen.Bundle.Targets {
+			source.TargetBeatIDs = append(source.TargetBeatIDs, t.Beat.ID)
+		}
+	}
 	baselineTargets := []string{frozen.Bundle.Beat.ID}
 	if req.Mode == "chapter" {
 		baselineTargets = nil
@@ -299,6 +364,28 @@ func (s *Store) PlannedRunReadiness(ctx context.Context, scope, chapter string, 
 			return out, e
 		}
 		out.DraftVersion = draft.DraftVersion
+		if out.BeatID == app.ChapterBeatID {
+			out.DraftVersion = 0
+		}
+		out.MissingBeatIDs, out.UnadoptedBeatIDs = []string{}, []string{}
+		for _, scene := range p.Content.Scenes {
+			for _, beat := range scene.Beats {
+				working, e := workingPassage(ctx, s.pool, scope, chapter, beat.ID)
+				if e != nil {
+					return out, e
+				}
+				adopted, e := adoptedPassage(ctx, s.pool, scope, chapter, beat.ID)
+				if e != nil {
+					return out, e
+				}
+				if len(working.Segments) == 0 {
+					out.MissingBeatIDs = append(out.MissingBeatIDs, beat.ID)
+				}
+				if len(adopted.Segments) == 0 {
+					out.UnadoptedBeatIDs = append(out.UnadoptedBeatIDs, beat.ID)
+				}
+			}
+		}
 		current := state.OutlineSelection != nil && state.OutlineSelection.Confirmed && p.Versions == (planning.ChapterPlanVersions{Planning: planning.PlanningVersions{Input: state.Input.Version, Direction: state.DirectionVersion, Style: state.StyleVersion, Core: state.CoreVersion}, Outline: state.OutlineVersion, Bindings: state.OutlineSelection.BindingsVersion})
 		if !current {
 			out.Reason = "规划输入已变化，请先复核细纲"
@@ -359,7 +446,7 @@ func (s *Store) PlannedRunReadiness(ctx context.Context, scope, chapter string, 
 			out.Working = &working
 		}
 	}
-	rows, err := s.pool.Query(ctx, "SELECT r.id FROM runs r JOIN planning_run_inputs p ON p.run_id=r.id WHERE p.scope=$1 AND p.chapter_id=$2 AND (r.payload->'planning'->>'beatId'=$3 OR r.payload->'planning'->>'mode'='chapter') ORDER BY r.created_at DESC,r.id DESC LIMIT 10", scope, chapter, out.BeatID)
+	rows, err := s.pool.Query(ctx, "SELECT r.id FROM runs r JOIN planning_run_inputs p ON p.run_id=r.id WHERE p.scope=$1 AND p.chapter_id=$2 AND (r.payload->'planning'->>'beatId'=$3 OR (r.payload->'planning'->>'mode'='chapter' AND (NOT (r.payload->'planning' ? 'targetBeatIds') OR r.payload->'planning'->'targetBeatIds' ? $3))) ORDER BY r.created_at DESC,r.id DESC LIMIT 10", scope, chapter, out.BeatID)
 	if err != nil {
 		return out, err
 	}
@@ -379,4 +466,49 @@ func (s *Store) PlannedRunReadiness(ctx context.Context, scope, chapter string, 
 		}
 	}
 	return out, nil
+}
+
+// Each target sees preserved prose in its actual before/after position.
+func setBatchTargets(b *manuscript.ContextBundle, targets []manuscript.ContextBundle, preserved []manuscript.Passage, p planning.ChapterPlanSelection) {
+	order := map[string]int{}
+	for _, scene := range p.Content.Scenes {
+		for _, beat := range scene.Beats {
+			order[beat.ID] = len(order)
+		}
+	}
+	keptWords := 0
+	for _, passage := range preserved {
+		for _, segment := range passage.Segments {
+			keptWords += manuscript.TextLength(segment.Text)
+		}
+	}
+	for i := range targets {
+		if targets[i].WritingTask != nil {
+			task := *targets[i].WritingTask
+			task.PreservedWords = keptWords
+			remaining := max(0, task.ChapterTargetWords-keptWords)
+			if remaining > 0 {
+				task.BeatTargetWords = remaining / len(targets)
+				if i < remaining%len(targets) {
+					task.BeatTargetWords++
+				}
+			}
+			targets[i].WritingTask = &task
+		}
+		targets[i].Neighbors = append([]manuscript.Passage{}, preserved...)
+		for j := range targets[i].Neighbors {
+			n := &targets[i].Neighbors[j]
+			n.Position = "before"
+			if order[n.BeatID] > order[targets[i].Beat.ID] {
+				n.Position = "after"
+			}
+		}
+	}
+	if len(targets) == 0 {
+		return
+	}
+	draftID, original := b.ChapterID, b.Original
+	*b = targets[0]
+	b.ChapterID, b.Original, b.Targets = draftID, original, targets
+	b.CompactTargets = true
 }

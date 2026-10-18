@@ -27,8 +27,12 @@ describe('author-selected prose preview', () => {
         onDiscard={discard}
       />,
     );
-    expect(screen.getByText('开门', { exact: true })).toBeInTheDocument();
-    expect(screen.getByText('敲门', { exact: true })).toBeInTheDocument();
+    expect(screen.getByLabelText('文字差异').querySelector('del')).toHaveTextContent('开');
+    expect(screen.getByLabelText('文字差异').querySelector('ins')).toHaveTextContent('敲');
+    fireEvent.click(screen.getByRole('button', { name: '修改前' }));
+    expect(screen.getByLabelText('修改前正文')).toHaveTextContent('开门');
+    fireEvent.click(screen.getByRole('button', { name: '修改后' }));
+    expect(screen.getByLabelText('修改后正文')).toHaveTextContent('敲门');
     expect(screen.queryByText(proposal.request.original)).not.toBeInTheDocument();
     expect(apply).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: '确认替换选中文字' }));

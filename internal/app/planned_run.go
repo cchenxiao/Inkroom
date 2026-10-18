@@ -16,6 +16,7 @@ import (
 
 // PlannedRunRequest 只传预期版本和操作权限；上游材料由仓储读取。
 type PlannedRunRequest struct {
+	Remaining          bool                         `json:"remaining,omitempty"`
 	EnhancedContinuity bool                         `json:"enhancedContinuity,omitempty"`
 	Recheck            bool                         `json:"recheck,omitempty"`
 	Mode               string                       `json:"mode,omitempty"`
@@ -127,10 +128,7 @@ func PreparePlannedContextWithHistory(cfg config.Config, scope, runID string, ba
 	style := manuscript.WritingStyle{POV: rules.POV, Tense: rules.Tense, Tone: rules.Tone, SentenceLength: manuscript.WritingRange(rules.SentenceLength), DialogueRatio: manuscript.WritingRange(rules.DialogueRatio), BannedPhrases: rules.BannedPhrases, StyleArc: rules.StyleArc}
 	b.WritingTask = &manuscript.WritingTask{ExperimentalContinuity: cfg.ExperimentalContinuity, Scope: scope, ChapterID: p.ChapterID, Versions: map[string]int{"input": p.Versions.Planning.Input, "direction": p.Versions.Planning.Direction, "style": p.Versions.Planning.Style, "core": p.Versions.Planning.Core, "outline": p.Versions.Outline, "bindings": p.Versions.Bindings}, PlanVersion: p.Version, SourceDigest: sourceDigest, Opening: chapterNumber == 1, ChapterNumber: chapterNumber, Publications: refs, StoryTime: *scene.StoryTime, Brief: manuscript.WritingBrief(p.Content.Brief), Style: style, SceneGoal: scene.Goal, SceneConflict: scene.Conflict, SceneOutcome: scene.Outcome, Voices: voices}
 	if chapter, ok := p.Input.Chapter(); ok {
-		targetWords := chapter.TargetWords
-		if p.Content.TargetWords > 0 {
-			targetWords = p.Content.TargetWords
-		}
+		targetWords := planning.ChapterWordTarget(chapter.TargetWords, p.Content.TargetWords)
 		b.WritingTask.ChapterTargetWords = targetWords
 		beatCount := 0
 		for _, plannedScene := range p.Content.Scenes {
@@ -189,10 +187,12 @@ func plannedFakeSteps(b manuscript.ContextBundle) []model.Step {
 }
 func mustJSON(v any) string { raw, _ := json.Marshal(v); return string(raw) }
 func ValidPlannedRequest(r PlannedRunRequest) bool {
-	return (r.Mode == "" || r.Mode == "beat" || r.Mode == "chapter") && (!(r.Rewrite != nil || r.Recheck) || (r.FromRunID != "" && r.SourceVersion > 0 && (r.Mode != "chapter" || r.Recheck) && !r.AutoRevise)) && !(r.Rewrite != nil && r.Recheck) && (r.FromRunID == "" || r.Rewrite != nil || r.Recheck) && len(r.FromRunID) <= 100 && len(r.BeatID) <= 80 && len(r.RequestID) > 0 && len(r.RequestID) <= 80 && strings.TrimSpace(r.ChapterID) != "" && len(r.ChapterID) <= 80 && r.PlanVersion > 0 && r.DraftVersion >= 0
+	return (!r.Remaining || (r.Mode == "chapter" && !r.Recheck && r.Rewrite == nil)) && (r.Mode == "" || r.Mode == "beat" || r.Mode == "chapter") && (!(r.Rewrite != nil || r.Recheck) || (r.FromRunID != "" && r.SourceVersion > 0 && (r.Mode != "chapter" || r.Recheck) && !r.AutoRevise)) && !(r.Rewrite != nil && r.Recheck) && (r.FromRunID == "" || r.Rewrite != nil || r.Recheck) && len(r.FromRunID) <= 100 && len(r.BeatID) <= 80 && len(r.RequestID) > 0 && len(r.RequestID) <= 80 && strings.TrimSpace(r.ChapterID) != "" && len(r.ChapterID) <= 80 && r.PlanVersion > 0 && r.DraftVersion >= 0
 }
 
 type PlannedRunSource struct {
+	TargetBeatIDs      []string                     `json:"targetBeatIds,omitempty"`
+	Remaining          bool                         `json:"remaining,omitempty"`
 	Publications       []manuscript.PublicationRef  `json:"publications,omitempty"`
 	EnhancedContinuity bool                         `json:"enhancedContinuity,omitempty"`
 	NeighborPolicy     string                       `json:"neighborPolicy,omitempty"`
@@ -214,16 +214,18 @@ type AdoptedPassageStatus struct {
 }
 
 type PlannedRunReadiness struct {
-	Adopted      *AdoptedPassageStatus        `json:"adopted,omitempty"`
-	Working      *manuscript.Passage          `json:"working,omitempty"`
-	BeatID       string                       `json:"beatId"`
-	Ready        bool                         `json:"ready"`
-	Reason       string                       `json:"reason"`
-	DraftID      string                       `json:"draftId"`
-	DraftVersion int                          `json:"draftVersion"`
-	PlanVersion  int                          `json:"planVersion"`
-	Expected     planning.ChapterPlanVersions `json:"expected"`
-	Runs         []Run                        `json:"runs"`
+	MissingBeatIDs   []string                     `json:"missingBeatIds"`
+	UnadoptedBeatIDs []string                     `json:"unadoptedBeatIds"`
+	Adopted          *AdoptedPassageStatus        `json:"adopted,omitempty"`
+	Working          *manuscript.Passage          `json:"working,omitempty"`
+	BeatID           string                       `json:"beatId"`
+	Ready            bool                         `json:"ready"`
+	Reason           string                       `json:"reason"`
+	DraftID          string                       `json:"draftId"`
+	DraftVersion     int                          `json:"draftVersion"`
+	PlanVersion      int                          `json:"planVersion"`
+	Expected         planning.ChapterPlanVersions `json:"expected"`
+	Runs             []Run                        `json:"runs"`
 }
 
 var ErrPlanningNotReady = errors.New("规划材料尚未就绪")

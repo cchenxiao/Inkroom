@@ -29,6 +29,7 @@ type Options struct {
 }
 
 type ChapterState struct {
+	ReviewComparison *ReviewComparison         `json:"reviewComparison,omitempty"`
 	FindingProposal  *FindingProposal          `json:"findingProposal,omitempty"`
 	FindingChanges   []FindingChange           `json:"findingChanges,omitempty"`
 	ReviewPending    bool                      `json:"reviewPending,omitempty"`

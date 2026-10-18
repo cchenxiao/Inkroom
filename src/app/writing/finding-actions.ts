@@ -29,3 +29,34 @@ export function findingRewrite(
     throw new Error('问题说明与修改要求合计超过 1000 字，请精简修改要求。');
   return rewriteRequest(segment, request, whole ? undefined : finding.quote);
 }
+
+/** Adopted/historical manuscripts need a new preview candidate, not a recheck. */
+export async function submitFindingRewrite(
+  run: BackendRun | undefined,
+  id: string,
+  instruction: string,
+  whole: boolean,
+  waiting: boolean,
+  handlers: {
+    propose: (
+      id: string,
+      request: import('@/features/prepare/types/backend').AuthorRewrite,
+    ) => Promise<boolean | undefined> | undefined;
+    rewrite: (
+      request: import('@/features/prepare/types/backend').AuthorRewrite,
+    ) => Promise<boolean | undefined> | undefined;
+    revise: (
+      request: import('@/features/prepare/types/backend').AuthorRewrite,
+    ) => Promise<boolean | undefined>;
+  },
+) {
+  const { finding } = findingTarget(run, id);
+  const request = findingRewrite(run, id, instruction, whole);
+  if (['P2', 'P3'].includes(finding.severity) && id !== 'author-request-review') {
+    return waiting ? handlers.propose(id, request) : handlers.revise({ ...request, preview: true });
+  }
+  return waiting &&
+    (run?.planning?.neighborPolicy === 'working-v1' || run?.planning?.mode === 'chapter')
+    ? handlers.rewrite(request)
+    : handlers.revise(request);
+}

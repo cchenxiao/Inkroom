@@ -33,8 +33,9 @@ export interface BookArchive {
     keptFindings: string[];
   }[];
 }
-export function useBookArchive() {
+export function useBookArchive(enabled = true) {
   return useQuery({
+    enabled,
     queryKey: ['book-archive', 'zhuoliu', 'main'],
     queryFn: ({ signal }) => backendApi.get<BookArchive>('/planning/archive', signal),
     staleTime: 30000,

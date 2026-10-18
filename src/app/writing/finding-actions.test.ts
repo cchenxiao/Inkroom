@@ -1,5 +1,5 @@
-import { expect, it } from 'vitest';
-import { findingRewrite, replaceFindingQuote } from './finding-actions';
+import { expect, it, vi } from 'vitest';
+import { findingRewrite, replaceFindingQuote, submitFindingRewrite } from './finding-actions';
 import type { BackendRun } from '@/features/prepare/types/backend';
 const run = {
   result: {
@@ -40,4 +40,45 @@ it('refuses ambiguous quotes and oversize requests without silently changing sco
   expect(() => replaceFindingQuote(repeated, 'f1', '新句')).toThrow(/多次/);
   expect(() => findingRewrite(repeated, 'f1', '改这句', false)).toThrow(/多次/);
   expect(() => findingRewrite(run, 'f1', '字'.repeat(1000), true)).toThrow(/1000/);
+});
+
+it.each(['P2', 'P3'] as const)(
+  'creates an isolated %s preview from an adopted manuscript without rechecking it first',
+  async (severity) => {
+    const adopted = structuredClone(run);
+    adopted.status = 'committed';
+    adopted.result!.report.findings[0].severity = severity;
+    const handlers = {
+      propose: vi.fn(),
+      rewrite: vi.fn(),
+      revise: vi.fn().mockResolvedValue(true),
+    };
+    expect(await submitFindingRewrite(adopted, 'f1', '只改这句', false, false, handlers)).toBe(
+      true,
+    );
+    expect(handlers.revise).toHaveBeenCalledWith(
+      expect.objectContaining({
+        preview: true,
+        segmentId: 's1',
+        original: '前文。😀旧句。后文。',
+        start: 3,
+        end: 7,
+      }),
+    );
+    expect(handlers.propose).not.toHaveBeenCalled();
+    expect(handlers.rewrite).not.toHaveBeenCalled();
+    expect(adopted.result!.segments[0].text).toBe(run.result!.segments[0].text);
+  },
+);
+it('keeps pending P2 edits on the existing version-bound local preview protocol', async () => {
+  const waiting = structuredClone(run);
+  waiting.status = 'waiting_human';
+  waiting.result!.report.findings[0].severity = 'P2';
+  const handlers = { propose: vi.fn().mockResolvedValue(true), rewrite: vi.fn(), revise: vi.fn() };
+  await submitFindingRewrite(waiting, 'f1', '只改这句', false, true, handlers);
+  expect(handlers.propose).toHaveBeenCalledWith(
+    'f1',
+    expect.objectContaining({ start: 3, end: 7 }),
+  );
+  expect(handlers.revise).not.toHaveBeenCalled();
 });

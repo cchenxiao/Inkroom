@@ -65,7 +65,7 @@ func exercisePreviewRecovery(t *testing.T, kind string) {
 	}
 	state.Segments[0].Text += "待修改甲。待修改乙。"
 	for i, q := range []string{"待修改甲", "待修改乙"} {
-		state.Report.Findings = append(state.Report.Findings, review.Finding{ID: []string{"f1", "f2"}[i], SegmentID: state.Segments[0].ID, Quote: q, Severity: review.P3, Critic: "ai_taste", EvidenceRefs: []string{state.Segments[0].ID}, Reason: "措辞需调整", Suggestion: "换个表达", RepairScope: "phrase", DraftVersion: 1})
+		state.Report.Findings = append(state.Report.Findings, review.Finding{ID: []string{"f1", "f2"}[i], SegmentID: state.Segments[0].ID, Quote: q, Severity: review.P2, Critic: "ai_taste", EvidenceRefs: []string{state.Segments[0].ID}, Reason: "措辞需调整", Suggestion: "换个表达", RepairScope: "phrase", DraftVersion: 1})
 	}
 	state.Reviews[len(state.Reviews)-1] = state.Report
 	r.Result = &state
@@ -145,6 +145,9 @@ func exercisePreviewRecovery(t *testing.T, kind string) {
 	calls, err = store.Calls(ctx, id)
 	if err != nil || len(calls) != 3 {
 		t.Fatalf("batch did not run exactly two critics: %d %v", len(calls), err)
+	}
+	if len(r.Result.Revisions) != 2 || r.Result.Revisions[0].FromVersion != 1 || r.Result.Revisions[0].ToVersion != 2 || r.Result.Revisions[0].Patches[0].OldText != "待修改甲" || r.Result.Revisions[1].Patches[0].NewText != "手动改乙" {
+		t.Fatal("persisted diff missing or duplicated after resume and review", r.Result.Revisions)
 	}
 	if r.Result.ReviewPending || r.Result.Report.DraftVersion != 3 || len(r.Result.FindingChanges) != 0 {
 		t.Fatal("batch gate not released")

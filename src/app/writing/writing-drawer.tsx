@@ -1,6 +1,6 @@
 import { lazy, Suspense, useState } from 'react';
 import { Activity, ChevronUp, ChevronDown, Maximize2, Minimize2, X } from 'lucide-react';
-import { sentenceDiff } from '@/shared/lib/diff';
+import { TextChange } from './text-change';
 import { Button } from '@/shared/ui';
 import { useUIStore } from '@/shared/lib/ui-store';
 import { writingDesk as t } from '@/shared/lib/messages-writing-desk';
@@ -115,27 +115,20 @@ export function WritingDrawer({
                   {run.result?.revisions.map((revision, index) => (
                     <details key={index} open>
                       <summary>
-                        第 {revision.round} 轮 · v{revision.fromVersion} → v{revision.toVersion}
+                        {revision.kind === 'local_edit' || revision.kind.startsWith('author_')
+                          ? '作者修改'
+                          : `自动修订第 ${revision.round} 轮`}{' '}
+                        · v{revision.fromVersion} → v{revision.toVersion}
                       </summary>
                       {revision.patches.map((patch, i) => (
                         <div className="sentence-change" key={i}>
-                          <div className="sentence-text">
-                            {sentenceDiff(patch.oldText, patch.newText).map((part, j) =>
-                              part.kind === 'insert' ? (
-                                <ins key={j}>{part.text}</ins>
-                              ) : part.kind === 'delete' ? (
-                                <del key={j}>{part.text}</del>
-                              ) : (
-                                <span key={j}>{part.text}</span>
-                              ),
-                            )}
-                          </div>
+                          <TextChange before={patch.oldText} after={patch.newText} />
                           <p>{patch.reason}</p>
                         </div>
                       ))}
                     </details>
                   ))}
-                  {!run.result?.revisions.length && <p className="muted">本次没有自动修订记录。</p>}
+                  {!run.result?.revisions.length && <p className="muted">本次没有修改记录。</p>}
                 </div>
               </>
             )}

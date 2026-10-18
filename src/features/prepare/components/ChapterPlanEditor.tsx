@@ -332,7 +332,11 @@ export default function ChapterPlanEditor({
               min={200}
               max={12000}
               step={100}
-              value={content.targetWords === 0 ? '' : (content.targetWords ?? chapter.targetWords)}
+              value={
+                content.targetWords === 0
+                  ? ''
+                  : (content.targetWords ?? Math.min(chapter.targetWords, 3000))
+              }
               onChange={(e) =>
                 change((c) => {
                   c.targetWords = Number(e.target.value);
@@ -341,7 +345,8 @@ export default function ChapterPlanEditor({
             />
           </label>
           <p className="muted">
-            按本章分配各段篇幅，不改变其他章节的规划。常规章节可设为 2000–3000 字。
+            默认整章控制在 3000
+            字以内，续写会扣除保留正文的字数。这里可显式调整本章目标；超长正文只提示，不会自动截断。
           </p>
           <label>
             {t.selectedBeatId}

@@ -17,8 +17,22 @@ func exerciseMiddleWorkingDraft(t *testing.T, s *Store, scope string, p planning
 	t.Helper()
 	ctx := context.Background()
 	cfg.MaxCalls, cfg.MaxTokens, cfg.ContextTokens = 20, 128000, 32768
+	state, readErr := s.GetPlanning(ctx, scope)
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+	for _, current := range state.ChapterPlans {
+		if current.ChapterID == p.ChapterID {
+			p = current
+		}
+	}
 	// Freeze a new author-confirmed test plan with a real middle beat.
 	p.Content.Scenes[0].Beats = append(append([]planning.PlannedBeat{}, p.Content.Scenes[0].Beats...), planning.PlannedBeat{ID: "third-" + rand.Text(), Title: "收尾", Action: "收起记录，完成本次交接。", Turn: "为下一次核对留下记录。"})
+	// New scene plan has new beat identities; previous adopted passages stay intact.
+	for i := range p.Content.Scenes[0].Beats {
+		p.Content.Scenes[0].Beats[i].ID = "middle-test-" + rand.Text()
+	}
+	p.Content.Brief.SelectedBeatID = p.Content.Scenes[0].Beats[0].ID
 	var err error
 	p, err = s.SaveChapterPlan(ctx, scope, planning.ChapterPlanSaveRequest{Expected: p.Versions, ChapterID: p.ChapterID, ExpectedVersion: p.Version, SourceVersion: p.Version, JobID: p.JobID, CandidateVersion: p.CandidateVersion, Content: p.Content, Confirmed: true})
 	if err != nil {
@@ -36,6 +50,9 @@ func exerciseMiddleWorkingDraft(t *testing.T, s *Store, scope string, p planning
 			req.FromRunID = from.ID
 			req.SourceVersion = from.DraftVersion
 			req.Recheck = recheck
+			if recheck && mode == "chapter" {
+				req.DraftVersion = from.DraftVersion
+			}
 		}
 		r, created, err := s.StartPlannedRun(ctx, scope, req, cfg)
 		if err != nil || !created {

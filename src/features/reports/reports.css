@@ -336,3 +336,46 @@
   border: 1px solid var(--border);
   border-radius: var(--radius);
 }
+
+/* Keep the original dashboard usable in the in-app browser and narrow panels. */
+.reports-page {
+  container-type: inline-size;
+}
+@container (max-width: 760px) {
+  .reports-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+  .report-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    position: static;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+    padding: 0 0 10px;
+  }
+  .report-tabs button {
+    padding: 10px;
+  }
+  .report-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .report-metrics button {
+    padding: 16px;
+  }
+  .report-metrics button:first-child {
+    padding-left: 16px;
+  }
+  .report-metrics button:nth-child(2) {
+    border-right: 0;
+  }
+  .report-chart-grid,
+  .sample-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.report-run-detail {
+  white-space: normal;
+  min-width: 220px;
+  max-width: 360px;
+}

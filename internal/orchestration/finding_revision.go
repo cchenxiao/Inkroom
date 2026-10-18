@@ -9,6 +9,7 @@ import (
 	"inkloom/internal/agents/model"
 	"inkloom/internal/domain/manuscript"
 	"inkloom/internal/domain/review"
+	"inkloom/internal/domain/revision"
 )
 
 // FindingProposal is a pinned replacement awaiting explicit author confirmation.
@@ -74,8 +75,8 @@ func validateFindingAction(s ChapterState, a HumanAction) error {
 			break
 		}
 	}
-	if finding == nil || finding.ID == "author-request-review" || finding.Severity != review.P3 || finding.SegmentID != a.Rewrite.SegmentID || finding.Quote == "" {
-		return fmt.Errorf("此入口只处理当前稿中的单条 P3 问题")
+	if finding == nil || finding.ID == "author-request-review" || (finding.Severity != review.P2 && finding.Severity != review.P3) || finding.SegmentID != a.Rewrite.SegmentID || finding.Quote == "" {
+		return fmt.Errorf("此入口只处理当前稿中的单条 P2/P3 问题")
 	}
 	// Local review does not silently widen to a whole beat. An expanded change uses
 	// the separate full rewrite flow and its full review contract.
@@ -136,6 +137,7 @@ func applyFindingAction(ctx context.Context, s ChapterState, a HumanAction, chat
 		request := *req
 		s.AuthorRequest = &request
 	}
+	s.Revisions = append(append([]revision.Revision{}, s.Revisions...), revision.Revision{Kind: "local_edit", FromVersion: s.DraftVersion, ToVersion: s.DraftVersion + 1, Patches: []revision.Patch{{FindingID: findingID, SegmentID: req.SegmentID, OldText: string([]rune(req.Original)[req.Start:req.End]), NewText: replacement, Reason: req.Instruction}}})
 	s.DraftVersion++
 	s.ReviewPending = true
 	s.FindingProposal = nil
