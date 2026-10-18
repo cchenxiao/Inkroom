@@ -64,9 +64,6 @@ func (s *service) plannedRuns(w http.ResponseWriter, r *http.Request) {
 	send(w, 200, result)
 }
 func (s *service) consistencyCheck(run app.Run) orchestration.ConsistencyCheck {
-	if run.Planning != nil {
-		return nil
-	} // 仅固定初始材料，不能查询教学 ch7 的检索目录。
 	return app.NewConsistencyCheck(s.retriever, s.repo, run.ID)
 }
 

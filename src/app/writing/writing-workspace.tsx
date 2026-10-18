@@ -50,7 +50,7 @@ import { ErrorBoundary } from '../error-boundary';
 import { NavRail } from '../components/nav-rail';
 import { WritingBible, WritingGate, WritingFinding, findingDecision } from './writing-panels';
 import { WritingDrawer } from './writing-drawer';
-import { useAuthorDraft } from './author-draft';
+import { inlineEditVisible, useAuthorDraft } from './author-draft';
 import './writing.css';
 import { RevisionReceipt } from './revision-receipt';
 import { ContextReviewNotice } from './context-review-notice';
@@ -197,13 +197,19 @@ function Desk({
     text ? instructionDraft.change('instruction', text) : instructionDraft.remove('instruction');
   const acknowledged = actions.mutation.isSuccess ? actions.mutation.variables : undefined;
   useEffect(() => {
-    if (!acknowledged || acknowledged.runId !== run?.id || acknowledged.operation.kind !== 'action')
+    if (
+      !run ||
+      !acknowledged ||
+      acknowledged.runId !== run.id ||
+      acknowledged.operation.kind !== 'action'
+    )
       return;
     const action = acknowledged.operation.input;
     if (
       action.type === 'inline_edit' &&
       action.segmentId &&
-      draft.texts[action.segmentId] === action.text
+      draft.texts[action.segmentId] === action.text &&
+      inlineEditVisible(run, action)
     )
       draft.remove(action.segmentId);
     if (
@@ -217,7 +223,7 @@ function Desk({
           (selection ? '针对「' + selection.quote + '」：' : '') + instruction)
     )
       instructionDraft.clear();
-  }, [acknowledged, run?.id, draft, instructionDraft, selection, instruction]);
+  }, [acknowledged, run, draft, instructionDraft, selection, instruction]);
   useEffect(() => {
     const request = writer.start.variables;
     if (
@@ -413,6 +419,7 @@ function Desk({
   const selectFinding = (id: string) => {
     setEditOnOpen(null);
     setSelectedFinding(id);
+    if (compact) setSide(null);
   };
   const showReview = (targetBeat?: string) => {
     if (targetBeat && targetBeat !== beatId && (locked || busy)) return;
@@ -530,7 +537,9 @@ function Desk({
   const saveEdit = async () => {
     const entry = Object.entries(draft.texts)[0];
     if (!entry || !editable || draft.stale) return;
-    if (await actions.edit(entry[0], entry[1])) draft.remove(entry[0]);
+    // An action receipt can arrive before the SSE snapshot with the saved text.
+    // Keep the local text until the acknowledgement effect sees it in that snapshot.
+    await actions.edit(entry[0], entry[1]);
   };
   const startDisabled =
     !!block || !writer.gate.data?.ready || locked || busy || run?.status === 'running';
@@ -715,20 +724,28 @@ function Desk({
       }}
     />
   );
+  const continuingChapter = parts.some((part) => part.segments.length > 0);
   const primaryLabel = writer.loading
     ? '读取中…'
     : run?.status === 'running'
       ? selectionPreviewRunning
         ? '正在生成选区预览'
-        : t.running
+        : localActionRunning
+          ? run?.pendingAction?.type === 'propose_finding'
+            ? '正在生成修改预览'
+            : '正在保存局部处理'
+          : t.running
       : run?.status === 'committed'
         ? t.assembly
         : run
           ? t.review
-          : '生成整章';
+          : continuingChapter
+            ? '生成本段'
+            : '生成整章';
   const primary = () => {
     if (run?.status === 'committed') setSide('assembly');
     else if (run) showReview();
+    else if (continuingChapter) start();
     else writer.beginChapter();
   };
   const tree = (
@@ -1107,12 +1124,15 @@ function Desk({
                     onEdit={async (replacement) => {
                       if (!editable || draft.dirty || instructionDraft.dirty) return false;
                       const f = run?.result?.report.findings.find((f) => f.id === selectedFinding);
-                      if (f?.severity === 'P3' && f.id !== 'author-request-review')
-                        return actions.editFinding(
+                      if (f?.severity === 'P3' && f.id !== 'author-request-review') {
+                        const ok = await actions.editFinding(
                           selectedFinding,
                           findingRewrite(run, selectedFinding, '作者直接修改这处原文', false),
                           replacement,
                         );
+                        if (ok) setSelectedFinding(null);
+                        return ok;
+                      }
                       const change = replaceFindingQuote(run, selectedFinding, replacement);
                       return actions.edit(change.segmentId, change.text);
                     }}
@@ -1132,9 +1152,12 @@ function Desk({
                       if (ok) showReview();
                       return ok;
                     }}
-                    onApply={async (id) =>
-                      !stale && !draft.dirty && !instructionDraft.dirty && actions.applyFinding(id)
-                    }
+                    onApply={async (id) => {
+                      if (stale || draft.dirty || instructionDraft.dirty) return false;
+                      const ok = await actions.applyFinding(id);
+                      if (ok) setSelectedFinding(null);
+                      return ok;
+                    }}
                     onDiscard={async (id) => actions.discardFinding(id)}
                     onDecision={async (decision, reason) => {
                       if (!editable || draft.dirty || instructionDraft.dirty) return false;
@@ -1200,7 +1223,12 @@ function Desk({
               </Button>
             </header>
             <div className="writing-panel-scroll" hidden={side !== 'bible'}>
-              <WritingBible planning={planning} chapterId={chapterId} />
+              <WritingBible
+                planning={planning}
+                chapterId={chapterId}
+                runId={run?.id}
+                beatId={beatId}
+              />
             </div>
             <div className="writing-panel-scroll" hidden={side !== 'assembly'}>
               {!!chapterId && (

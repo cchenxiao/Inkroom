@@ -1,7 +1,8 @@
 import { editorialPages as e } from '@/shared/lib/messages-editorial-pages';
 import OverviewCharts from './components/OverviewCharts';
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import LiveReportsPage from './LiveReportsPage';
 import {
   Download,
   PenLine,
@@ -21,6 +22,10 @@ import { Button, Badge, Card, Modal, AsyncState, Select, PageHeader, Field } fro
 import type { ReportOverview, Experiment, RegressionCase, RunState } from '@/types/domain';
 import './reports.css';
 export default function ReportsPage() {
+  const [params] = useSearchParams();
+  return params.get('source') === 'planned' ? <LiveReportsPage /> : <DemoReportsPage />;
+}
+function DemoReportsPage() {
   const branchId = useUIStore((s) => s.branchId);
   const overview = useResource<ReportOverview>(`/reports/overview?branchId=${branchId}`);
   const experiments = useResource<Experiment[]>('/reports/experiments');

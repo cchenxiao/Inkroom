@@ -10,8 +10,12 @@ export function sourceLabel(run: BackendRun, id: string, fallback = '关联材�
     ...(context?.sources ?? []),
     ...(context?.characters.flatMap((c) => [...c.hardTraits, ...c.knows]) ?? []),
     ...(run.result?.segments ?? []),
-    ...(run.criticLookups?.flatMap((c) => c.review.evidence?.hits.map((h) => h.record) ?? []) ??
-      []),
+    ...(run.criticLookups?.flatMap((c) =>
+      [
+        ...(c.review.evidence?.hits ?? []),
+        ...(c.review.scopedEvidence?.flatMap((s) => s.evidence?.hits ?? []) ?? []),
+      ].map((h) => h.record),
+    ) ?? []),
   ].find((item) => item.id === id);
   return textLabel(record?.text, fallback);
 }

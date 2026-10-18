@@ -3,6 +3,7 @@ package app
 import (
 	"fmt"
 	"inkloom/internal/config"
+	"inkloom/internal/domain/manuscript"
 	"inkloom/internal/domain/memory"
 	"inkloom/internal/embedding"
 	"inkloom/internal/retrieval"
@@ -27,6 +28,26 @@ func NewRetrieval(cfg config.Config, repo retrieval.Repository) (*retrieval.Serv
 		return nil, fmt.Errorf("unknown embedding provider")
 	}
 	return s, nil
+}
+
+// MemoryView derives authorization from a frozen task, never from a model query.
+func MemoryView(b manuscript.ContextBundle) (memory.View, error) {
+	if b.WritingTask == nil {
+		v := CurrentMemoryView()
+		if b.ProjectID != v.ProjectID || b.BranchID != v.BranchID || b.ChapterID != "ch7" {
+			return memory.View{}, ErrContextMismatch
+		}
+		return v, nil
+	}
+	t := b.WritingTask
+	if b.POVCharacterID == "" || t.ChapterNumber < 1 || t.StoryTime < 0 {
+		return memory.View{}, ErrContextMismatch
+	}
+	v := memory.View{ProjectID: b.ProjectID, BranchID: b.BranchID, POV: b.POVCharacterID, At: memory.Moment{Chapter: t.ChapterNumber, StoryTime: t.StoryTime}, CatalogBound: true, Knowledge: t.Knowledge}
+	for _, p := range t.Publications {
+		v.Publications = append(v.Publications, memory.PublicationRef{ID: p.ID, ChapterID: p.ChapterID, Version: p.Version})
+	}
+	return v, nil
 }
 
 // CurrentMemoryView 仍是 ch7/main 学习切片的服务端创作位置，不接受浏览器扩大权限。

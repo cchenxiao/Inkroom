@@ -1,6 +1,7 @@
 import { backendApi } from '@/shared/api/client';
 import type { ChapterReviewJob } from './chapter-review';
 export interface FactCandidate {
+  suggestedKnowers?: { characterId: string; evidence: { ref: string; quote: string } }[];
   id: string;
   text: string;
   kind: 'event' | 'statement' | 'uncertain';
@@ -59,6 +60,7 @@ export interface FactsJob {
   message: string;
   failure?: { stage: string; code: string; message: string };
   input: {
+    characterNames?: Record<string, string>;
     chapterId: string;
     review: ChapterReviewJob['input'];
     baseKnowledge: { version: number; digest: string };

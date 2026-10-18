@@ -8,14 +8,10 @@ export default function BackendCriticLookup({ run }: { run: BackendRun }) {
   return (
     <section aria-label={t.criticLookupTitle}>
       {run.criticLookups.map((check) => (
-        <details
-          className="backend-manifest"
-          key={check.draftVersion}
-          open={check.draftVersion === run.draftVersion}
-        >
+        <details className="backend-manifest" key={check.draftVersion}>
           <summary>
             {t.criticLookupTitle} · v{check.draftVersion} · {check.review.lookup?.steps.length ?? 0}
-            /3
+            次查询
           </summary>
           <p>{t.criticLookupNote}</p>
           {!check.review.lookup?.steps.length && (
@@ -52,16 +48,21 @@ export default function BackendCriticLookup({ run }: { run: BackendRun }) {
                 '查询已停止，请核对记录'}
             </p>
           )}
-          {check.review.evidence?.hits.map((hit) => (
-            <details key={hit.record.id}>
-              <summary>
-                {sourceLabel(run, hit.record.id, '查证材料')} · v{hit.record.version} ·{' '}
-                {hit.record.kind === 'fact' ? t.criticFact : t.criticPassage}
-              </summary>
-              <p>{hit.record.text}</p>
-              <TechnicalDetails items={{ 证据编号: hit.record.id, 校验值: hit.digest }} />
-            </details>
-          ))}
+          {[
+            ...(check.review.evidence?.hits ?? []),
+            ...(check.review.scopedEvidence?.flatMap((scope) => scope.evidence?.hits ?? []) ?? []),
+          ]
+            .filter((hit, index, all) => all.findIndex((h) => h.digest === hit.digest) === index)
+            .map((hit) => (
+              <details key={hit.record.id}>
+                <summary>
+                  {sourceLabel(run, hit.record.id, '查证材料')} · v{hit.record.version} ·{' '}
+                  {hit.record.kind === 'fact' ? t.criticFact : t.criticPassage}
+                </summary>
+                <p>{hit.record.text}</p>
+                <TechnicalDetails items={{ 证据编号: hit.record.id, 校验值: hit.digest }} />
+              </details>
+            ))}
         </details>
       ))}
     </section>

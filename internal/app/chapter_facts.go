@@ -13,18 +13,26 @@ import (
 )
 
 type ChapterFactsInput struct {
-	ChapterID     string              `json:"chapterId"`
-	Review        ChapterReviewInput  `json:"review"`
-	BaseKnowledge memory.KnowledgeRef `json:"baseKnowledge"`
-	Knowledge     knowledge.Snapshot  `json:"knowledge"`
+	CharacterNames map[string]string   `json:"characterNames,omitempty"`
+	ChapterID      string              `json:"chapterId"`
+	Review         ChapterReviewInput  `json:"review"`
+	BaseKnowledge  memory.KnowledgeRef `json:"baseKnowledge"`
+	Knowledge      knowledge.Snapshot  `json:"knowledge"`
 }
 type ChapterFactCandidate struct {
-	ID            string          `json:"id"`
-	Text          string          `json:"text"`
-	Kind          string          `json:"kind"` // event | statement | uncertain; only event may be confirmed.
-	RelatedFactID string          `json:"relatedFactId"`
-	Evidence      ChapterEvidence `json:"evidence"`
-	Reason        string          `json:"reason"`
+	SuggestedKnowers []SuggestedKnower `json:"suggestedKnowers"`
+	ID               string            `json:"id"`
+	Text             string            `json:"text"`
+	Kind             string            `json:"kind"` // event | statement | uncertain; only event may be confirmed.
+	RelatedFactID    string            `json:"relatedFactId"`
+	Evidence         ChapterEvidence   `json:"evidence"`
+	Reason           string            `json:"reason"`
+}
+
+// Suggestions never become knowledge until included in an author's saved decision.
+type SuggestedKnower struct {
+	CharacterID string          `json:"characterId"`
+	Evidence    ChapterEvidence `json:"evidence"`
 }
 type ChapterFactsOutput struct {
 	Candidates []ChapterFactCandidate `json:"candidates"`
@@ -111,16 +119,28 @@ func ValidateChapterFactCandidates(in ChapterFactsInput, out ChapterFactsOutput)
 		return factError("validation", "candidate_count", "候选列表缺失或超过允许数量。", ErrInvalidWrite)
 	}
 	ids := map[string]bool{}
-	for _, c := range out.Candidates {
+	for index, c := range out.Candidates {
 		if c.ID == "" || len(c.ID) > 80 || ids[c.ID] || strings.TrimSpace(c.Text) == "" || utf8.RuneCountInString(c.Text) > 500 || len(c.Reason) > 2000 || !slices.Contains([]string{"event", "statement", "uncertain"}, c.Kind) {
 			return factError("validation", "candidate_fields", "候选编号重复、字段缺失或内容长度不符合要求。", ErrInvalidWrite)
 		}
 		ids[c.ID] = true
+		seenKnowers := map[string]bool{}
+		if len(c.SuggestedKnowers) > len(in.Knowledge.Characters) {
+			return factError("validation", "invalid_knower", "知情角色建议超出当前人物范围。", ErrInvalidWrite)
+		}
+		for _, k := range c.SuggestedKnowers {
+			p, _, valid := factSource(in, k.Evidence)
+			fact, _, factValid := factSource(in, c.Evidence)
+			if !valid || !factValid || p.StoryTime != fact.StoryTime || seenKnowers[k.CharacterID] || !slices.Contains(in.Knowledge.Characters, k.CharacterID) {
+				return factError("validation", "invalid_knower", "知情角色建议缺少同一时点的原文依据，或人物不属于当前作品。", ErrInvalidWrite)
+			}
+			seenKnowers[k.CharacterID] = true
+		}
 		if _, _, ok := factSource(in, c.Evidence); !ok {
 			return factError("validation", "evidence_mismatch", "候选引用的段落或引文与本次章稿不一致，未载入候选。", ErrInvalidWrite)
 		}
 		if c.RelatedFactID != "" && !slices.ContainsFunc(in.Knowledge.Facts, func(f knowledge.Fact) bool { return f.ID == c.RelatedFactID }) {
-			return factError("validation", "unknown_fact_reference", "候选关联了本次知识快照中不存在的事实，未载入候选。", ErrInvalidWrite)
+			return factError("validation", "unknown_fact_reference", fmt.Sprintf("第 %d 条候选关联了本次知识快照中不存在的事实，未载入候选。", index+1), ErrInvalidWrite)
 		}
 	}
 	return nil

@@ -46,37 +46,81 @@ func NewConsistencyCheck(s *retrieval.Service, repo CriticLookupRepository, runI
 				return c.Review, model.Usage{Known: true}, nil
 			}
 		}
-		view := CurrentMemoryView()
-		if state.Context.ProjectID != view.ProjectID || state.Context.BranchID != view.BranchID || state.Context.ChapterID != "ch7" {
-			return result, model.Usage{}, fmt.Errorf("critic lookup supports current ch7/main slice only")
+		targets := state.Context.Targets
+		multi := len(targets) > 0
+		if !multi {
+			targets = []manuscript.ContextBundle{state.Context}
 		}
-		session, err := s.Session(ctx, view)
-		if err != nil {
-			return result, model.Usage{}, err
-		}
-		fs, evidence, trace, usage, err := agents.CheckConsistencyTools(ctx, chat, state.Segments, state.DraftVersion, state.Context, func(ctx context.Context, q string) (retrieval.Result, error) { return session.Search(ctx, view, q, 3) }, func(trace memory.LookupTrace, evidence *memory.RetrievalContext, fs []review.Finding) error {
-			result.Lookup = &trace
-			result.Evidence = evidence
-			result.Findings = fs
-			result.Status = "running"
-			if trace.Stop == "ready" {
-				result.Status = "completed"
-			} else if trace.Stop != "" {
-				result.Status = "failed"
-			}
+		usage := model.Usage{Known: true}
+		allTrace := memory.LookupTrace{Steps: []memory.LookupStep{}}
+		persist := func() error {
 			save, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
 			return repo.SaveCriticLookup(save, runID, CriticLookup{DraftVersion: state.DraftVersion, InputDigest: digest, Review: result})
-		})
-		result.Lookup = &trace
-		result.Evidence = evidence
-		result.Findings = fs
-		if err != nil {
-			result.Status = "failed"
-		} else {
-			result.Status = "completed"
 		}
-		return result, usage, err
+		for i, b := range targets {
+			view, e := MemoryView(b)
+			if e != nil {
+				return result, usage, e
+			}
+			session, e := s.Session(ctx, view)
+			if e != nil {
+				return result, usage, e
+			}
+			segments := state.Segments
+			if multi {
+				segments = nil
+				for _, seg := range state.Segments {
+					if seg.BeatID == b.Beat.ID {
+						segments = append(segments, seg)
+					}
+				}
+			}
+			prefix := append([]memory.LookupStep{}, allTrace.Steps...)
+			baseFindings := append([]review.Finding{}, result.Findings...)
+			if multi {
+				result.ScopedEvidence = append(result.ScopedEvidence, orchestration.ScopedReviewEvidence{BeatID: b.Beat.ID})
+			}
+			fs, evidence, trace, u, e := agents.CheckConsistencyTools(ctx, chat, segments, state.DraftVersion, b, func(ctx context.Context, q string) (retrieval.Result, error) { return session.Search(ctx, view, q, 3) }, func(trace memory.LookupTrace, evidence *memory.RetrievalContext, fs []review.Finding) error {
+				for n := range trace.Steps {
+					trace.Steps[n].Scope = b.Beat.ID
+				}
+				allTrace.Steps = append(append([]memory.LookupStep{}, prefix...), trace.Steps...)
+				result.Lookup = &allTrace
+				if multi {
+					result.ScopedEvidence[i] = orchestration.ScopedReviewEvidence{BeatID: b.Beat.ID, Evidence: evidence, Lookup: trace}
+				} else {
+					result.Evidence = evidence
+				}
+				return persist()
+			})
+			usage.InputTokens += u.InputTokens
+			usage.OutputTokens += u.OutputTokens
+			usage.Known = usage.Known && u.Known
+			if multi {
+				for n := range fs {
+					fs[n].ID = fmt.Sprintf("scope-%d-%s", i+1, fs[n].ID)
+				}
+				result.ScopedEvidence[i] = orchestration.ScopedReviewEvidence{BeatID: b.Beat.ID, Evidence: evidence, Lookup: trace}
+			} else {
+				result.Evidence = evidence
+			}
+			result.Findings = append(baseFindings, fs...)
+			if e != nil {
+				result.Status = "failed"
+				allTrace.Stop = trace.Stop
+				result.Lookup = &allTrace
+				_ = persist()
+				return result, usage, e
+			}
+		}
+		allTrace.Stop = "ready"
+		result.Lookup = &allTrace
+		result.Status = "completed"
+		if err := persist(); err != nil {
+			return result, usage, err
+		}
+		return result, usage, nil
 	}
 }
 

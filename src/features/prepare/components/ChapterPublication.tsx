@@ -64,6 +64,7 @@ export default function ChapterPublication({
       setChoice('');
       refresh();
       void client.invalidateQueries({ queryKey: ['live-book'] });
+      void client.invalidateQueries({ queryKey: ['book-archive'] });
       void client.invalidateQueries({ queryKey: ['planned-run-gate'] });
     },
     onError: (e) => {

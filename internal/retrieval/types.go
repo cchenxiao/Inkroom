@@ -30,6 +30,7 @@ type Embedder interface {
 	Embed(context.Context, []string) ([][]float32, error)
 }
 type Result struct {
+	Audience     string                  `json:"audience,omitempty"`
 	Context      memory.RetrievalContext `json:"context"`
 	Excluded     []memory.Exclusion      `json:"excluded"`
 	VisibleCount int                     `json:"visibleCount"`

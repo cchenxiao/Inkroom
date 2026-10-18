@@ -54,7 +54,7 @@ var ShowrunnerSchema []byte
 //go:embed chapter_review.v1.json
 var ChapterReviewSchema []byte
 
-//go:embed chapter_facts.v1.json
+//go:embed chapter_facts.v2.json
 var ChapterFactsSchema []byte
 
 //go:embed chapter_writer.v1.json

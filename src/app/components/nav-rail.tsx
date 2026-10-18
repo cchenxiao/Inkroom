@@ -60,14 +60,16 @@ export function NavRail({ realWriting = false }: { realWriting?: boolean }) {
     const key = (event: KeyboardEvent) => {
       if (!(event.metaKey || event.ctrlKey) || !event.altKey) return;
       const index = Number(event.key) - 1;
-      if (navigation[index] && (!realWriting || index < 3)) {
+      if (navigation[index] && (!realWriting || index < 3 || index === 5)) {
         event.preventDefault();
         navigate(
-          realWriting && navigation[index][0] !== 'prepare'
-            ? realPath(navigation[index][0] === 'review' ? 'assembly' : undefined)
-            : realWriting
-              ? livePreparePath('premise', plannedChapter)
-              : workPath(navigation[index][0], projectId, chapterId),
+          realWriting && navigation[index][0] === 'reports'
+            ? '/reports?projectId=project-zhuoliu&branchId=main&source=planned'
+            : realWriting && navigation[index][0] !== 'prepare'
+              ? realPath(navigation[index][0] === 'review' ? 'assembly' : undefined)
+              : realWriting
+                ? livePreparePath('premise', plannedChapter)
+                : workPath(navigation[index][0], projectId, chapterId),
         );
       }
     };
@@ -114,7 +116,7 @@ export function NavRail({ realWriting = false }: { realWriting?: boolean }) {
                     ['waiting_human', 'escalated'].includes(data.run.status)
                   ? 1
                   : 0;
-            if (realWriting && index > 2)
+            if (realWriting && index > 2 && key !== 'reports')
               return (
                 <Tooltip key={key} content={liveText.unavailable}>
                   <span className="rail-link" role="link" aria-disabled="true" tabIndex={0}>
@@ -127,17 +129,20 @@ export function NavRail({ realWriting = false }: { realWriting?: boolean }) {
               <Tooltip key={key} content={`${zh.nav[key]} · ⌘⌥${index + 1}`}>
                 <Link
                   to={
-                    realWriting && key !== 'prepare'
-                      ? realPath()
-                      : realWriting
-                        ? livePreparePath('premise', plannedChapter)
-                        : workPath(key, projectId, chapterId)
+                    realWriting && key === 'reports'
+                      ? '/reports?projectId=project-zhuoliu&branchId=main&source=planned'
+                      : realWriting && key !== 'prepare'
+                        ? realPath()
+                        : realWriting
+                          ? livePreparePath('premise', plannedChapter)
+                          : workPath(key, projectId, chapterId)
                   }
-                  className={`rail-link ${(realWriting ? (key === 'prepare' && pathname === '/prepare') || (pathname === '/workspace' && key === 'workspace') : pathname === `/${key}`) ? 'active' : ''}`}
+                  className={`rail-link ${(realWriting ? (key === 'prepare' && pathname === '/prepare') || (key === 'reports' && pathname === '/reports') || (pathname === '/workspace' && key === 'workspace') : pathname === `/${key}`) ? 'active' : ''}`}
                   aria-current={
                     (
                       realWriting
-                        ? (key === 'workspace' && pathname === '/workspace') ||
+                        ? (key === 'reports' && pathname === '/reports') ||
+                          (key === 'workspace' && pathname === '/workspace') ||
                           (key === 'prepare' && pathname === '/prepare')
                         : pathname === `/${key}`
                     )

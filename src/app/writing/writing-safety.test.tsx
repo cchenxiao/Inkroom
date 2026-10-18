@@ -5,10 +5,42 @@ import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryRouter, RouterProvider, Link } from 'react-router-dom';
 import { PendingWritingProvider, useWritingLocked } from '@/shared/lib/pending-writing';
-import { useAuthorDraft } from './author-draft';
+import { inlineEditVisible, useAuthorDraft } from './author-draft';
 import { useWritingActions } from '@/features/prepare/hooks/useWritingActions';
 import { trialApi } from '@/features/prepare/api/backend';
 import type { BackendRun } from '@/features/prepare/types/backend';
+
+it('keeps edited prose across an early receipt and only retires it when the visible snapshot catches up', () => {
+  const action = {
+    id: 'edit-1',
+    type: 'inline_edit' as const,
+    draftVersion: 1,
+    segmentId: 's2',
+    text: '缺两页。',
+  };
+  const old = {
+    id: 'run',
+    draftVersion: 1,
+    result: { segments: [{ id: 's2', text: '缺两张。' }] },
+  } as BackendRun;
+  expect(inlineEditVisible(old, action)).toBe(false);
+  // Even a new version number can arrive before its text payload.
+  expect(inlineEditVisible({ ...old, draftVersion: 2 }, action)).toBe(false);
+  expect(inlineEditVisible({ ...old, pendingAction: action }, action)).toBe(true);
+  expect(
+    inlineEditVisible(
+      {
+        ...old,
+        draftVersion: 2,
+        result: { ...old.result!, segments: [{ ...old.result!.segments[0], text: action.text }] },
+      },
+      action,
+    ),
+  ).toBe(true);
+  expect(inlineEditVisible({ ...old, pendingAction: { ...action, segmentId: 's1' } }, action)).toBe(
+    false,
+  );
+});
 
 it('retains unsent instructions, blocks navigation, and invalidates them on a new version', async () => {
   sessionStorage.clear();

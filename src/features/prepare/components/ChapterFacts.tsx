@@ -48,6 +48,7 @@ export default function ChapterFacts({
     retry: false,
     onSuccess: (j) => {
       setPending(null);
+      previous.current = j;
       setPinned(j.id);
       onChange();
     },
@@ -61,7 +62,7 @@ export default function ChapterFacts({
     blocked || locked || !state?.current || state.published || latest?.status === 'running';
   const begin = (mode: FactsRequest['mode'], confirmed = false) => {
     if (disabled) return;
-    if (latest && !confirmed) {
+    if (latest && state?.selection && !confirmed) {
       setRestartMode(mode);
       return;
     }
@@ -100,6 +101,7 @@ export default function ChapterFacts({
       {start.isError && (
         <p role="alert">{start.error instanceof ApiError ? start.error.message : t.unknown}</p>
       )}
+      {start.isPending && <p role="status">正在启动事实整理，已保存的正文保持不变…</p>}
       {pending && !start.isPending && (
         <Button onClick={() => start.mutate(pending)}>{t.retry}</Button>
       )}
@@ -121,7 +123,7 @@ export default function ChapterFacts({
           )}
           {job.provider === 'human' && <p>{t.noModel}</p>}
           {job.provider === 'fake' && <p>{t.fake}</p>}
-          {latest?.id !== job.id && (
+          {latest?.id !== job.id && job.id !== start.data?.id && (
             <>
               <p role="alert">{t.stale}</p>
               <Button
@@ -286,6 +288,13 @@ function FactEditor({
     const previous = decisions.find((d) => d.candidateId === id);
     change(id, {
       action,
+      ...(!previous && action === 'confirm'
+        ? {
+            knownBy: (candidates.find((c) => c.id === id)?.suggestedKnowers ?? []).map(
+              (k) => k.characterId,
+            ),
+          }
+        : {}),
       reason:
         previous?.reason && !Object.values(decisionReasons).includes(previous.reason)
           ? previous.reason
@@ -307,7 +316,7 @@ function FactEditor({
           candidateId: c.id,
           action,
           text: c.text,
-          knownBy: [],
+          knownBy: action === 'confirm' ? (c.suggestedKnowers ?? []).map((k) => k.characterId) : [],
           reason: decisionReasons[action],
         })),
     ]);
@@ -323,12 +332,13 @@ function FactEditor({
         <Button
           disabled={
             locked ||
+            (!!selection && !dirty) ||
             !!correction ||
             stale ||
             baseVersion !== (selection?.version ?? 0) ||
             decisions.some((d) => !d.reason.trim())
           }
-          disabledReason={t.editBlock}
+          disabledReason={selection && !dirty ? '事实决定已保存，没有未保存修改' : t.editBlock}
           loading={save.isPending}
           onClick={() => {
             const req = {
@@ -345,7 +355,7 @@ function FactEditor({
           {t.save}
         </Button>
         <Button
-          disabled={!!pending || save.isPending}
+          disabled={!dirty || !!pending || save.isPending}
           onClick={() => {
             setDirty(false);
             setCorrection(null);
@@ -358,6 +368,7 @@ function FactEditor({
         >
           {t.cancel}
         </Button>
+        {!dirty && selection && <span role="status">事实决定已保存</span>}
       </div>
       {!!candidates.length && (
         <section className="chapter-facts-batch" aria-label="批量处理事实">
@@ -562,6 +573,24 @@ function FactEditor({
               {d?.action === 'confirm' && (
                 <fieldset disabled={locked} className="chapter-fact-knowers">
                   <legend>角色知情范围（可选）</legend>
+                  {!!c.suggestedKnowers?.length && (
+                    <details>
+                      <summary>模型建议与原文依据 · {c.suggestedKnowers.length} 人</summary>
+                      <p className="muted">
+                        首次计入时预选有依据的建议；可取消或补选，保存事实决定后才生效。
+                      </p>
+                      {c.suggestedKnowers.map((k) => (
+                        <blockquote key={k.characterId}>
+                          <strong>
+                            {characterNames.get(k.characterId) ??
+                              job.input.characterNames?.[k.characterId] ??
+                              k.characterId}
+                          </strong>
+                          ：{k.evidence.quote}
+                        </blockquote>
+                      ))}
+                    </details>
+                  )}
                   {job.input.knowledge.characters.map((id) => (
                     <label key={id} className="outline-check">
                       <input

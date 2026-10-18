@@ -6,9 +6,9 @@ import { backendMessages as t } from '@/shared/lib/messages-backend';
 export default function BackendLookupTrace({ run }: { run: BackendRun }) {
   if (!run.lookup && run.currentNode !== 'context_assemble') return null;
   return (
-    <details className="backend-manifest" open>
+    <details className="backend-manifest">
       <summary>
-        {t.lookupTitle} · {run.lookup?.steps.length ?? 0}/3
+        {t.lookupTitle} · {run.lookup?.steps.length ?? 0} 次查询
       </summary>
       <p>{t.lookupNote}</p>
       {!run.lookup?.steps.length && (

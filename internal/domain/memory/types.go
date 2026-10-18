@@ -68,11 +68,21 @@ type Pin struct {
 
 // View 由后端根据当前创作任务构造。未来工具参数不能自行扩大此范围。
 type View struct {
-	ProjectID string         `json:"projectId"`
-	BranchID  string         `json:"branchId"`
-	POV       string         `json:"pov"` // 人物 ID，不用显示名匹配。
-	At        Moment         `json:"at"`
-	Pins      map[string]Pin `json:"-"`
+	// Planned runs pin their published inputs; an empty catalog never falls back to demo memory.
+	CatalogBound bool             `json:"catalogBound,omitempty"`
+	Knowledge    *KnowledgeRef    `json:"knowledge,omitempty"`
+	Publications []PublicationRef `json:"publications,omitempty"`
+	ProjectID    string           `json:"projectId"`
+	BranchID     string           `json:"branchId"`
+	POV          string           `json:"pov"` // 人物 ID，不用显示名匹配。
+	At           Moment           `json:"at"`
+	Pins         map[string]Pin   `json:"-"`
+}
+
+type PublicationRef struct {
+	ID        string `json:"id"`
+	ChapterID string `json:"chapterId"`
+	Version   int    `json:"version"`
 }
 
 // Material 为筛选后可交给装配器的值快照；保留 Kind，台词不能升级成事实。

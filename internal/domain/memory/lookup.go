@@ -11,6 +11,7 @@ type LookupRef struct {
 	Digest  string `json:"digest"`
 }
 type LookupStep struct {
+	Scope      string      `json:"scope,omitempty"`
 	CallID     string      `json:"callId"`
 	Query      string      `json:"query"`
 	Status     string      `json:"status"` // started/completed/rejected/failed

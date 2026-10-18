@@ -18,17 +18,52 @@ import (
 type ConsistencyCheck func(context.Context, model.ChatModel, ChapterState) (CriticReview, model.Usage, error)
 
 type CriticReview struct {
-	Length       *manuscript.LengthSummary `json:"length,omitempty"`
-	Continuity   []review.ContinuityCheck  `json:"continuity,omitempty"`
-	AuthorCheck  *review.AuthorCheck       `json:"authorCheck,omitempty"`
-	Lookup       *memory.LookupTrace       `json:"lookup,omitempty"`
-	Evidence     *memory.RetrievalContext  `json:"evidence,omitempty"`
-	Critic       string                    `json:"critic"`
-	DraftVersion int                       `json:"draftVersion"`
-	Status       string                    `json:"status"`
-	Findings     []review.Finding          `json:"findings"`
-	FailureCode  string                    `json:"failureCode,omitempty"`
-	Error        string                    `json:"error,omitempty"`
+	ScopedEvidence []ScopedReviewEvidence    `json:"scopedEvidence,omitempty"`
+	Length         *manuscript.LengthSummary `json:"length,omitempty"`
+	Continuity     []review.ContinuityCheck  `json:"continuity,omitempty"`
+	AuthorCheck    *review.AuthorCheck       `json:"authorCheck,omitempty"`
+	Lookup         *memory.LookupTrace       `json:"lookup,omitempty"`
+	Evidence       *memory.RetrievalContext  `json:"evidence,omitempty"`
+	Critic         string                    `json:"critic"`
+	DraftVersion   int                       `json:"draftVersion"`
+	Status         string                    `json:"status"`
+	Findings       []review.Finding          `json:"findings"`
+	FailureCode    string                    `json:"failureCode,omitempty"`
+	Error          string                    `json:"error,omitempty"`
+}
+
+type ScopedReviewEvidence struct {
+	BeatID   string                   `json:"beatId"`
+	Evidence *memory.RetrievalContext `json:"evidence,omitempty"`
+	Lookup   memory.LookupTrace       `json:"lookup"`
+}
+
+func (r CriticReview) WithEvidence(b manuscript.ContextBundle) (manuscript.ContextBundle, error) {
+	out, err := b.WithReviewEvidence(r.Evidence)
+	if err != nil {
+		return out, err
+	}
+	seen := map[string]bool{}
+	for _, scope := range r.ScopedEvidence {
+		if seen[scope.BeatID] {
+			return out, fmt.Errorf("duplicate review scope")
+		}
+		seen[scope.BeatID] = true
+		found := false
+		for i, t := range out.Targets {
+			if t.Beat.ID == scope.BeatID {
+				found = true
+				out.Targets[i], err = t.WithReviewEvidence(scope.Evidence)
+				if err != nil {
+					return out, err
+				}
+			}
+		}
+		if !found {
+			return out, fmt.Errorf("review evidence target not in chapter")
+		}
+	}
+	return out, nil
 }
 
 // reviewTogether 是 fan-out/barrier：两个 goroutine 各写自己的槽位，Wait 后主协程才合并。
@@ -50,7 +85,7 @@ func reviewTogether(ctx context.Context, chat model.ChatModel, state ChapterStat
 				if len(checks) > 0 && checks[0] != nil {
 					results[i], usages[i], errs[i] = checks[0](ctx, chat, state)
 					if errs[i] == nil && state.RewriteRequest() != nil {
-						b, e := state.Context.WithReviewEvidence(results[i].Evidence)
+						b, e := results[i].WithEvidence(state.Context)
 						if e != nil {
 							errs[i] = e
 						} else {
@@ -119,7 +154,7 @@ func reviewTogether(ctx context.Context, chat model.ChatModel, state ChapterStat
 func (s ChapterState) ReviewContext() (manuscript.ContextBundle, error) {
 	for _, r := range s.CriticReviews {
 		if r.Critic == "hard_consistency" && r.DraftVersion == s.DraftVersion && r.Status == "completed" {
-			return s.Context.WithReviewEvidence(r.Evidence)
+			return r.WithEvidence(s.Context)
 		}
 	}
 	return s.Context.Freeze()

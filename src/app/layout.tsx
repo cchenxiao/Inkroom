@@ -31,6 +31,10 @@ export function Layout() {
     query.get('source') !== 'demo';
   if (
     realPrepare ||
+    (pathname === '/reports' &&
+      query.get('source') === 'planned' &&
+      (query.get('projectId') ?? project) === 'project-zhuoliu' &&
+      (query.get('branchId') ?? branch) === 'main') ||
     pathname.startsWith('/library') ||
     (pathname === '/book/project-zhuoliu' &&
       (query.get('branchId') ?? 'main') === 'main' &&

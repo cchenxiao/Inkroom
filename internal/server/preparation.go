@@ -10,7 +10,7 @@ import (
 )
 
 func (s *service) prepare(ctx context.Context, r app.Run) (app.Run, manuscript.FrozenInput, error) {
-	if r.Planning != nil {
+	if r.Planning != nil && r.CurrentNode != "context_assemble" {
 		input, err := s.repo.FrozenContext(ctx, r.ID)
 		return r, input, err
 	}

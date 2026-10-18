@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"github.com/jackc/pgx/v5"
@@ -12,7 +13,7 @@ import (
 
 func (s *Store) CachedVectors(ctx context.Context, keys []string, model string) (map[string][]float32, error) {
 	out := map[string][]float32{}
-	rows, err := s.pool.Query(ctx, `SELECT digest,embedding::text FROM memory_embeddings WHERE digest=ANY($1) AND model=$2`, keys, model)
+	rows, err := s.pool.Query(ctx, `SELECT digest,embedding::text FROM retrieval_embeddings WHERE digest=ANY($1) AND model=$2`, keys, model)
 	if err != nil {
 		return nil, err
 	}
@@ -31,14 +32,14 @@ func (s *Store) CachedVectors(ctx context.Context, keys []string, model string) 
 	return out, rows.Err()
 }
 func (s *Store) SaveVector(ctx context.Context, key, model string, v []float32) error {
-	if model == "" {
+	if digest, err := hex.DecodeString(key); err != nil || len(digest) != 32 || model == "" {
 		return fmt.Errorf("embedding identity required")
 	}
 	if err := embedding.Validate(v, 0); err != nil {
 		return err
 	}
 	raw, _ := json.Marshal(v)
-	tag, err := s.pool.Exec(ctx, `INSERT INTO memory_embeddings VALUES($1,$2,$3,$4::vector) ON CONFLICT DO NOTHING`, key, model, len(v), string(raw))
+	tag, err := s.pool.Exec(ctx, `INSERT INTO retrieval_embeddings VALUES($1,$2,$3,$4::vector) ON CONFLICT DO NOTHING`, key, model, len(v), string(raw))
 	if err != nil {
 		return err
 	}
@@ -62,7 +63,7 @@ func (s *Store) Nearest(ctx context.Context, keys []string, model string, q []fl
 	}
 	raw, _ := json.Marshal(q)
 	// 先限定已通过可见性规则的 digest 集合，再排序；不从全库召回后随意删几条。
-	rows, err := s.pool.Query(ctx, `SELECT digest,1-(embedding <=> $3::vector) AS score FROM memory_embeddings WHERE digest=ANY($1) AND model=$2 AND dimensions=$4 ORDER BY embedding <=> $3::vector,digest LIMIT $5`, keys, model, string(raw), len(q), limit)
+	rows, err := s.pool.Query(ctx, `SELECT digest,1-(embedding <=> $3::vector) AS score FROM retrieval_embeddings WHERE digest=ANY($1) AND model=$2 AND dimensions=$4 ORDER BY embedding <=> $3::vector,digest LIMIT $5`, keys, model, string(raw), len(q), limit)
 	if err != nil {
 		return nil, err
 	}

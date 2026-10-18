@@ -14,7 +14,7 @@ const names: Record<string, string> = {
 /** 能力边界与视觉页面分开；未接线的作品不能落到浊流的默认演示操作。 */
 export function BookFeature({ page, children }: { page: string; children: ReactNode }) {
   const id = useUIStore((s) => s.projectId),
-    chapter = useChapter();
+    chapter = useChapter(page !== 'reports');
   const [params] = useSearchParams();
   const plan = useResource<BookPlan>(
     `/projects/${id}/planning`,

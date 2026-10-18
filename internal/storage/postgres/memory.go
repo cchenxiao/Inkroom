@@ -120,6 +120,9 @@ func (s *Store) putMemory(ctx context.Context, r memory.Record, origin, commit s
 
 // MemorySnapshot 在一个 SQL 快照内读版本目录和内容。较新定稿存在时，不再召回旧定稿。
 func (s *Store) MemorySnapshot(ctx context.Context, v memory.View) (retrieval.Snapshot, error) {
+	if v.CatalogBound {
+		return s.plannedMemorySnapshot(ctx, v)
+	}
 	out := retrieval.Snapshot{Records: []memory.Record{}, Pins: map[string]memory.Pin{}, Origins: map[string]retrieval.Origin{}}
 	rows, err := s.pool.Query(ctx, `SELECT r.record,h.digest,r.version,r.origin,COALESCE(r.source_commit_id,'') FROM memory_heads h JOIN memory_records r USING(digest)
  WHERE h.project_id=$1 AND h.branch_id=$2 AND (r.source_commit_id IS NULL OR r.source_commit_id=(

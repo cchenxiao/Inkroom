@@ -2,6 +2,8 @@ import { repairScopeLabels } from '@/shared/lib/business-labels';
 import { TechnicalDetails } from '@/shared/ui/technical-details';
 import { sourceLabel } from '@/features/prepare/writing';
 import { useState } from 'react';
+import { WritingMemory } from './writing-memory';
+import { WritingLedger } from './writing-ledger';
 import { Link } from 'react-router-dom';
 import { Badge, Button } from '@/shared/ui';
 import { QualityGateCard } from '@/shared/ui/quality-gate-card';
@@ -11,9 +13,13 @@ import type { PlanningState, BackendRun } from '@/features/prepare/writing';
 export function WritingBible({
   planning,
   chapterId,
+  runId,
+  beatId = '',
 }: {
   planning: PlanningState;
   chapterId: string;
+  runId?: string;
+  beatId?: string;
 }) {
   const [tab, setTab] = useState('人物');
   const core = planning.coreSelection;
@@ -25,7 +31,7 @@ export function WritingBible({
   return (
     <div className="writing-bible">
       <div className="writing-panel-tabs" role="tablist" aria-label={t.knowledge}>
-        {['人物', '时间线', '伏笔', '规则', '信息差', '风格'].map((label) => (
+        {['前情', '人物', '时间线', '伏笔', '规则', '信息差', '风格'].map((label) => (
           <button
             role="tab"
             aria-selected={tab === label}
@@ -36,6 +42,7 @@ export function WritingBible({
           </button>
         ))}
       </div>
+      {tab === '前情' && <WritingMemory key={`${runId}/${beatId}`} runId={runId} beatId={beatId} />}
       {tab === '人物' &&
         characters.map((c) => (
           <details key={c.id} open={c === characters[0]}>
@@ -61,13 +68,15 @@ export function WritingBible({
               ))}
           </details>
         ))}
-      {tab === '时间线' &&
-        facts.map((f) => (
-          <article key={f.id}>
-            <small>故事时间 {f.storyTime ?? '未知'}</small>
-            <p>{f.text}</p>
-          </article>
-        ))}
+      {tab === '时间线' && (
+        <WritingLedger
+          mode="timeline"
+          chapterNumber={
+            (planning.outlineSelection?.content.chapters.findIndex((c) => c.id === chapterId) ??
+              -1) + 1
+          }
+        />
+      )}
       {tab === '伏笔' && (
         <>
           <p className="muted">{t.uncertainFacts}。正式埋设与回收台账尚未接入。</p>
@@ -83,21 +92,15 @@ export function WritingBible({
             <p>{f.text}</p>
           </article>
         ))}
-      {tab === '信息差' &&
-        facts.map((f) => (
-          <article key={f.id}>
-            <p>{f.text}</p>
-            <small>
-              明确知情：
-              {f.knownBy
-                .map(
-                  (k) =>
-                    `${characters.find((c) => c.id === k.characterId)?.name ?? k.characterId}（时点 ${k.learnedAt ?? '未知'}）`,
-                )
-                .join('、') || '尚无声明'}
-            </small>
-          </article>
-        ))}
+      {tab === '信息差' && (
+        <WritingLedger
+          mode="knowledge"
+          chapterNumber={
+            (planning.outlineSelection?.content.chapters.findIndex((c) => c.id === chapterId) ??
+              -1) + 1
+          }
+        />
+      )}
       {tab === '风格' && style && (
         <>
           <p>

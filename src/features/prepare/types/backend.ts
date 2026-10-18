@@ -32,18 +32,8 @@ export interface BackendRun extends Omit<RunState, 'status' | 'currentNode'> {
       draftVersion: number;
       status: string;
       lookup?: LookupTrace;
-      evidence?: {
-        hits: {
-          record: {
-            id: string;
-            version: number;
-            kind: 'fact' | 'passage';
-            text: string;
-            knowledge?: { version: number; digest: string };
-          };
-          digest: string;
-        }[];
-      };
+      evidence?: LookupEvidence;
+      scopedEvidence?: { beatId: string; evidence?: LookupEvidence; lookup: LookupTrace }[];
     };
   }[];
   inputDigest?: string;
@@ -315,8 +305,16 @@ export interface BackendCommit {
   refs: { kind: string; id: string; version: number; digest: string; payload: unknown }[];
 }
 
+export interface LookupEvidence {
+  hits: {
+    record: { id: string; version: number; kind: 'fact' | 'passage'; text: string };
+    digest: string;
+  }[];
+}
+
 export interface LookupTrace {
   steps: {
+    scope?: string;
     callId: string;
     query: string;
     status: string;

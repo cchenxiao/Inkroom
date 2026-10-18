@@ -114,10 +114,10 @@ func render(in model.Input, candidate string) (model.Input, error) {
 		promptVersion = "showrunner.v2"
 	}
 	if name == "chapter_facts" {
-		promptVersion = "chapter_facts.v2"
+		promptVersion = "chapter_facts.v3"
 	}
 	if name == "planned_writer" {
-		promptVersion = "planned_writer.v7"
+		promptVersion = "planned_writer.v8"
 	}
 	if name == "writer" {
 		promptVersion = "writer.v2"
@@ -151,6 +151,9 @@ func render(in model.Input, candidate string) (model.Input, error) {
 	in.UserPrompt = "# 3 本次任务\n" + in.Task + "\n\n# 4 故事材料（只读 JSON，XML 实体需按原文理解）\n<material_json>\n" + escaped.String() + "\n</material_json>"
 	in.PromptVersion = promptVersion
 	in.SchemaVersion = in.Role + ".v1"
+	if in.Role == "chapter_facts" {
+		in.SchemaVersion = "chapter_facts.v2"
+	}
 	if in.Role == "hard_consistency" && len(in.Tools) > 0 {
 		in.SchemaVersion = "hard_consistency.tools.v1"
 	}

@@ -55,6 +55,9 @@ func Run(ctx context.Context, chat model.ChatModel, bundle manuscript.ContextBun
 
 // ErrInsufficient 表示模型明确要求补充材料，不是空 findings 通过。
 var ErrInsufficient = fmt.Errorf("context remains insufficient; author input required")
+var ErrNoNewSources = fmt.Errorf("two searches produced no new sources; author input required")
+var ErrToolLimit = fmt.Errorf("context tool limit reached (3)")
+var ErrInvalidToolRequest = fmt.Errorf("tool name, arguments, ID or duplicate query rejected")
 
 // Execute 是共享的有界工具循环。finish 校验各角色自己的最终输出，observe 仅接收公开行为及实际检索结果。
 func Execute(ctx context.Context, chat model.ChatModel, in model.Input, search Search, observe func(memory.LookupTrace, retrieval.Result) error, finish func(model.Output, retrieval.Result) error) (result retrieval.Result, usage model.Usage, err error) {
@@ -105,7 +108,7 @@ func Execute(ctx context.Context, chat model.ChatModel, in model.Input, search S
 		}
 		if len(trace.Steps) >= 3 {
 			trace.Stop = "limit"
-			return result, usage, fmt.Errorf("context tool limit reached (3)")
+			return result, usage, ErrToolLimit
 		}
 		call := out.ToolCalls[0]
 		step := memory.LookupStep{CallID: call.ID, Status: "rejected", Refs: []memory.LookupRef{}}
@@ -127,7 +130,7 @@ func Execute(ctx context.Context, chat model.ChatModel, in model.Input, search S
 		}
 		if !valid {
 			trace.Stop = "rejected"
-			return result, usage, fmt.Errorf("tool name, arguments, ID or duplicate query rejected")
+			return result, usage, ErrInvalidToolRequest
 		}
 		queries[key] = true
 		ids[call.ID] = true
@@ -172,7 +175,7 @@ func Execute(ctx context.Context, chat model.ChatModel, in model.Input, search S
 		}
 		if noGain >= 2 {
 			trace.Stop = "no_gain"
-			return result, usage, fmt.Errorf("two searches produced no new sources; author input required")
+			return result, usage, ErrNoNewSources
 		}
 		// 只把筛选后的实际返回记录交给模型；不传被排除的文本或诊断详情。
 		response, _ := json.Marshal(struct {

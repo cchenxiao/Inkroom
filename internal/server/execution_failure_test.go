@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"inkloom/internal/agents/parse"
 	"inkloom/internal/app"
+	"inkloom/internal/contextlookup"
 	"inkloom/internal/orchestration"
+	"inkloom/internal/retrieval"
 	"strings"
 	"testing"
 )
@@ -20,6 +22,9 @@ func TestExecutionFailureExplainsStageAndValidationWithoutTransportSecrets(t *te
 		{&parse.Error{Kind: parse.InvalidSchema, Err: errors.New("raw schema data")}, "字段或结构"},
 		{context.DeadlineExceeded, "超时"},
 		{errors.New("secret upstream token"), "服务执行异常"},
+		{&retrieval.Failure{Message: "历史正文索引建立失败，请重试", Cause: errors.New("secret provider response")}, "历史正文索引建立失败"},
+		{contextlookup.ErrNoNewSources, "人物知情和前章定稿"},
+		{contextlookup.ErrInvalidToolRequest, "重复或无效"},
 	} {
 		got := executionFailureReason("draft", tc.err, nil)
 		if !strings.Contains(got, "正文生成") || !strings.Contains(got, tc.want) || strings.Contains(got, "secret") || strings.Contains(got, "raw schema") {

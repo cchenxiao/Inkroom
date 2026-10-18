@@ -9,7 +9,7 @@ import (
 )
 
 func (s *Store) SaveCriticLookup(ctx context.Context, id string, c app.CriticLookup) error {
-	if c.DraftVersion < 1 || len(c.InputDigest) != 64 || c.Review.Critic != "hard_consistency" || c.Review.DraftVersion != c.DraftVersion || c.Review.Lookup == nil || len(c.Review.Lookup.Steps) > 3 {
+	if c.DraftVersion < 1 || len(c.InputDigest) != 64 || c.Review.Critic != "hard_consistency" || c.Review.DraftVersion != c.DraftVersion || c.Review.Lookup == nil || len(c.Review.Lookup.Steps) > 24 {
 		return app.ErrInvalidWrite
 	}
 	tx, err := s.pool.Begin(ctx)
@@ -31,7 +31,17 @@ func (s *Store) SaveCriticLookup(ctx context.Context, id string, c app.CriticLoo
 	if err != nil || digest != c.InputDigest {
 		return app.ErrContextMismatch
 	}
-	b, err := r.Result.Context.WithReviewEvidence(c.Review.Evidence)
+	counts := map[string]int{}
+	for _, step := range c.Review.Lookup.Steps {
+		if _, ok := r.Result.Context.ForBeat(step.Scope); step.Scope != "" && !ok {
+			return app.ErrContextMismatch
+		}
+		counts[step.Scope]++
+		if counts[step.Scope] > 3 {
+			return app.ErrInvalidWrite
+		}
+	}
+	b, err := c.Review.WithEvidence(r.Result.Context)
 	if err != nil {
 		return err
 	}
@@ -39,7 +49,7 @@ func (s *Store) SaveCriticLookup(ctx context.Context, id string, c app.CriticLoo
 		if c.Review.Lookup.Stop != "ready" {
 			return app.ErrGateBlocked
 		}
-		if _, err = review.Aggregate(c.Review.Findings, r.Result.Segments, c.DraftVersion, b.FactSources()...); err != nil {
+		if _, err = review.Aggregate(c.Review.Findings, r.Result.Segments, c.DraftVersion, b.ReadingSources()...); err != nil {
 			return err
 		}
 	}

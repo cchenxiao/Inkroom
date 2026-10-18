@@ -82,3 +82,23 @@ func TestAuthorCanCorrectModelClassificationWithoutOverwritingEvidenceOrOldFacts
 		}
 	}
 }
+
+func TestKnowerSuggestionsNeedCharacterAndOriginalEvidence(t *testing.T) {
+	in := ChapterFactsInput{Knowledge: knowledge.Snapshot{Characters: []string{"shen"}}, Review: ChapterReviewInput{Parts: []ChapterReviewPart{{StoryTime: 10, Segments: []ChapterReviewSource{{ID: "s", Text: "沈砚亲眼看见钥匙放在桌上。"}}}, {StoryTime: 20, Segments: []ChapterReviewSource{{ID: "later", Text: "后来陆青告诉他。"}}}}}}
+	c := ChapterFactCandidate{ID: "f", Kind: "event", Text: "钥匙放在桌上", Evidence: ChapterEvidence{Ref: "s", Quote: "钥匙放在桌上"}, SuggestedKnowers: []SuggestedKnower{{CharacterID: "shen", Evidence: ChapterEvidence{Ref: "s", Quote: "沈砚亲眼看见钥匙放在桌上。"}}}}
+	out := ChapterFactsOutput{Candidates: []ChapterFactCandidate{c}}
+	if err := ValidateChapterFactCandidates(in, out); err != nil {
+		t.Fatal(err)
+	}
+	req := ChapterFactsSelectionRequest{Decisions: []ChapterFactDecision{{CandidateID: "f", Action: "confirm", Text: c.Text, Reason: "作者计入但未采纳知情建议", KnownBy: []string{}}}}
+	pack, _, err := BuildChapterFacts(in, out, req)
+	if err != nil || len(pack.Facts[0].KnownBy) != 0 {
+		t.Fatal("suggestion silently approved", pack, err)
+	}
+	for _, bad := range []SuggestedKnower{{CharacterID: "stranger", Evidence: c.Evidence}, {CharacterID: "shen", Evidence: ChapterEvidence{Ref: "s", Quote: "伪造引文"}}, {CharacterID: "shen", Evidence: ChapterEvidence{Ref: "later", Quote: "后来陆青告诉他。"}}} {
+		out.Candidates[0].SuggestedKnowers = []SuggestedKnower{bad}
+		if ValidateChapterFactCandidates(in, out) == nil {
+			t.Fatal("invalid suggestion accepted", bad)
+		}
+	}
+}

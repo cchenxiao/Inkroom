@@ -141,6 +141,18 @@ func PreparePlannedContextWithHistory(cfg config.Config, scope, runID string, ba
 		}
 	}
 	b.WritingTask.Brief.SelectedBeatID = beat.ID
+	b.WritingTask.BeatAction, b.WritingTask.BeatOutcome = beat.Action, beat.Turn
+	passed := false
+	for _, plannedScene := range p.Content.Scenes {
+		for _, next := range plannedScene.Beats {
+			if passed && b.WritingTask.NextBeat == "" {
+				b.WritingTask.NextBeat = next.Title + "：" + next.Action + "；" + next.Turn
+			}
+			if next.ID == beat.ID {
+				passed = true
+			}
+		}
+	}
 	// Intake 的类型作为创作任务传入；不包含参考原文或未来章纲。
 	b.WritingTask.Genre = p.Input.Base.Source.Intake.Genres
 	budget, output := cfg.ContextTokens, cfg.MaxOutputTokens

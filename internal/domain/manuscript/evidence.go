@@ -3,6 +3,7 @@ package manuscript
 import (
 	"fmt"
 	"inkloom/internal/domain/memory"
+	"reflect"
 	"strings"
 )
 
@@ -26,6 +27,9 @@ func (b ContextBundle) WithReviewEvidence(e *memory.RetrievalContext) (ContextBu
 	}
 	if e.View.ProjectID != b.ProjectID || e.View.BranchID != b.BranchID || e.View.POV != pov {
 		return out, fmt.Errorf("critic evidence scope mismatch")
+	}
+	if err := b.validateRetrievalView(e.View); err != nil {
+		return out, err
 	}
 	refs, err := ContextRefs(b)
 	if err != nil {
@@ -68,4 +72,18 @@ func (b ContextBundle) WithReviewEvidence(e *memory.RetrievalContext) (ContextBu
 		}
 	}
 	return out, nil
+}
+
+func (b ContextBundle) validateRetrievalView(v memory.View) error {
+	if t := b.WritingTask; t != nil {
+		if !v.CatalogBound || v.At.Chapter != t.ChapterNumber || v.At.StoryTime != t.StoryTime || !reflect.DeepEqual(v.Knowledge, t.Knowledge) || len(v.Publications) != len(t.Publications) {
+			return fmt.Errorf("retrieval time or published inputs differ from frozen task")
+		}
+		for i, p := range t.Publications {
+			if v.Publications[i].ID != p.ID || v.Publications[i].ChapterID != p.ChapterID || v.Publications[i].Version != p.Version {
+				return fmt.Errorf("retrieval publication version mismatch")
+			}
+		}
+	}
+	return nil
 }

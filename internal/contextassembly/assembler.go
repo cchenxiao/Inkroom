@@ -43,10 +43,25 @@ func Assemble(b manuscript.ContextBundle, previous PreviousChapter, opts Options
 		if err := json.Unmarshal(raw, &retrieval); err != nil {
 			return manuscript.FrozenInput{}, err
 		}
+		if err := memory.ValidateRetrieval(retrieval); err != nil {
+			return manuscript.FrozenInput{}, err
+		}
+		existing := map[string]manuscript.SourceRef{}
+		required := b
+		required.Retrieval = nil
+		for _, source := range append(append([]manuscript.SourceRef{}, required.FactSources()...), b.Sources...) {
+			existing[source.ID] = source
+		}
 		hits := retrieval.Hits
 		retrieval.Hits = []memory.Hit{}
 		b.Retrieval = &retrieval
 		for _, hit := range hits {
+			if source, exists := existing[hit.Record.ID]; exists {
+				if source.Version != hit.Record.Version || source.Text != hit.Record.Text {
+					return manuscript.FrozenInput{}, fmt.Errorf("retrieved source conflicts with frozen material %q", source.ID)
+				}
+				continue
+			}
 			retrieval.Hits = append(retrieval.Hits, hit)
 			trial, _ := json.Marshal(b)
 			if len(trial) > opts.Budget {

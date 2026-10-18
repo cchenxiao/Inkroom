@@ -16,8 +16,25 @@ func ValidateRetrieval(c RetrievalContext) error {
 	v.Pins = map[string]Pin{}
 	records := []Record{}
 	for _, h := range c.Hits {
-		if h.Method != c.Mode || math.IsNaN(h.Score) || math.IsInf(h.Score, 0) || h.Score < 0 || (h.Origin != "commit" && h.Origin != "teaching_seed" && h.Origin != "knowledge") || (h.Origin == "commit" && h.CommitID == "") || (h.Origin != "commit" && h.CommitID != "") {
+		if h.Method != c.Mode || math.IsNaN(h.Score) || math.IsInf(h.Score, 0) || h.Score < 0 || (h.Origin != "commit" && h.Origin != "publication" && h.Origin != "teaching_seed" && h.Origin != "knowledge") || ((h.Origin == "commit" || h.Origin == "publication") && h.CommitID == "") || (h.Origin != "commit" && h.Origin != "publication" && h.CommitID != "") {
 			return fmt.Errorf("invalid retrieval provenance")
+		}
+		if v.CatalogBound && h.Origin != "publication" && h.Origin != "knowledge" {
+			return fmt.Errorf("planned retrieval contains an unpinned source origin")
+		}
+		if v.CatalogBound && h.Origin == "knowledge" && (v.Knowledge == nil || h.Record.Knowledge == nil || *v.Knowledge != *h.Record.Knowledge) {
+			return fmt.Errorf("retrieval knowledge version mismatch")
+		}
+		if h.Origin == "publication" {
+			found := false
+			for _, p := range v.Publications {
+				if p.ID == h.CommitID && p.ChapterID == h.Record.ChapterID && p.Version == h.Record.Version && strings.HasPrefix(h.Record.ID, "publication/"+p.ID+"/") {
+					found = true
+				}
+			}
+			if !v.CatalogBound || !found {
+				return fmt.Errorf("publication not pinned in retrieval scope")
+			}
 		}
 		k := h.Record.Knowledge
 		if h.Origin == "knowledge" && k == nil {

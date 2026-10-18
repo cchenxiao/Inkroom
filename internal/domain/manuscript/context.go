@@ -66,6 +66,9 @@ func (b ContextBundle) Freeze() (ContextBundle, error) {
 	}
 	if b.Retrieval != nil {
 		v := b.Retrieval.View
+		if err := b.validateRetrievalView(v); err != nil {
+			return frozen, err
+		}
 		if err := memory.ValidateRetrieval(*b.Retrieval); err != nil {
 			return frozen, err
 		}

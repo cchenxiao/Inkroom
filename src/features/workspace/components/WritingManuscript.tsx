@@ -290,6 +290,7 @@ export function WritingManuscript({
                                     id: selectedFinding,
                                     quote: selectedQuote ?? '',
                                     content: children,
+                                    keepVisibleOnClose: true,
                                   }
                                 : undefined
                           }

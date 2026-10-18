@@ -8,6 +8,7 @@ import (
 	"inkloom/internal/contextassembly"
 	"inkloom/internal/contextlookup"
 	"inkloom/internal/domain/manuscript"
+	"inkloom/internal/domain/memory"
 	"inkloom/internal/retrieval"
 )
 
@@ -16,16 +17,13 @@ func LookupContext(ctx context.Context, cfg config.Config, base manuscript.Froze
 	if err := base.Validate(); err != nil {
 		return manuscript.FrozenInput{}, err
 	}
-	view := CurrentMemoryView()
-	session, err := s.Session(ctx, view)
-	if err != nil {
-		return manuscript.FrozenInput{}, err
-	}
 	// Fake 也走真实工具循环，检索本身由配置决定使用关键词/向量。
-	var chat model.ChatModel = model.NewFake([]model.Step{
-		{Role: "context_assembler", FinishReason: model.ToolRequested, ToolCalls: []model.ToolCall{{ID: "lookup-1", Name: "search_memory", Arguments: `{"query":"铜扣 父亲 旧外套"}`}}},
-		{Role: "context_assembler", Content: `{"decision":"ready"}`},
-	})
+	var err error
+	steps := []model.Step{}
+	for i := 0; i < max(1, len(base.Bundle.Targets)); i++ {
+		steps = append(steps, model.Step{Role: "context_assembler", FinishReason: model.ToolRequested, ToolCalls: []model.ToolCall{{ID: "lookup-1", Name: "search_memory", Arguments: `{"query":"铜扣 父亲 旧外套"}`}}}, model.Step{Role: "context_assembler", Content: `{"decision":"ready"}`})
+	}
+	var chat model.ChatModel = model.NewFake(steps)
 	if cfg.Model == "deepseek" {
 		chat, err = adapters.NewDeepSeek(cfg)
 		if err != nil {
@@ -33,17 +31,69 @@ func LookupContext(ctx context.Context, cfg config.Config, base manuscript.Froze
 		}
 	}
 	guard := model.NewGuard(chat, model.Limits{OnCall: onCall, Calls: cfg.MaxCalls, Tokens: cfg.MaxTokens, OutputTokens: cfg.MaxOutputTokens, ConsistencyOutputTokens: cfg.ConsistencyOutputTokens, ConsistencyTimeout: cfg.ConsistencyTimeout, Timeout: cfg.CallTimeout, ModelName: cfg.ModelName})
-	result, err := contextlookup.Run(ctx, guard, base.Bundle, func(ctx context.Context, q string) (retrieval.Result, error) { return session.Search(ctx, view, q, 3) }, onTrace)
+	trace := memory.LookupTrace{Steps: []memory.LookupStep{}}
+	lookup := func(bundle manuscript.ContextBundle, scope string) (manuscript.ContextBundle, error) {
+		view, e := MemoryView(bundle)
+		if e != nil {
+			return bundle, e
+		}
+		bundle.POVCharacterID = view.POV
+		session, e := s.Session(ctx, view)
+		if e != nil {
+			return bundle, e
+		}
+		prefix := append([]memory.LookupStep{}, trace.Steps...)
+		result, e := contextlookup.Run(ctx, guard, bundle, func(ctx context.Context, q string) (retrieval.Result, error) { return session.Search(ctx, view, q, 3) }, func(t memory.LookupTrace) error {
+			for i := range t.Steps {
+				t.Steps[i].Scope = scope
+			}
+			trace.Steps = append(append([]memory.LookupStep{}, prefix...), t.Steps...)
+			trace.Stop = ""
+			if t.Stop != "ready" {
+				trace.Stop = t.Stop
+			}
+			if onTrace != nil {
+				return onTrace(trace)
+			}
+			return nil
+		})
+		if e != nil {
+			return bundle, e
+		}
+		if result.Context.Query == "" {
+			return bundle, nil
+		}
+		previous := contextassembly.PreviousChapter{}
+		if bundle.PreviousEnding != nil {
+			previous = contextassembly.PreviousChapter{ProjectID: bundle.ProjectID, BranchID: bundle.BranchID, Confirmed: true, Source: *bundle.PreviousEnding}
+		}
+		prepared, e := contextassembly.Assemble(bundle, previous, contextassembly.Options{RunID: base.Manifest.RunID, BaseDraftVersion: base.Manifest.BaseDraftVersion, Budget: base.Manifest.Budget, ReservedOutputTokens: base.Manifest.ReservedOutputTokens, Memory: &result.Context, Excluded: base.Manifest.Excluded})
+		return prepared.Bundle, e
+	}
+	bundle, err := base.Bundle.Freeze()
 	if err != nil {
 		return manuscript.FrozenInput{}, err
 	}
-	if result.Context.Query == "" {
-		return base, nil
-	} // 模型显式 ready，未调用查询工具。
-	bundle := base.Bundle
-	bundle.POVCharacterID = view.POV
-	return contextassembly.Assemble(bundle, contextassembly.PreviousChapter{ProjectID: bundle.ProjectID, BranchID: bundle.BranchID, Confirmed: true, Source: *bundle.PreviousEnding}, contextassembly.Options{
-		RunID: base.Manifest.RunID, BaseDraftVersion: base.Manifest.BaseDraftVersion, Budget: base.Manifest.Budget, ReservedOutputTokens: base.Manifest.ReservedOutputTokens, Memory: &result.Context,
-		Excluded: []manuscript.ExcludedSource{{Title: "自主查询", Reason: "只搜索固定目录内当前角色可见的材料；查询记录见运行工具轨迹。空结果不是事实不存在的证明。"}},
-	})
+	if len(bundle.Targets) > 0 {
+		for i, t := range bundle.Targets {
+			prepared, e := lookup(t, t.Beat.ID)
+			if e != nil {
+				return manuscript.FrozenInput{}, e
+			}
+			bundle.Targets[i] = prepared
+		}
+	} else {
+		bundle, err = lookup(bundle, bundle.Beat.ID)
+		if err != nil {
+			return manuscript.FrozenInput{}, err
+		}
+	}
+	trace.Stop = "ready"
+	if onTrace != nil {
+		if err = onTrace(trace); err != nil {
+			return manuscript.FrozenInput{}, err
+		}
+	}
+	base.Bundle = bundle
+	return ReassemblePlanned(base)
 }

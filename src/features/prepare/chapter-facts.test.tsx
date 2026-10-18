@@ -176,10 +176,7 @@ it.each(['publish', 'remote publication'])(
       await user.click(screen.getByRole('button', { name: '1 核对事实' }));
     }
     await user.click(screen.getByRole('button', { name: t.manual }));
-    if (scenario === 'publish') {
-      await screen.findByRole('dialog', { name: '重新整理本章事实' });
-      await user.click(screen.getByRole('button', { name: '确认并继续' }));
-    }
+    expect(screen.queryByRole('dialog', { name: '重新整理本章事实' })).not.toBeInTheDocument();
     await user.click(await screen.findByRole('button', { name: t.add }));
     await user.selectOptions(screen.getByRole('combobox', { name: t.source }), 's1');
     await user.type(screen.getByRole('textbox', { name: t.text }), '沈砚收到铜扣');
@@ -274,7 +271,12 @@ it('offers direct and batch decisions without opening evidence, preserving previ
     output: {
       candidates: [
         candidate,
-        { ...candidate, id: 'two', text: '离开渡口' },
+        {
+          ...candidate,
+          id: 'two',
+          text: '离开渡口',
+          suggestedKnowers: [{ characterId: 'shen', evidence: candidate.evidence }],
+        },
         { ...candidate, id: 'speech', kind: 'statement', text: '台词中的说法' },
         { ...candidate, id: 'conflict', relatedFactId: 'old', text: '涉及旧设定的候选' },
       ],
@@ -310,6 +312,10 @@ it('offers direct and batch decisions without opening evidence, preserving previ
   expect(first.queryByRole('button', { name: '计入事实' })).not.toBeInTheDocument();
   const second = within(screen.getByRole('article', { name: '事实 2' }));
   expect(second.getByText('· 已选计入', { exact: false })).toBeVisible();
+  expect(second.getByRole('checkbox', { name: 'shen' })).toBeChecked();
+  await user.click(second.getByRole('checkbox', { name: 'shen' }));
+  await user.click(second.getByRole('button', { name: '更改决定' }));
+  await user.click(second.getByRole('button', { name: '计入事实' }));
   expect(second.getByRole('checkbox', { name: 'shen' })).not.toBeChecked();
   expect(screen.getByText('已处理 2/4 条 · 未保存')).toBeVisible();
   expect(

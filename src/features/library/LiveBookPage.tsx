@@ -5,6 +5,7 @@ import { liveBookText as t } from '@/shared/lib/messages-live-book';
 import { useLiveBook } from './api/live-book';
 import { livePreparePath, nextBookPath } from './live-book-path';
 import './library.css';
+import { PublishedBookPanel } from './PublishedBookPanel';
 export default function LiveBookPage() {
   const q = useLiveBook(),
     b = q.data;
@@ -84,6 +85,7 @@ export default function LiveBookPage() {
       </details>
       <div className="overview-layout">
         <div className="overview-main">
+          <PublishedBookPanel />
           <Card>
             <div className="overview-panel-heading">
               <h2>{t.chapters}</h2>

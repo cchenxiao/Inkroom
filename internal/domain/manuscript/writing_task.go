@@ -9,6 +9,9 @@ type PublicationRef struct {
 	Version   int    `json:"version"`
 }
 type WritingTask struct {
+	BeatAction    string           `json:"beatAction,omitempty"`
+	BeatOutcome   string           `json:"beatOutcome,omitempty"`
+	NextBeat      string           `json:"nextBeat,omitempty"`
 	ChapterNumber int              `json:"chapterNumber,omitempty"`
 	Publications  []PublicationRef `json:"publications,omitempty"`
 	// ExperimentalContinuity is frozen per run; planned requests opt in explicitly, default off.

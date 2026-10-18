@@ -12,6 +12,7 @@ import (
 	"inkloom/internal/agents/model"
 	"inkloom/internal/app"
 	"inkloom/internal/config"
+	"inkloom/internal/domain/manuscript"
 )
 
 func (s *Store) StartChapterFacts(ctx context.Context, scope string, req app.ChapterFactsRequest, cfg config.Config) (app.ChapterFactsJob, bool, error) {
@@ -78,6 +79,24 @@ func (s *Store) StartChapterFacts(ctx context.Context, scope string, req app.Cha
 		return job, false, app.ErrContextMismatch
 	}
 	job = app.ChapterFactsJob{ID: req.RequestID, Scope: scope, Request: req, Input: app.ChapterFactsInput{ChapterID: a.ChapterID, Review: j.Input, BaseKnowledge: *a.Knowledge, Knowledge: k.Snapshot}, Status: "running", Provider: cfg.Model, Model: cfg.ModelName, Calls: []model.CallRecord{}, CreatedAt: time.Now().UTC()}
+	job.Input.CharacterNames = map[string]string{}
+	for _, part := range a.Parts {
+		var raw []byte
+		if e := tx.QueryRow(ctx, "SELECT rc.input FROM manuscript_commits c JOIN run_contexts rc ON rc.run_id=c.run_id WHERE c.id=$1", part.CommitID).Scan(&raw); e != nil {
+			return job, false, e
+		}
+		var frozen manuscript.FrozenInput
+		if e := json.Unmarshal(raw, &frozen); e != nil {
+			return job, false, e
+		}
+		b, ok := frozen.Bundle.ForBeat(part.BeatID)
+		if !ok {
+			return job, false, app.ErrContextMismatch
+		}
+		for _, c := range b.Characters {
+			job.Input.CharacterNames[c.ID] = c.Name
+		}
+	}
 	if req.Mode == "manual" {
 		job.Status = "completed"
 		job.Provider = "human"

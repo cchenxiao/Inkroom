@@ -167,8 +167,8 @@ func (s *Store) StartPlannedRun(ctx context.Context, scope string, req app.Plann
 	if req.Mode == "chapter" {
 		source.BeatID = app.ChapterBeatID
 	}
-	r = app.Run{Planning: source, ID: req.RequestID, ChapterID: frozen.Bundle.ChapterID, BranchID: "main", BaseDraftVersion: req.DraftVersion, DraftVersion: req.DraftVersion, Status: "running", CurrentNode: "draft", Scenario: "normal", InputDigest: frozen.Manifest.Digest, AutoRevise: req.AutoRevise, MaxRounds: 2, MaxCalls: cfg.MaxCalls, MaxTokens: cfg.MaxTokens, Provider: cfg.Model, Model: cfg.ModelName, Nodes: []any{}, ActiveRoles: []string{}}
-	if err = createRunTx(ctx, tx, r, &frozen, nil); err != nil {
+	r = app.Run{Planning: source, ID: req.RequestID, ChapterID: frozen.Bundle.ChapterID, BranchID: "main", BaseDraftVersion: req.DraftVersion, DraftVersion: req.DraftVersion, Status: "running", CurrentNode: "context_assemble", Scenario: "normal", InputDigest: frozen.Manifest.Digest, AutoRevise: req.AutoRevise, MaxRounds: 2, MaxCalls: cfg.MaxCalls, MaxTokens: cfg.MaxTokens, Provider: cfg.Model, Model: cfg.ModelName, Nodes: []any{}, ActiveRoles: []string{}}
+	if err = createRunTx(ctx, tx, r, &frozen, &frozen); err != nil {
 		return r, false, err
 	}
 	raw, err = json.Marshal(app.PlannedRunBinding{Scope: scope, Request: req, Selection: p})
@@ -178,7 +178,7 @@ func (s *Store) StartPlannedRun(ctx context.Context, scope string, req app.Plann
 	if _, err = tx.Exec(ctx, "INSERT INTO planning_run_inputs VALUES($1,$2,$3,$4)", r.ID, scope, p.ChapterID, raw); err != nil {
 		return r, false, err
 	}
-	if err = appendEvent(ctx, tx, r.ID, "context.ready"); err != nil {
+	if err = appendEvent(ctx, tx, r.ID, "context.preparing"); err != nil {
 		return r, false, err
 	}
 	if err = tx.Commit(ctx); err != nil {

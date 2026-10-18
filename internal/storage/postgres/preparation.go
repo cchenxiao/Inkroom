@@ -29,7 +29,7 @@ func (s *Store) PreparationInput(ctx context.Context, id string) (manuscript.Fro
 	return in, in.Validate()
 }
 func (s *Store) SaveLookup(ctx context.Context, id string, trace memory.LookupTrace) error {
-	if len(trace.Steps) > 3 {
+	if len(trace.Steps) > 24 {
 		return app.ErrInvalidWrite
 	}
 	tx, err := s.pool.Begin(ctx)
@@ -71,8 +71,14 @@ func (s *Store) SealPreparedContext(ctx context.Context, id string, in manuscrip
 	if err != nil {
 		return err
 	}
-	candidate := in.Bundle
+	candidate, err := in.Bundle.Freeze()
+	if err != nil {
+		return err
+	}
 	candidate.Retrieval = nil
+	for i := range candidate.Targets {
+		candidate.Targets[i].Retrieval = nil
+	}
 	candidate.POVCharacterID = base.Bundle.POVCharacterID
 	digest, err := manuscript.ContentDigest(candidate)
 	if err != nil || digest != base.Manifest.Digest || in.Manifest.BaseDraftVersion != base.Manifest.BaseDraftVersion || in.Manifest.Budget != base.Manifest.Budget || in.Manifest.ReservedOutputTokens != base.Manifest.ReservedOutputTokens {
@@ -101,7 +107,16 @@ func (s *Store) SealPreparedContext(ctx context.Context, id string, in manuscrip
 	if r.Status != "running" || r.CurrentNode != "context_assemble" || r.Lookup == nil || r.Lookup.Stop != "ready" {
 		return app.ErrGateBlocked
 	}
-	if _, err = frozenContext(ctx, tx, id); !errors.Is(err, app.ErrContextMismatch) {
+	if existing, readErr := frozenContext(ctx, tx, id); r.Planning != nil {
+		if readErr != nil || existing.Manifest.Digest != base.Manifest.Digest {
+			return app.ErrContextMismatch
+		}
+		if current, e := planningRunCurrent(ctx, tx, r.Planning); e != nil {
+			return e
+		} else if !current {
+			return app.ErrVersionMismatch
+		}
+	} else if err = readErr; !errors.Is(err, app.ErrContextMismatch) {
 		if err == nil {
 			return app.ErrGateBlocked
 		}
@@ -111,7 +126,7 @@ func (s *Store) SealPreparedContext(ctx context.Context, id string, in manuscrip
 	if err != nil {
 		return err
 	}
-	if _, err = tx.Exec(ctx, "INSERT INTO run_contexts VALUES($1,$2)", id, raw); err != nil {
+	if _, err = tx.Exec(ctx, "INSERT INTO run_contexts VALUES($1,$2) ON CONFLICT(run_id) DO UPDATE SET input=EXCLUDED.input", id, raw); err != nil {
 		return err
 	}
 	r.InputDigest = in.Manifest.Digest

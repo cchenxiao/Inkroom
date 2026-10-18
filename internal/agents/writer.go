@@ -17,7 +17,11 @@ func Write(ctx context.Context, chat model.ChatModel, bundle manuscript.ContextB
 	if bundle.ChapterID == "" || bundle.BranchID == "" || bundle.Beat.ID == "" || bundle.Beat.SceneID == "" || strings.TrimSpace(bundle.Beat.Description) == "" {
 		return manuscript.Segment{}, model.Usage{}, fmt.Errorf("chapter, branch and beat context are required")
 	}
-	material, err := json.Marshal(bundle)
+	writerContext, err := singleBeatWritingContext(bundle)
+	if err != nil {
+		return manuscript.Segment{}, model.Usage{}, err
+	}
+	material, err := json.Marshal(writerContext)
 	if err != nil {
 		return manuscript.Segment{}, model.Usage{}, err
 	}
@@ -37,4 +41,24 @@ func Write(ctx context.Context, chat model.ChatModel, bundle manuscript.ContextB
 		SceneID: bundle.Beat.SceneID, BeatID: bundle.Beat.ID,
 		Order: 1, Text: draft.Text, POV: bundle.POV, Version: 1,
 	}, usage, nil
+}
+
+// A single beat must not receive the scene/chapter outcome as its own required
+// action. Keep fixed constraints and the next beat boundary, but project the
+// author-confirmed action/turn into the executable brief. The frozen input is
+// unchanged and retains the full chapter plan for audit and chapter review.
+func singleBeatWritingContext(bundle manuscript.ContextBundle) (manuscript.ContextBundle, error) {
+	b, err := bundle.Freeze()
+	if err != nil {
+		return b, err
+	}
+	if t := b.WritingTask; t != nil && t.BeatAction != "" && t.BeatOutcome != "" {
+		t.Brief.MustHappen = t.BeatAction + "；本段到这里结束：" + t.BeatOutcome
+		t.Brief.Reveal = t.BeatOutcome
+		t.SceneGoal, t.SceneOutcome = t.BeatAction, t.BeatOutcome
+		if t.NextBeat != "" {
+			t.SceneConflict = ""
+		}
+	}
+	return b, nil
 }

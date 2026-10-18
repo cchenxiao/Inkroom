@@ -8,7 +8,7 @@ export const liveBookText = {
   countNote:
     '字数按已审核提交且版本有效的段落统计（含标点、不含空白），不含未采用候选；Beat 进度按细纲统计，未展开章节不计入分母。',
   finalized: '有效定稿',
-  beats: '已提交 Beat',
+  beats: '已采用情节段',
   empty: '还没有真实章纲',
   emptyNote: '从创作准备保存立意、确认设定与章纲后，章节会出现在这里。',
   unknown: '尚未设定',
@@ -31,7 +31,7 @@ export const liveBookText = {
   noQuality: '尚无章稿可供整章审查；不展示演示分数。',
   qualityNote: '这里展示当前整章复审状态；全书量化评测、风格/读者专项评分尚未接入。',
   history: '有历史定稿，当前版本需重新核对',
-  chapterBoundary: '目前只有第一章接通正文创作。后续章卡进入细纲准备，跨章交接尚未开放。',
+  chapterBoundary: '按章完成细纲、段落采用、整章复审与定稿；下一章会承接前章定稿和已确认事实。',
   demos: '演示作品与界面样例',
   demoNote: '以下是浏览器演示数据，与真实作品进度分开。新建多作品尚未接入 Go。',
   newDemo: '新建作品（演示）',

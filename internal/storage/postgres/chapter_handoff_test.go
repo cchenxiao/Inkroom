@@ -9,17 +9,28 @@ import (
 	"time"
 
 	"errors"
+	"inkloom/internal/agents/model"
 	"inkloom/internal/app"
 	"inkloom/internal/config"
+	"inkloom/internal/domain/memory"
 	"inkloom/internal/domain/planning"
 	"inkloom/internal/domain/review"
+	"inkloom/internal/embedding"
 	"inkloom/internal/orchestration"
+	"inkloom/internal/retrieval"
 )
 
 // Runs inside the persisted planning/author/publication fixture, on its dedicated test DB.
 func exerciseNextChapter(t *testing.T, s *Store, scope string, pub app.ChapterPublication) {
 	t.Helper()
 	ctx := context.Background()
+	archive, err := s.BookArchive(ctx, scope)
+	if err != nil || len(archive.Chapters) != 1 || archive.Chapters[0].PublicationID != pub.ID || len(archive.Chapters[0].Facts) != 1 {
+		t.Fatal("published fact ledger lost provenance", archive, err)
+	}
+	if !strings.Contains(archive.ExportText(), pub.Assembly.Parts[0].Segments[0].Text) {
+		t.Fatal("export dropped published text")
+	}
 	state, err := s.GetPlanning(ctx, scope)
 	if err != nil {
 		t.Fatal(err)
@@ -79,6 +90,43 @@ func exerciseNextChapter(t *testing.T, s *Store, scope string, pub app.ChapterPu
 	if !carried {
 		t.Fatal("confirmed prior facts lost")
 	}
+	view, e := app.MemoryView(frozen.Bundle)
+	if e != nil || !view.CatalogBound || view.At.Chapter != 2 {
+		t.Fatal("real retrieval scope", e, view)
+	}
+	catalog, e := s.MemorySnapshot(ctx, view)
+	if e != nil {
+		t.Fatal(e)
+	}
+	foundPublication := false
+	for _, record := range catalog.Records {
+		if strings.HasPrefix(record.ID, "publication/"+pub.ID+"/") {
+			foundPublication = true
+		}
+	}
+	if !foundPublication {
+		t.Fatal("published chapter missing from retrieval catalog")
+	}
+	// Hybrid search must cache projection vectors without requiring memory_heads.
+	if _, e = (&retrieval.Service{Repo: s, Embedder: embedding.Fake{}}).SearchForAuthor(ctx, view, "钥匙", 3); e != nil {
+		t.Fatal("published hybrid retrieval", e)
+	}
+	wrong := view
+	wrong.ProjectID = "unrelated"
+	if _, e = s.MemorySnapshot(ctx, wrong); e == nil {
+		t.Fatal("cross-project pinned input accepted")
+	}
+	frozen, e = app.LookupContext(ctx, cfg, frozen, &retrieval.Service{Repo: s}, nil, func(trace memory.LookupTrace) error { return s.SaveLookup(ctx, run.ID, trace) })
+	if e != nil {
+		t.Fatal("planned lookup", e)
+	}
+	if e = s.SealPreparedContext(ctx, run.ID, frozen); e != nil {
+		t.Fatal("seal real retrieval", e)
+	}
+	run, e = s.GetRun(ctx, run.ID)
+	if e != nil || run.Lookup == nil || run.Lookup.Stop != "ready" || run.CurrentNode != "draft" {
+		t.Fatal("lookup state", e, run)
+	}
 	result, err := app.ExecuteChapter(ctx, cfg, "normal", orchestration.Options{FrozenInput: &frozen, BaseDraftVersion: req.DraftVersion, MaxRounds: 2})
 	if err != nil {
 		t.Fatal(err)
@@ -86,6 +134,31 @@ func exerciseNextChapter(t *testing.T, s *Store, scope string, pub app.ChapterPu
 	run.Result = &result
 	run.DraftVersion = result.DraftVersion
 	if err = s.SaveProgress(ctx, run, req.DraftVersion); err != nil {
+		t.Fatal(err)
+	}
+	// Real DB/session/persistence path, deterministic model responses only.
+	steps := []model.Step{}
+	for range frozen.Bundle.Targets {
+		for _, q := range []string{"钥匙"} {
+			steps = append(steps, model.Step{Role: "hard_consistency", FinishReason: model.ToolRequested, ToolCalls: []model.ToolCall{{ID: q, Name: "search_memory", Arguments: `{"query":"` + q + `"}`}}})
+		}
+		steps = append(steps, model.Step{Role: "hard_consistency", Content: `{"findings":[]}`})
+	}
+	check := app.NewConsistencyCheck(&retrieval.Service{Repo: s}, s, run.ID)
+	checked, _, e := check(ctx, model.NewFake(steps), result)
+	if e != nil || checked.Status != "completed" || len(checked.ScopedEvidence) != len(frozen.Bundle.Targets) || len(checked.Lookup.Steps) != len(frozen.Bundle.Targets) {
+		t.Fatal("multi-view consistency lookup failed", e, checked)
+	}
+	if _, e = checked.WithEvidence(result.Context); e != nil {
+		t.Fatal("scoped evidence cannot be restored", e)
+	}
+	for i := range result.CriticReviews {
+		if result.CriticReviews[i].Critic == "hard_consistency" {
+			result.CriticReviews[i] = checked
+		}
+	}
+	run.Result = &result
+	if err = s.SaveProgress(ctx, run, run.DraftVersion); err != nil {
 		t.Fatal(err)
 	}
 	if err = app.ExecuteHuman(ctx, cfg, run, s); err != nil {

@@ -88,3 +88,22 @@ func TestChapterCriticKeepsPerBeatKnowledgeAndHidesAuthorPlan(t *testing.T) {
 		}
 	}
 }
+
+func TestSingleBeatWriterKeepsEndingAndDoesNotConsumeChapterOutcome(t *testing.T) {
+	b := manuscript.ContextBundle{Facts: []manuscript.SourceRef{{ID: "fixed", Version: 1, Text: "钥匙在衣袋"}}, ChapterID: "chapter", BranchID: "main", Beat: manuscript.Beat{ID: "b", SceneID: "scene", Description: "敲门后说明来意", Version: 1}, WritingTask: &manuscript.WritingTask{Scope: "book/main", ChapterID: "chapter", PlanVersion: 1, SourceDigest: strings.Repeat("a", 64), Opening: true, Versions: map[string]int{"input": 1, "direction": 1, "style": 1, "core": 1, "outline": 1, "bindings": 1}, Brief: manuscript.WritingBrief{SelectedBeatID: "b", MustHappen: "整章查出日期矛盾", CannotChange: "钥匙在衣袋", Withhold: "不能揭示身份"}, Style: manuscript.WritingStyle{POV: "沈砚"}, SceneOutcome: "查出日期矛盾后离开", BeatAction: "敲门并报来意", BeatOutcome: "主人侧身让开半步", NextBeat: "开始盘问资料"}}
+	chat := &scopeRecorder{next: model.NewFake([]model.Step{{Role: "planned_writer", Content: `{"text":"他敲了门。主人侧身让开半步。"}`}})}
+	_, _, err := Write(context.Background(), chat, b)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got manuscript.ContextBundle
+	if err = json.Unmarshal(chat.inputs[0].Material, &got); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(got.WritingTask.Brief.MustHappen, "日期矛盾") || got.WritingTask.SceneOutcome != b.WritingTask.BeatOutcome || got.WritingTask.NextBeat != "开始盘问资料" || got.WritingTask.Brief.CannotChange != "钥匙在衣袋" || got.WritingTask.Brief.Withhold != "不能揭示身份" {
+		t.Fatal(got.WritingTask)
+	}
+	if b.WritingTask.SceneOutcome != "查出日期矛盾后离开" || b.WritingTask.Brief.MustHappen != "整章查出日期矛盾" {
+		t.Fatal("mutated frozen chapter plan")
+	}
+}

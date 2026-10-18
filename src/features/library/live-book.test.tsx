@@ -1,4 +1,4 @@
-import { afterAll, afterEach, beforeAll, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, expect, it } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -31,6 +31,13 @@ const empty: LiveBook = {
   totalBeats: 0,
 };
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
+beforeEach(() =>
+  server.use(
+    http.get('*/go-api/planning/archive', () =>
+      HttpResponse.json({ scope: 'zhuoliu/main', characters: {}, initialFacts: [], chapters: [] }),
+    ),
+  ),
+);
 afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 function mount(path: string) {

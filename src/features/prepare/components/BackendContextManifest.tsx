@@ -10,16 +10,16 @@ import type { BackendRun } from '../types/backend';
 export default function BackendContextManifest({ run }: { run: BackendRun }) {
   const [open, setOpen] = useState(false);
   const query = useQuery({
-    queryKey: ['backend-context', run.id],
+    queryKey: ['backend-context', run.id, run.inputDigest],
     queryFn: ({ signal }) => trialApi.manifest(run.id, signal),
-    enabled: open && !!run.inputDigest,
+    enabled: open && !!run.inputDigest && run.currentNode !== 'context_assemble',
     retry: false,
     staleTime: Infinity,
   });
   return (
     <details className="backend-manifest" onToggle={(e) => setOpen(e.currentTarget.open)}>
       <summary>{t.contextManifest}</summary>
-      {!run.inputDigest ? (
+      {!run.inputDigest || run.currentNode === 'context_assemble' ? (
         <p>
           {run.currentNode === 'context_assemble'
             ? run.status === 'running'

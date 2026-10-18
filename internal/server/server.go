@@ -19,6 +19,7 @@ import (
 	"inkloom/internal/agents/parse"
 	"inkloom/internal/app"
 	"inkloom/internal/config"
+	"inkloom/internal/contextlookup"
 	"inkloom/internal/demo"
 	"inkloom/internal/events"
 	"inkloom/internal/orchestration"
@@ -70,6 +71,7 @@ func Serve(ctx context.Context) error {
 	mux.HandleFunc("POST /api/planning/core-selection", s.saveCoreSettings)
 	mux.HandleFunc("GET /api/planning", s.getPlanning)
 	mux.HandleFunc("GET /api/planning/overview", s.bookOverview)
+	mux.HandleFunc("GET /api/planning/archive", s.bookArchive)
 	mux.HandleFunc("GET /api/planning/knowledge-preview", s.planningKnowledgePreview)
 	mux.HandleFunc("POST /api/planning/knowledge-publications", s.publishPlanningKnowledge)
 	mux.HandleFunc("POST /api/planning/chapter-assemblies/preview", s.previewChapterAssembly)
@@ -94,6 +96,7 @@ func Serve(ctx context.Context) error {
 	mux.HandleFunc("POST /api/planning/style-selection", s.selectStyle)
 	mux.HandleFunc("GET /api/knowledge", s.knowledgeSnapshot)
 	mux.HandleFunc("GET /api/memory/search", s.searchMemory)
+	mux.HandleFunc("GET /api/runs/{id}/memory", s.searchRunMemory)
 	mux.HandleFunc("POST /api/runs", s.start)
 	mux.HandleFunc("POST /api/runs/{id}/actions", s.action)
 	mux.HandleFunc("GET /api/runs/{id}", s.get)
@@ -253,7 +256,8 @@ func (s *service) execute(run app.Run) {
 	if err != nil {
 		finish, stop := context.WithTimeout(context.Background(), 5*time.Second)
 		defer stop()
-		status, reason := "failed", "上下文准备未完成，未启动 Writer；请查看工具轨迹和调用记录"
+		status, reason := "failed", executionFailureReason("context_assemble", err, nil)
+		slog.Error("run.preparation_failed", "run_id", run.ID, "error", err)
 		if errors.Is(err, app.ErrVersionMismatch) {
 			status = "stale"
 			reason = "稿本已变更，旧上下文准备失效"
@@ -331,9 +335,24 @@ func executionFailureReason(node string, runErr, persistErr error) string {
 		stage = "正文生成"
 	} else if node == "critics" {
 		stage = "正文审核"
+	} else if node == "context_assemble" {
+		stage = "写作前材料准备"
 	}
 	if persistErr != nil {
 		return stage + "的结果未能保存，请重试；此前已保存的稿件保留。"
+	}
+	var lookupFailure *retrieval.Failure
+	if errors.As(runErr, &lookupFailure) {
+		return stage + "未完成：" + lookupFailure.Message + "。此前已保存的稿件保留。"
+	}
+	if errors.Is(runErr, contextlookup.ErrInsufficient) || errors.Is(runErr, contextlookup.ErrNoNewSources) {
+		return stage + "未完成：当前视角可用的材料不足，检索没有补齐所需前情。请在故事设定核对人物知情和前章定稿，补充后重试；已保存稿件保留。"
+	}
+	if errors.Is(runErr, contextlookup.ErrToolLimit) {
+		return stage + "未完成：已达到本段 3 次查证上限，仍未完成判断。请查看查证记录，补充缺失材料后重试；已保存稿件保留。"
+	}
+	if errors.Is(runErr, contextlookup.ErrInvalidToolRequest) {
+		return stage + "未完成：模型发出了重复或无效的检索请求。请重试；已保存稿件保留。"
 	}
 	var invalid *parse.Error
 	if errors.As(runErr, &invalid) {

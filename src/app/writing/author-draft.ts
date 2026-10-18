@@ -1,5 +1,19 @@
 import { useEffect, useState } from 'react';
 import { useWritingPending } from '@/shared/lib/pending-writing';
+import type { BackendRun, HumanAction } from '@/features/prepare/types/backend';
+
+// An HTTP receipt alone does not mean that the currently rendered snapshot
+// contains the edit. Retiring the local text early briefly restores old prose.
+export function inlineEditVisible(run: BackendRun, action: HumanAction) {
+  if (action.type !== 'inline_edit' || !action.segmentId) return false;
+  return (
+    (run.pendingAction?.type === 'inline_edit' &&
+      run.pendingAction.segmentId === action.segmentId &&
+      run.pendingAction.text === action.text) ||
+    (run.draftVersion > action.draftVersion &&
+      !!run.result?.segments.some((s) => s.id === action.segmentId && s.text === action.text))
+  );
+}
 interface Backup {
   runId: string;
   version: number;
