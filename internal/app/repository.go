@@ -109,7 +109,15 @@ type HumanRepository interface {
 
 // ActionValidationError contains only our validated, author-facing reason.
 // Provider and database errors never enter this envelope.
-type ActionValidationError struct{ Reason string }
+type ActionValidationError struct {
+	Reason string
+	Cause  error
+}
 
 func (e ActionValidationError) Error() string { return e.Reason }
-func (e ActionValidationError) Unwrap() error { return ErrGateBlocked }
+func (e ActionValidationError) Unwrap() error {
+	if e.Cause != nil {
+		return e.Cause
+	}
+	return ErrGateBlocked
+}

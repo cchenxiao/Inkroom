@@ -97,3 +97,14 @@ it('shows version-bound review comparison without calling missing findings resol
   view.rerender(<QualitySummary run={{ ...withComparison, draftVersion: 4 }} />);
   expect(screen.queryByText(/新增 1 条/)).not.toBeInTheDocument();
 });
+
+it('does not recommend expanding against a superseded chapter target', () => {
+  const old = structuredClone(run);
+  old.result!.context = { writingTask: { chapterTargetWords: 6000 } } as NonNullable<
+    BackendRun['result']
+  >['context'];
+  old.result!.criticReviews![0].length!.status = 'short';
+  render(<QualitySummary run={old} currentChapterTarget={3000} />);
+  expect(screen.getByText(/当前整章目标 3,000 字/)).toBeVisible();
+  expect(screen.queryByText(/篇幅偏短/)).not.toBeInTheDocument();
+});

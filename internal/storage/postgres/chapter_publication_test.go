@@ -128,6 +128,8 @@ func exerciseChapterPublication(t *testing.T, s *Store, scope string, j app.Chap
 	fr.RequestID = rand.Text()
 	if _, _, e := s.StartChapterFacts(ctx, scope, fr, cfg); !errors.Is(e, app.ErrGateBlocked) {
 		t.Fatal("published facts mutated", e)
+	} else {
+		assertGateReason(t, e, "本版已经定稿")
 	}
 	read, err := s.ChapterPublication(ctx, scope, j.ID)
 	if err != nil || !reflect.DeepEqual(read, results[0]) {

@@ -25,7 +25,7 @@ func (s *Store) Checkpoint(ctx context.Context, id string) ([]byte, bool, error)
 		return nil, false, err
 	}
 	if version != orchestration.HumanWorkflowVersion {
-		return nil, false, app.ErrGateBlocked
+		return nil, false, app.ActionValidationError{Reason: "此运行的恢复记录属于旧版流程，不能继续旧操作；请保留正文并建立新候选"}
 	}
 	return raw, true, nil
 }
@@ -215,7 +215,7 @@ func (s *Store) CommitArtifact(ctx context.Context, id, actionID, key string, ex
 		return err
 	}
 	if pending != "pending" {
-		return app.ErrGateBlocked
+		return app.ActionValidationError{Reason: "本次操作已结束或记录已变化，请更新状态核对保存结果，不要重复提交"}
 	}
 	// 同一产物只能写一次；冲突时整个事务回滚，调用方恢复后 Load 取已提交结果。
 	raw, err := json.Marshal(state)
@@ -256,8 +256,11 @@ func (s *Store) Approve(ctx context.Context, id, actionID string, version int) e
 	if r.Status != "running" || r.DraftVersion != version {
 		return app.ErrVersionMismatch
 	}
-	if r.Result == nil || orchestration.ApprovalReason(*r.Result) != "" {
-		return app.ErrGateBlocked
+	if r.Result == nil {
+		return app.ActionValidationError{Reason: "当前稿正文尚未完整保存，不能批准，请更新状态"}
+	}
+	if reason := orchestration.ApprovalReason(*r.Result); reason != "" {
+		return app.ActionValidationError{Reason: reason}
 	}
 	r.Status = "approved"
 	r.CurrentNode = "human_gate"

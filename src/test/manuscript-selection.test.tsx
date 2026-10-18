@@ -27,15 +27,21 @@ function Manuscript({
   loading = false,
   findings = [],
   selectedFinding = null,
+  navigationRequest,
+  navigationReady = true,
 }: {
   dirty?: boolean;
   loading?: boolean;
   findings?: Finding[];
   selectedFinding?: string | null;
+  navigationRequest?: { id: number; beatId: string };
+  navigationReady?: boolean;
 }) {
   const [activeBeat, select] = useState(parts[0].id);
   return (
     <WritingManuscript
+      navigationRequest={navigationRequest}
+      navigationReady={navigationReady}
       parts={loading ? parts.map((p) => ({ ...p, segments: [], loading: true })) : parts}
       activeBeat={activeBeat}
       title="第一章"
@@ -123,4 +129,28 @@ it('restores a chapter on one loading surface rather than flashing empty manuscr
   expect(screen.queryByRole('status', { name: '正在读取章节正文' })).not.toBeInTheDocument();
   expect(screen.getByText('窗前传来轻响。')).toBeVisible();
   expect(screen.getByText('门后传来轻响。')).toBeVisible();
+});
+
+it('aligns directory targets at the top once ready, never on subsequent polling', () => {
+  const scroll = vi.fn();
+  const previous = HTMLElement.prototype.scrollTo;
+  HTMLElement.prototype.scrollTo = scroll;
+  const rect = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (
+    this: Element,
+  ) {
+    return { top: this.classList.contains('writing-beat-heading') ? 500 : 100 } as DOMRect;
+  });
+  const request = { id: 1, beatId: 'beat-1' };
+  const view = render(<Manuscript navigationRequest={request} navigationReady={false} />);
+  expect(scroll).not.toHaveBeenCalled();
+  view.rerender(<Manuscript navigationRequest={request} navigationReady />);
+  expect(scroll).toHaveBeenCalledWith({ top: 388, behavior: 'auto' });
+  scroll.mockClear();
+  view.rerender(<Manuscript navigationRequest={{ ...request }} navigationReady={false} />);
+  view.rerender(<Manuscript navigationRequest={{ ...request }} navigationReady />);
+  expect(scroll).not.toHaveBeenCalled();
+  view.rerender(<Manuscript navigationRequest={{ ...request, id: 2 }} navigationReady />);
+  expect(scroll).toHaveBeenCalledTimes(1);
+  rect.mockRestore();
+  HTMLElement.prototype.scrollTo = previous;
 });

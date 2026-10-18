@@ -12,15 +12,20 @@ export function RevisionReceipt({ run }: { run?: BackendRun }) {
   if (!request) return null;
   if (
     request.preview &&
-    (run?.status === 'running' || run?.result?.findingProposal || run?.result?.reviewPending)
+    (run?.pendingAction ||
+      run?.status === 'running' ||
+      run?.result?.findingProposal ||
+      run?.result?.reviewPending)
   )
     return null;
-  const check = run?.result?.criticReviews?.find(
-    (r) =>
-      r.critic === 'hard_consistency' &&
-      r.draftVersion === run.draftVersion &&
-      r.status === 'completed',
-  )?.authorCheck;
+  const check = run?.pendingAction
+    ? undefined
+    : run?.result?.criticReviews?.find(
+        (r) =>
+          r.critic === 'hard_consistency' &&
+          r.draftVersion === run.draftVersion &&
+          r.status === 'completed',
+      )?.authorCheck;
   const running = run?.status === 'running';
   const label = running
     ? '正在修改与核对'
@@ -31,11 +36,28 @@ export function RevisionReceipt({ run }: { run?: BackendRun }) {
         : check.status === 'unresolved'
           ? '修改尚未解决问题'
           : '需要你补充判断';
-  const change = savedChanges(run).find((change) => change.current);
+  // A local finding edit may follow an earlier author request. Its diff must not
+  // be presented as the evidence for that unrelated request's authorCheck.
+  const revisions = run?.result?.revisions ?? [];
+  const matchingRevision =
+    !revisions.length ||
+    revisions.some(
+      (r) =>
+        r.toVersion === run?.draftVersion &&
+        r.patches.some(
+          (p) => p.segmentId === request.segmentId && p.reason === request.instruction,
+        ),
+    );
+  const change = matchingRevision
+    ? savedChanges(run).find((change) => change.current && change.segmentId === request.segmentId)
+    : undefined;
   return (
     <section className="writing-revision-receipt" aria-label="本次修改结果" aria-live="polite">
       <strong>{label}</strong>
       {change && <TextChange before={change.before} after={change.after} />}
+      {!matchingRevision && (
+        <p className="muted">以下核对针对此前提交的修改要求；最近保存的修改请查看正文差异。</p>
+      )}
       <p className="writing-submitted-request">{request.instruction}</p>
       <p>
         {running

@@ -89,7 +89,7 @@ func (s *Store) EditSegment(ctx context.Context, chapter, branch, id string, exp
 		return app.Draft{}, err
 	}
 	if dismissed {
-		return app.Draft{}, app.ErrGateBlocked
+		return app.Draft{}, app.ActionValidationError{Reason: "此候选已放弃，请返回当前稿后修改"}
 	}
 	var raw []byte
 	if err = tx.QueryRow(ctx, "SELECT segments FROM chapter_versions WHERE chapter_id=$1 AND branch_id=$2 AND draft_version=$3", chapter, branch, current).Scan(&raw); err != nil {

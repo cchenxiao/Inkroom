@@ -38,6 +38,8 @@ func exerciseChapterReview(t *testing.T, s *Store, scope string, a app.ChapterAs
 	decision := app.ChapterReviewDecision{RequestID: rand.Text(), AssemblyVersion: a.Version, InputDigest: job.InputDigest, Action: "approve", Reason: "核对了整章动作与衔接"}
 	if _, e := s.DecideChapterReview(ctx, scope, job.ID, decision); !errors.Is(e, app.ErrGateBlocked) {
 		t.Fatal("running review approved", e)
+	} else {
+		assertGateReason(t, e, "整章复审仍在进行")
 	}
 	out, err := app.ReviewChapter(ctx, cfg, job.Input, func(ctx context.Context, c model.CallRecord) error { return s.RecordChapterReviewCall(ctx, job.ID, c) })
 	if err != nil {
@@ -48,6 +50,8 @@ func exerciseChapterReview(t *testing.T, s *Store, scope string, a app.ChapterAs
 	}
 	if _, e := s.PublishChapter(ctx, scope, app.ChapterPublicationRequest{RequestID: rand.Text(), ReviewID: job.ID, AssemblyVersion: a.Version, InputDigest: job.InputDigest, ApprovalID: decision.RequestID, NoPendingFacts: true}); !errors.Is(e, app.ErrGateBlocked) {
 		t.Fatal("review published without author approval", e)
+	} else {
+		assertGateReason(t, e, "请先确认整章复审通过")
 	}
 	approved, err := s.DecideChapterReview(ctx, scope, job.ID, decision)
 	if err != nil || approved.Decision == nil || approved.Decision.Action != "approve" {
@@ -83,6 +87,8 @@ func exerciseChapterReview(t *testing.T, s *Store, scope string, a app.ChapterAs
 	decision.InputDigest = newJob.InputDigest
 	if _, e := s.DecideChapterReview(ctx, scope, newJob.ID, decision); !errors.Is(e, app.ErrGateBlocked) {
 		t.Fatal("failed critic approved", e)
+	} else {
+		assertGateReason(t, e, "两路整章复审尚未完整完成")
 	}
 	decision.Action = "request_changes"
 	decision.Reason = "需要补足两段之间的动作过渡"

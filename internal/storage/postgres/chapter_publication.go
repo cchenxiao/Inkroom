@@ -55,8 +55,11 @@ func (s *Store) PublishChapter(ctx context.Context, scope string, req app.Chapte
 	if !j.Current || req.AssemblyVersion != j.Input.DraftVersion || req.InputDigest != j.InputDigest {
 		return out, app.ErrVersionMismatch
 	}
-	if j.Decision == nil || j.Decision.Action != "approve" || j.ApprovalBlock != "" {
-		return out, app.ErrGateBlocked
+	if j.ApprovalBlock != "" {
+		return out, app.ActionValidationError{Reason: j.ApprovalBlock}
+	}
+	if j.Decision == nil || j.Decision.Action != "approve" {
+		return out, app.ActionValidationError{Reason: "请先确认整章复审通过，再核对事实并定稿"}
 	}
 	if j.Decision.RequestID != req.ApprovalID {
 		return out, app.ErrVersionMismatch
@@ -66,7 +69,7 @@ func (s *Store) PublishChapter(ctx context.Context, scope string, req app.Chapte
 		return out, err
 	}
 	if facts.Block != "" {
-		return out, app.ErrFactsUnconfirmed
+		return out, app.ActionValidationError{Reason: facts.Block, Cause: app.ErrFactsUnconfirmed}
 	}
 	if facts.Job != nil {
 		if facts.Selection == nil || req.FactJobID != facts.Job.ID || req.FactVersion != facts.Selection.Version {

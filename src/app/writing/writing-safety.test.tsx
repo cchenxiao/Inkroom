@@ -201,3 +201,39 @@ it('resumes a persisted interrupted action with its original operation ID and ve
   client.clear();
   spy.mockRestore();
 });
+
+it('does not show an adoption failure on a different paragraph', async () => {
+  const run = {
+    id: 'first',
+    status: 'approved',
+    draftVersion: 3,
+    inputDigest: 'digest',
+  } as BackendRun;
+  const spy = vi.spyOn(trialApi, 'finalize').mockRejectedValue(new Error('第一段采用失败'));
+  function Probe({ current }: { current: BackendRun }) {
+    const actions = useWritingActions(current, 3);
+    return (
+      <>
+        <button onClick={() => void actions.commit()}>采用当前段</button>
+        {actions.mutation.isError && <p role="alert">{actions.mutation.error?.message}</p>}
+      </>
+    );
+  }
+  const client = new QueryClient();
+  const view = render(
+    <QueryClientProvider client={client}>
+      <Probe current={run} />
+    </QueryClientProvider>,
+  );
+  await userEvent.click(screen.getByRole('button', { name: '采用当前段' }));
+  await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('第一段采用失败'));
+  view.rerender(
+    <QueryClientProvider client={client}>
+      <Probe current={{ ...run, id: 'second' }} />
+    </QueryClientProvider>,
+  );
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  view.unmount();
+  client.clear();
+  spy.mockRestore();
+});

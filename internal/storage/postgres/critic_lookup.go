@@ -47,7 +47,7 @@ func (s *Store) SaveCriticLookup(ctx context.Context, id string, c app.CriticLoo
 	}
 	if c.Review.Status == "completed" {
 		if c.Review.Lookup.Stop != "ready" {
-			return app.ErrGateBlocked
+			return app.ActionValidationError{Reason: "一致性查证尚未完成，不能保存为已完成的审核，请补齐查证后重试"}
 		}
 		if _, err = review.Aggregate(c.Review.Findings, r.Result.Segments, c.DraftVersion, b.ReadingSources()...); err != nil {
 			return err
@@ -63,7 +63,7 @@ func (s *Store) SaveCriticLookup(ctx context.Context, id string, c app.CriticLoo
 		return err
 	}
 	if tag.RowsAffected() != 1 {
-		return app.ErrGateBlocked
+		return app.ActionValidationError{Reason: "本版本的一致性查证结果已经保存，不能被旧请求覆盖，请更新状态查看结果"}
 	}
 	if err = appendEvent(ctx, tx, id, "critic.lookup"); err != nil {
 		return err

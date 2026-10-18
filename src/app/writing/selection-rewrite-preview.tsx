@@ -15,6 +15,9 @@ export function SelectionRewritePreview({
   onApply: (id: string) => Promise<boolean | undefined> | undefined;
   onDiscard: (id: string) => Promise<boolean | undefined> | undefined;
 }) {
+  const whole =
+    proposal.request.start === 0 &&
+    proposal.request.end === Array.from(proposal.request.original).length;
   const [sending, setSending] = useState(false);
   const [notice, setNotice] = useState('');
   const submit = async (apply: boolean) => {
@@ -33,17 +36,14 @@ export function SelectionRewritePreview({
   return (
     <aside className="finding-popover" aria-label="选区修改预览">
       <section className="finding-preview">
-        <strong>选区修改预览 · 正文尚未改变</strong>
-        <TextChange
-          before={Array.from(proposal.request.original)
-            .slice(proposal.request.start, proposal.request.end)
-            .join('')}
-          after={proposal.replacement}
-        />
-        <p className="muted">只替换所选文字，选区外正文保持不变。处理完修改后，再统一复审。</p>
+        <strong>{whole ? '本段改写预览' : '选区修改预览'} · 正文尚未改变</strong>
+        <p className="muted">
+          {whole ? '只替换当前情节段，其他段落保持不变。' : '只替换所选文字，选区外正文保持不变。'}
+          应用后保存为待复检候选，处理完后统一复检。
+        </p>
         <div className="page-actions">
           <Button size="sm" disabled={busy || sending} onClick={() => void submit(true)}>
-            确认替换选中文字
+            {whole ? '应用到本段候选稿' : '应用选区修改'}
           </Button>
           <Button
             size="sm"
@@ -54,6 +54,12 @@ export function SelectionRewritePreview({
             放弃这次预览
           </Button>
         </div>
+        <TextChange
+          before={Array.from(proposal.request.original)
+            .slice(proposal.request.start, proposal.request.end)
+            .join('')}
+          after={proposal.replacement}
+        />
         {notice && <p role="status">{notice}</p>}
       </section>
     </aside>

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { Check, Cloud, PenLine } from 'lucide-react';
 import { Button, StatNumber } from '@/shared/ui';
 import { useUIStore } from '@/shared/lib/ui-store';
@@ -56,6 +56,12 @@ export function WritingManuscript({
   children,
   selectionPreview,
   onRewrite,
+  onEditBeat,
+  onViewChanges,
+  navigationRequest,
+  navigationReady = true,
+  hasPreview = false,
+  modelDraftPending = false,
   snapshot = false,
 }: {
   snapshot?: boolean;
@@ -74,7 +80,7 @@ export function WritingManuscript({
   editRequest?: { segmentId: string; quote: string; requestId: number };
   busy: boolean;
   onChange: (id: string, text: string) => void;
-  onSelectBeat: (id: string) => void;
+  onSelectBeat: (id: string, locate?: boolean) => void;
   onFinding: (id: string) => void;
   onSelection: (selection: SelectedText) => void;
   onSave: () => void;
@@ -93,30 +99,41 @@ export function WritingManuscript({
   children?: ReactNode;
   selectionPreview?: { id: string; segmentId: string; quote: string; content: ReactNode };
   onRewrite: (beatId: string) => void;
+  onEditBeat?: (beatId: string) => void;
+  onViewChanges?: () => void;
+  navigationRequest?: { id: number; beatId: string };
+  navigationReady?: boolean;
+  hasPreview?: boolean;
+  modelDraftPending?: boolean;
 }) {
   const [mode, setMode] = useState<EditorMode>('editor');
   const activePart = parts.find((part) => part.id === activeBeat);
   const initialLoading = parts.length > 0 && parts.every((p) => p.loading && !p.segments.length);
   const incomplete = parts.some((p) => p.loading || p.loadError);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const selectedInProse = useRef(false);
   const focus = useUIStore((s) => s.focus),
     heatmap = useUIStore((s) => s.heatmap);
-  const partsRef = useRef(parts);
-  partsRef.current = parts;
-  useEffect(() => {
-    if (selectedInProse.current) {
-      selectedInProse.current = false;
+  const appliedNavigation = useRef(0);
+  useLayoutEffect(() => {
+    if (
+      !navigationReady ||
+      !navigationRequest?.id ||
+      appliedNavigation.current === navigationRequest.id
+    )
       return;
-    }
-    const segment = partsRef.current.find((p) => p.id === activeBeat)?.segments[0];
-    if (segment)
-      scrollRef.current
-        ?.querySelector(`[data-manuscript-segment="${CSS.escape(segment.id)}"]`)
-        ?.closest('.writing-beat')
-        ?.querySelector('.writing-beat-heading')
-        ?.scrollIntoView({ block: 'nearest' });
-  }, [activeBeat]); // Keep scroll still during SSE updates and author input.
+    const container = scrollRef.current;
+    const heading = container?.querySelector<HTMLElement>(
+      `[data-beat-id="${CSS.escape(navigationRequest.beatId)}"] .writing-beat-heading`,
+    );
+    if (!container || !heading) return;
+    const top =
+      container.scrollTop +
+      heading.getBoundingClientRect().top -
+      container.getBoundingClientRect().top -
+      12;
+    container.scrollTo({ top: Math.max(0, top), behavior: 'auto' });
+    appliedNavigation.current = navigationRequest.id;
+  }, [navigationRequest, navigationReady]); // Explicit directory navigation only; saves and SSE never reposition prose.
   const selectedSegment = findings.find((f) => f.id === selectedFinding)?.segmentId;
   const selectedQuote = findings.find((f) => f.id === selectedFinding)?.quote;
   const findingLocation = useRef({ selectedSegment, selectedQuote });
@@ -162,6 +179,38 @@ export function WritingManuscript({
         <div className="manuscript-current-context" aria-label="当前正文版本">
           <span className="manuscript-current-title">当前段 · {activePart.title}</span>
           <ManuscriptStatus part={activePart} snapshot={snapshot} />
+          {!snapshot && !!activePart.segments.length && (
+            <div className="manuscript-current-actions">
+              {onEditBeat && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  disabled={busy}
+                  onClick={() => onEditBeat(activePart.id)}
+                >
+                  直接编辑
+                </Button>
+              )}
+              <Button
+                size="sm"
+                variant="ghost"
+                disabled={dirty || busy}
+                onClick={() => onRewrite(activePart.id)}
+              >
+                {hasPreview
+                  ? '查看修改预览'
+                  : modelDraftPending
+                    ? '继续填写修改要求'
+                    : '模型改写本段'}
+              </Button>
+              {onViewChanges && (
+                <Button size="sm" variant="ghost" disabled={dirty || busy} onClick={onViewChanges}>
+                  修改对照
+                </Button>
+              )}
+            </div>
+          )}
+
           {dirty ? (
             <span className="manuscript-local-state">本机修改未保存</span>
           ) : (
@@ -193,6 +242,7 @@ export function WritingManuscript({
                 <section
                   key={part.id}
                   className={`writing-beat state-${manuscriptStatus(part, snapshot).tone} ${part.id === activeBeat ? 'is-active' : ''}`}
+                  data-beat-id={part.id}
                   aria-label={part.title}
                   aria-current={part.id === activeBeat ? 'true' : undefined}
                 >
@@ -219,16 +269,6 @@ export function WritingManuscript({
                           }}
                         >
                           审核
-                        </Button>
-                      )}
-                      {!snapshot && !!part.segments.length && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          disabled={dirty || busy}
-                          onClick={() => onRewrite(part.id)}
-                        >
-                          修改本段
                         </Button>
                       )}
                     </div>
@@ -275,8 +315,7 @@ export function WritingManuscript({
                             (event.target as HTMLElement).closest('.tiptap') &&
                             !window.getSelection()?.toString()
                           ) {
-                            selectedInProse.current = true;
-                            onSelectBeat(part.id);
+                            onSelectBeat(part.id, false);
                           }
                         }}
                       >
@@ -297,7 +336,6 @@ export function WritingManuscript({
                           onFocus={() => {}}
                           onFinding={onFinding}
                           onSelection={(selection) => {
-                            selectedInProse.current = part.id !== activeBeat;
                             if (['edit', 'rewrite', 'instruct'].includes(selection.action))
                               setMode('editor');
                             onSelection(selection);

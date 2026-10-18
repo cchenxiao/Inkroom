@@ -1,4 +1,4 @@
-import { savedChanges, SavedChangeCard } from './saved-changes';
+import { savedChanges, SavedChangeCard, type SavedChange } from './saved-changes';
 import { SelectionRewritePreview } from './selection-rewrite-preview';
 import { findingRewrite, replaceFindingQuote, submitFindingRewrite } from './finding-actions';
 import { ContinuityOption } from '@/features/prepare/components/continuity-option';
@@ -163,9 +163,16 @@ function Desk({
     quote: string;
     requestId: number;
   }>();
-  const [dismissedChange, setDismissedChange] = useState('');
+  const [shownChange, setShownChange] = useState<SavedChange | null>(null);
+  const [wholeRewriteOpen, setWholeRewriteOpen] = useState(false);
+  const [beatNavigation, setBeatNavigation] = useState({ id: 1, beatId });
   const changes = savedChanges(run);
-  const latestChange = changes.find((change) => change.current);
+  const latestChange = changes.find((change) =>
+    run?.result?.segments.some(
+      (segment) =>
+        segment.id === change.segmentId && (!segment.beatId || segment.beatId === beatId),
+    ),
+  );
   const [selectedFinding, setSelectedFinding] = useState<string | null>(null);
   const [rewriteFeedback, setRewriteFeedback] = useState('');
   const [resumeFinding, setResumeFinding] = useState<{
@@ -453,9 +460,10 @@ function Desk({
         };
       }),
     ) ?? [];
-  const selectBeat = (id: string) => {
+  const selectBeat = (id: string, locate = true) => {
     if (locked || busy) return;
     setMobileStructure(false);
+    if (locate) setBeatNavigation((value) => ({ id: value.id + 1, beatId: id }));
     setInspection(null);
     setParams(
       (current) => {
@@ -529,8 +537,12 @@ function Desk({
         { replace: true },
       );
     } else {
-      showReview(part.id);
-      if (value.quote) setSide(null);
+      if (value.action === 'review') showReview(part.id);
+      else {
+        selectBeat(part.id, !value.quote);
+        setSide(null);
+        if (!value.quote) setWholeRewriteOpen(true);
+      }
     }
   };
   useEffect(() => {
@@ -783,7 +795,10 @@ function Desk({
   };
   const focusInstruction = () => {
     if (selection) setSide(null);
-    else showReview();
+    else {
+      setSide(null);
+      setWholeRewriteOpen(true);
+    }
     requestAnimationFrame(() =>
       document.querySelector<HTMLTextAreaElement>('[data-writing-instruction]')?.focus(),
     );
@@ -847,11 +862,14 @@ function Desk({
       hidden={!canRewrite && !instructionDraft.dirty}
     >
       <div className="writing-revision-heading">
-        <strong>{selection ? '让模型修改选中文字' : '修改整个情节段'}</strong>
+        <strong>{selection ? '让模型修改选中文字' : '让模型改写本段'}</strong>
         <span>{instruction.trim() ? '未发送' : '填写要求'}</span>
       </div>
       <p className="writing-revision-target">
         范围：{selection ? '选中的文字' : `「${beat?.title || '当前情节段'}」全文`}
+      </p>
+      <p className="muted">
+        填写要求 → 生成修改预览 → 核对差异后应用。应用前正文不变，其他情节段只作参照。
       </p>
       {selection && <blockquote>{selection.quote}</blockquote>}
       <label>
@@ -873,9 +891,12 @@ function Desk({
           variant="ghost"
           size="sm"
           disabled={busy || !instructionDraft.dirty}
-          onClick={instructionDraft.clear}
+          onClick={() => {
+            instructionDraft.clear();
+            setWholeRewriteOpen(false);
+          }}
         >
-          {selection ? '取消这次要求' : '清空'}
+          取消这次要求
         </Button>
         <Button
           variant="default"
@@ -890,7 +911,7 @@ function Desk({
           disabledReason={rewriteBlock}
           onClick={() => void sendRewrite()}
         >
-          {t.sendInstruction}
+          生成修改预览
         </Button>
       </div>
       {(rewriteFeedback || rewriteBlock) && <p role="status">{rewriteFeedback || rewriteBlock}</p>}
@@ -990,7 +1011,7 @@ function Desk({
           }
           onClick={() => writer.beginChapter()}
         >
-          {continuingChapter ? '生成整章候选（保留已采用）' : '生成整章'}
+          {continuingChapter ? '重新生成未采用段落' : '生成整章'}
         </Button>
         {continuingChapter && (
           <Button
@@ -1004,9 +1025,10 @@ function Desk({
             }
             onClick={() => writer.beginChapter(true)}
           >
-            {missingCount ? `继续生成剩余 ${missingCount} 段` : '全部段落已有正文'}
+            {missingCount ? `续写未生成的 ${missingCount} 段` : '没有待续写段落'}
           </Button>
         )}
+        <small>按细纲生成候选，保留已采用正文。单句或单段修改在正文中操作。</small>
         <Link to={livePreparePath('outline', chapterId)}>{t.prepare} →</Link>
       </footer>
     </aside>
@@ -1189,6 +1211,16 @@ function Desk({
                 snapshot={!!inspection}
                 parts={inspectedParts ?? parts}
                 activeBeat={inspection ? '' : beatId}
+                hasPreview={!!run?.result?.findingProposal}
+                modelDraftPending={instructionDraft.dirty}
+                navigationRequest={beatNavigation}
+                navigationReady={
+                  !inspection &&
+                  !parts.some((part) => part.loading) &&
+                  !writer.loading &&
+                  !writer.runQuery.isFetching &&
+                  !writer.draft.isPending
+                }
                 title={inspection?.title ?? beat?.title ?? chapter?.title ?? ''}
                 pov={planning.styleSelection?.rules.pov ?? ''}
                 tone={planning.styleSelection?.rules.tone}
@@ -1225,6 +1257,11 @@ function Desk({
                 }
                 selectionPreview={
                   run?.result?.findingProposal &&
+                  !(
+                    run.result.findingProposal.request.start === 0 &&
+                    run.result.findingProposal.request.end ===
+                      Array.from(run.result.findingProposal.request.original).length
+                  ) &&
                   !run.result.findingProposal.findingId &&
                   !inspection
                     ? {
@@ -1252,23 +1289,7 @@ function Desk({
                           quote: selection.quote,
                           content: instructionForm,
                         }
-                      : latestChange &&
-                          dismissedChange !== latestChange.id &&
-                          !selectedFinding &&
-                          !inspection &&
-                          !draft.dirty
-                        ? {
-                            id: latestChange.id,
-                            segmentId: latestChange.segmentId,
-                            quote: latestChange.quote,
-                            content: (
-                              <SavedChangeCard
-                                change={latestChange}
-                                onClose={() => setDismissedChange(latestChange.id)}
-                              />
-                            ),
-                          }
-                        : undefined
+                      : undefined
                 }
                 busy={busy || run?.status === 'running'}
                 onChange={(id, text) => {
@@ -1277,9 +1298,43 @@ function Desk({
                   else draft.change(id, text);
                 }}
                 onSelectBeat={selectBeat}
+                onViewChanges={
+                  latestChange && !inspection ? () => setShownChange(latestChange) : undefined
+                }
+                onEditBeat={(id) => {
+                  const segment = parts.find((part) => part.id === id)?.segments[0];
+                  if (segment)
+                    selectText({
+                      segmentId: segment.id,
+                      version: segment.version,
+                      quote: '',
+                      action: 'edit',
+                    });
+                }}
                 onFinding={selectFinding}
                 onSelection={selectText}
                 onRewrite={(id) => {
+                  const proposal = run?.result?.findingProposal;
+                  if (proposal) {
+                    setSide(null);
+                    if (proposal.findingId) setSelectedFinding(proposal.findingId);
+                    else if (
+                      proposal.request.start === 0 &&
+                      proposal.request.end === Array.from(proposal.request.original).length
+                    )
+                      setWholeRewriteOpen(true);
+                    else
+                      requestAnimationFrame(() =>
+                        document
+                          .querySelector('main .finding-preview')
+                          ?.scrollIntoView({ block: 'nearest' }),
+                      );
+                    return;
+                  }
+                  if (instructionDraft.dirty) {
+                    focusInstruction();
+                    return;
+                  }
                   const segment = parts.find((part) => part.id === id)?.segments[0];
                   if (segment)
                     selectText({
@@ -1456,6 +1511,7 @@ function Desk({
               <div className="writing-empty">
                 <h2>{chapter?.title ?? '尚未准备章节'}</h2>
                 <p>{block || t.prerequisite}</p>
+                <small>按细纲生成候选，保留已采用正文。单句或单段修改在正文中操作。</small>
                 <Link to={livePreparePath('outline', chapterId)}>{t.prepare}</Link>
               </div>
             )}
@@ -1574,7 +1630,7 @@ function Desk({
                               : '本段已采用。可继续下一段，或进入整章审核。'
                           : run?.status === 'approved'
                             ? run.planning?.mode === 'chapter'
-                              ? '整章候选已批准，核对事实后采用全部段落。'
+                              ? '本批候选已批准，核对事实后采用本批段落。'
                               : '本段已批准，核对事实后采用到章稿。'
                             : run?.result?.findingProposal
                               ? '局部修改预览已就绪，请在正文旁核对后确认替换。'
@@ -1624,17 +1680,10 @@ function Desk({
                   <Button
                     size="sm"
                     onClick={() => {
-                      setDismissedChange('');
-                      setSelectedFinding(null);
-                      setSide(null);
-                      requestAnimationFrame(() =>
-                        document
-                          .querySelector('main .saved-change-card')
-                          ?.scrollIntoView({ block: 'center' }),
-                      );
+                      setShownChange(latestChange);
                     }}
                   >
-                    在正文旁查看本次差异
+                    查看本段修改对照
                   </Button>
                 )}
                 {run?.result?.findingProposal?.findingId && (
@@ -1656,13 +1705,6 @@ function Desk({
                   <div className="page-actions">
                     <Button variant="default" onClick={() => setSide('assembly')}>
                       进入整章审核
-                    </Button>
-                    <Button
-                      disabled={startDisabled}
-                      disabledReason={block || '请先处理未完成的操作'}
-                      onClick={start}
-                    >
-                      重新生成本段
                     </Button>
                   </div>
                 )}
@@ -1751,6 +1793,10 @@ function Desk({
 
               {!run?.result?.reviewPending && (
                 <QualitySummary
+                  currentChapterTarget={
+                    plan?.content.targetWords ||
+                    (chapter?.targetWords ? Math.min(chapter.targetWords, 3000) : undefined)
+                  }
                   run={run}
                   dirty={draft.dirty}
                   onPrepareCondense={
@@ -1786,18 +1832,26 @@ function Desk({
                 <details className="writing-saved-changes">
                   <summary>修改记录与差异 · {changes.length}</summary>
                   {changes.map((change) => (
-                    <SavedChangeCard key={change.id} change={change} />
+                    <Button
+                      key={change.id}
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setShownChange(change)}
+                    >
+                      {
+                        parts.find((part) =>
+                          part.segments.some((segment) => segment.id === change.segmentId),
+                        )?.title
+                      }{' '}
+                      · {change.label}
+                    </Button>
                   ))}
                 </details>
               )}
               {!selection && (
-                <details
-                  open={instructionDraft.dirty || undefined}
-                  className="writing-whole-request"
-                >
-                  <summary>修改整个情节段</summary>
-                  {instructionForm}
-                </details>
+                <Button disabled={busy || draft.dirty} onClick={focusInstruction}>
+                  {instructionDraft.dirty ? '继续填写本段改写要求' : '让模型改写本段'}
+                </Button>
               )}
               <details className="writing-review-details">
                 <summary>
@@ -1852,28 +1906,11 @@ function Desk({
                 </label>
               </details>
               <details>
-                <summary>生成范围与自动修订</summary>
-                <Button
-                  disabled={
-                    busy ||
-                    run?.status === 'running' ||
-                    !!run?.pendingAction ||
-                    locked ||
-                    !!block ||
-                    !writer.chapterGate.data?.ready
-                  }
-                  onClick={() => writer.beginChapter()}
-                >
-                  生成整章候选
-                </Button>
-                {writer.chapterGate.data?.reason && (
-                  <p className="muted">
-                    {readableMessage(
-                      writer.chapterGate.data.reason,
-                      '整章材料暂未就绪，请检查规划或上下文预算。',
-                    )}
-                  </p>
-                )}
+                <summary>从细纲重新生成本段</summary>
+                <p className="muted">
+                  重新按细纲生成「{beat?.title ?? '当前段'}」的完整新候选，保留原采用稿。
+                  修改现有正文请使用正文上方的“模型改写本段”；整章生成与续写在左侧目录操作。
+                </p>
                 <label className="writing-check">
                   <input
                     type="checkbox"
@@ -1888,7 +1925,7 @@ function Desk({
                   disabledReason={block || t.readOnly}
                   onClick={start}
                 >
-                  {run ? t.regenerate : t.start}
+                  {run ? '按细纲生成本段新候选' : t.start}
                 </Button>
               </details>
             </div>
@@ -1925,6 +1962,16 @@ function Desk({
                   <Button
                     onClick={() => {
                       setSide(null);
+                      const proposal = run.result?.findingProposal;
+                      if (
+                        proposal &&
+                        !proposal.findingId &&
+                        proposal.request.start === 0 &&
+                        proposal.request.end === Array.from(proposal.request.original).length
+                      ) {
+                        setWholeRewriteOpen(true);
+                        return;
+                      }
                       if (run.result?.findingProposal?.findingId)
                         setSelectedFinding(run.result.findingProposal.findingId);
                       requestAnimationFrame(() =>
@@ -1986,7 +2033,7 @@ function Desk({
                           }
                         />
                         {run?.planning?.mode === 'chapter'
-                          ? '我已核对全部段落的事实与台词含义。'
+                          ? '我已核对本批段落的事实与台词含义。'
                           : '我已核对本段的事实与台词含义。'}
                       </label>
                     )}
@@ -2028,7 +2075,7 @@ function Desk({
                           disabledReason={actions.block('commit') || '先批准当前候选并确认事实'}
                           onClick={() => void actions.commit()}
                         >
-                          {run?.planning?.mode === 'chapter' ? '采用整章候选' : t.commit}
+                          {run?.planning?.mode === 'chapter' ? '采用本批候选' : t.commit}
                         </Button>
                       )}
                     </div>
@@ -2087,6 +2134,58 @@ function Desk({
           />
         )}
       </div>
+      <Modal
+        open={!!shownChange}
+        onOpenChange={(open) => {
+          if (!open) setShownChange(null);
+        }}
+        title="修改对照"
+        description={
+          shownChange
+            ? `${parts.find((part) => part.segments.some((segment) => segment.id === shownChange.segmentId))?.title ?? '正文'} · ${shownChange.label}`
+            : undefined
+        }
+        className="writing-change-dialog"
+      >
+        {shownChange && <SavedChangeCard change={shownChange} />}
+      </Modal>
+      <Modal
+        open={wholeRewriteOpen}
+        onOpenChange={setWholeRewriteOpen}
+        title={`模型改写本段 · ${beat?.title ?? '当前段'}`}
+        description="范围为当前情节段全文。其他段落不修改；生成后先核对差异，再应用到候选稿。"
+        className="writing-change-dialog"
+      >
+        {run?.result?.findingProposal && !run.result.findingProposal.findingId ? (
+          <SelectionRewritePreview
+            proposal={run.result.findingProposal}
+            busy={busy || !actions.waiting}
+            onApply={async (id) => {
+              const ok = await actions.applyFinding(id);
+              if (ok) setWholeRewriteOpen(false);
+              return ok;
+            }}
+            onDiscard={async (id) => {
+              const ok = await actions.discardFinding(id);
+              if (ok) setWholeRewriteOpen(false);
+              return ok;
+            }}
+          />
+        ) : run?.status === 'running' ? (
+          <p role="status">
+            正在生成修改预览，正文保持不变。可以关闭面板继续阅读，完成后从“查看修改预览”返回。
+          </p>
+        ) : actions.resumable ? (
+          <div className="page-stack">
+            {failureNotice}
+            <Button onClick={actions.resume} disabled={busy}>
+              恢复未完成的修改
+            </Button>
+          </div>
+        ) : (
+          instructionForm
+        )}
+      </Modal>
       <Modal open={narrow && mobileStructure} onOpenChange={setMobileStructure} title="章节目录">
         {narrow && <div className="writing-shell writing-mobile-directory">{tree}</div>}
       </Modal>

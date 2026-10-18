@@ -3,6 +3,7 @@ package app
 import (
 	"inkloom/internal/domain/knowledge"
 	"inkloom/internal/domain/memory"
+	"strings"
 	"testing"
 )
 
@@ -95,10 +96,12 @@ func TestKnowerSuggestionsNeedCharacterAndOriginalEvidence(t *testing.T) {
 	if err != nil || len(pack.Facts[0].KnownBy) != 0 {
 		t.Fatal("suggestion silently approved", pack, err)
 	}
-	for _, bad := range []SuggestedKnower{{CharacterID: "stranger", Evidence: c.Evidence}, {CharacterID: "shen", Evidence: ChapterEvidence{Ref: "s", Quote: "伪造引文"}}, {CharacterID: "shen", Evidence: ChapterEvidence{Ref: "later", Quote: "后来陆青告诉他。"}}} {
+	for i, bad := range []SuggestedKnower{{CharacterID: "stranger", Evidence: c.Evidence}, {CharacterID: "shen", Evidence: ChapterEvidence{Ref: "s", Quote: "伪造引文"}}, {CharacterID: "shen", Evidence: ChapterEvidence{Ref: "later", Quote: "后来陆青告诉他。"}}} {
 		out.Candidates[0].SuggestedKnowers = []SuggestedKnower{bad}
-		if ValidateChapterFactCandidates(in, out) == nil {
-			t.Fatal("invalid suggestion accepted", bad)
+		err := ValidateChapterFactCandidates(in, out)
+		want := []string{"未登记的知情角色", "无法在所引段落逐字找到", "不在同一故事时点"}[i]
+		if err == nil || !strings.Contains(err.Error(), "第 1 条候选") || !strings.Contains(err.Error(), want) {
+			t.Fatal("missing specific suggestion failure", bad, err)
 		}
 	}
 }

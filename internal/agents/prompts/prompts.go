@@ -118,10 +118,10 @@ func render(in model.Input, candidate string) (model.Input, error) {
 		promptVersion = "showrunner.v2"
 	}
 	if name == "chapter_facts" {
-		promptVersion = "chapter_facts.v3"
+		promptVersion = "chapter_facts.v4"
 	}
 	if name == "planned_writer" {
-		promptVersion = "planned_writer.v9"
+		promptVersion = "planned_writer.v10"
 	}
 	if name == "writer" {
 		promptVersion = "writer.v2"

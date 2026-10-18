@@ -89,15 +89,16 @@ func ApprovalReason(s ChapterState) string {
 		}
 	}
 	for _, f := range s.Report.Findings {
-		if f.Severity != review.P3 || ((f.RequiresHuman || f.PossibleDialogueLie) && !FindingKept(s, f.ID)) {
+		styleKept := f.Critic == "ai_taste" && f.Severity == review.P2 && !f.RequiresHuman && !f.PossibleDialogueLie && FindingKept(s, f.ID)
+		if (!styleKept && f.Severity != review.P3) || ((f.RequiresHuman || f.PossibleDialogueLie) && !FindingKept(s, f.ID)) {
 			return "仍有阻断问题或待裁定事实，请先修改并复检"
 		}
 	}
 	return ""
 }
 
-// An author decision applies only to the reviewed manuscript version. P0–P2
-// and incomplete author-request checks still block approval independently.
+// An author decision applies only to the reviewed manuscript version. P0/P1,
+// hard consistency and incomplete author-request checks still block approval independently.
 func FindingKept(s ChapterState, id string) bool {
 	for i := len(s.FindingDecisions) - 1; i >= 0; i-- {
 		d := s.FindingDecisions[i]

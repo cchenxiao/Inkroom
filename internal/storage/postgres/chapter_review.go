@@ -238,8 +238,11 @@ func (s *Store) DecideChapterReview(ctx context.Context, scope, id string, req a
 	}
 	candidate := j
 	candidate.Decision = &req
-	if j.Status == "running" || req.Action == "approve" && app.ChapterReviewBlock(candidate) != "" {
-		return empty, app.ErrGateBlocked
+	if j.Status == "running" {
+		return empty, app.ActionValidationError{Reason: "整章复审仍在进行，请等待完成后确认或记录返工要求"}
+	}
+	if reason := app.ChapterReviewBlock(candidate); req.Action == "approve" && reason != "" {
+		return empty, app.ActionValidationError{Reason: reason}
 	}
 	req.CreatedAt = time.Now().UTC()
 	raw, err = json.Marshal(req)

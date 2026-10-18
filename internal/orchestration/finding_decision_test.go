@@ -89,3 +89,25 @@ func TestFindingDecisionVersionAndApprovalGuards(t *testing.T) {
 		t.Fatal("decision leaked into new version")
 	}
 }
+
+func TestAuthorMayKeepStyleP2ButNotHardOrUnreviewedContent(t *testing.T) {
+	s := decisionState()
+	s.Report.Findings[0].Severity = review.P2
+	s.Report.Findings[0].Critic = "ai_taste"
+	s.Report.Findings[0].RequiresHuman = false
+	s.FindingDecisions = []FindingDecision{{FindingID: "finding", DraftVersion: 1, Decision: "keep"}}
+	if ApprovalReason(s) != "" {
+		t.Fatal(ApprovalReason(s))
+	}
+	for _, critic := range []string{"hard_consistency", ""} {
+		s.Report.Findings[0].Critic = critic
+		if ApprovalReason(s) == "" {
+			t.Fatal("hard/unknown P2 bypassed")
+		}
+	}
+	s.Report.Findings[0].Critic = "ai_taste"
+	s.ReviewPending = true
+	if ApprovalReason(s) == "" {
+		t.Fatal("unreviewed changes bypassed")
+	}
+}

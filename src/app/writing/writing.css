@@ -1096,3 +1096,52 @@
     border: 0;
   }
 }
+
+/* Editing actions stay beside the current scope; comparison never grows the manuscript. */
+.manuscript-current-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-left: auto;
+}
+.writing-change-dialog {
+  width: min(900px, calc(100vw - 32px));
+  max-width: 900px;
+}
+.writing-change-dialog .saved-change-card,
+.writing-change-dialog .finding-popover {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  box-shadow: none;
+}
+.writing-change-dialog .text-change-content {
+  max-height: none;
+}
+.writing-change-dialog .page-actions {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--panel);
+  padding: 12px 0;
+}
+@media (max-width: 600px) {
+  .manuscript-current-actions {
+    margin-left: 0;
+    width: 100%;
+  }
+}
+
+.writing-shell .writing-beat:last-child {
+  min-height: calc(100dvh - 180px);
+}
+.writing-change-dialog .saved-change-card > header {
+  display: none;
+}
+.writing-change-dialog .saved-change-card .text-change-tabs {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--panel);
+  padding: 8px 0;
+}

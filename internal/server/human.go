@@ -82,9 +82,17 @@ func humanFailureReason(run app.Run, err error) string {
 	node := "human_edit"
 	if run.PendingAction != nil {
 		switch run.PendingAction.Type {
-		case "inline_edit", "recheck", "revalidate":
+		case "inline_edit", "recheck", "revalidate", "review_batch":
 			node = "critics"
+		case "save_edits", "edit_finding", "apply_finding":
+			node = "human_save"
+		case "propose_finding", "propose_selection":
+			node = "human_preview"
 		}
+	}
+	var validation app.ActionValidationError
+	if errors.As(err, &validation) {
+		return executionFailureReason(node, err, nil)
 	}
 	return executionFailureReason(node, err, nil) + " 可恢复本次操作，已保存的修改不会重复应用。"
 }

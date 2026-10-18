@@ -333,7 +333,7 @@ export function SegmentEditor({
   };
   const actions = [
     ['edit', Pencil, '直接修改原文'],
-    ['rewrite', RotateCcw, contextMenu && !contextMenu.quote ? '修改整个情节段' : '让模型修改'],
+    ['rewrite', RotateCcw, contextMenu && !contextMenu.quote ? '模型改写本段' : '模型修改选中文字'],
     ['review', ShieldCheck, '作者判断与审核'],
     ['comment', MessageSquare, m.comment],
     ['instruct', PenLine, m.instruct],

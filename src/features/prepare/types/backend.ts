@@ -132,6 +132,7 @@ export interface BackendRun extends Omit<RunState, 'status' | 'currentNode'> {
         }[]
       | null;
     context: {
+      writingTask?: { chapterTargetWords?: number };
       rewrite?: AuthorRewrite;
       revisionRequest?: AuthorRewrite;
       beat: { id: string; version: number; locked: boolean };

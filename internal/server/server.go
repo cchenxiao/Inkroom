@@ -338,6 +338,14 @@ func executionFailureReason(node string, runErr, persistErr error) string {
 		stage = "正文审核"
 	} else if node == "context_assemble" {
 		stage = "写作前材料准备"
+	} else if node == "human_save" {
+		stage = "正文保存"
+	} else if node == "human_preview" {
+		stage = "修改预览"
+	}
+	var validation app.ActionValidationError
+	if errors.As(persistErr, &validation) || errors.As(runErr, &validation) {
+		return stage + "未完成：" + validation.Reason + "。此前已保存的稿件保留。"
 	}
 	if persistErr != nil {
 		return stage + "的结果未能保存，请重试；此前已保存的稿件保留。"
@@ -362,7 +370,7 @@ func executionFailureReason(node string, runErr, persistErr error) string {
 		case parse.InvalidContent:
 			detail = "模型结果未通过内容校验：" + invalid.Err.Error()
 		case parse.InvalidSchema:
-			detail = "模型返回的字段或结构不符合本次输出要求"
+			detail = parse.SchemaReason(invalid.Err)
 		case parse.InvalidJSON:
 			detail = "模型返回的格式无法读取，自动格式修复也未成功"
 		case parse.Truncated:
@@ -407,7 +415,11 @@ func (s *service) calls(w http.ResponseWriter, r *http.Request) {
 func storageError(w http.ResponseWriter, err error) {
 	var validation app.ActionValidationError
 	if errors.As(err, &validation) {
-		fail(w, 409, "gate_blocked", validation.Reason)
+		code := "gate_blocked"
+		if errors.Is(err, app.ErrFactsUnconfirmed) {
+			code = "facts_unconfirmed"
+		}
+		fail(w, 409, code, validation.Reason)
 		return
 	}
 

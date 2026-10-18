@@ -93,7 +93,11 @@ export function useWritingActions(run: BackendRun | undefined, currentVersion?: 
     current,
     waiting,
     pending,
-    mutation,
+    mutation: {
+      ...mutation,
+      isError: mutation.isError && mutation.variables?.runId === run?.id,
+      error: mutation.variables?.runId === run?.id ? mutation.error : null,
+    },
     busy: !!pending || mutation.isPending,
     approve: () => action({ type: 'approve' }),
     proposeSelection: (rewrite: AuthorRewrite) => action({ type: 'propose_selection', rewrite }),

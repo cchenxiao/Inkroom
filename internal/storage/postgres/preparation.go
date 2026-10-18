@@ -105,7 +105,7 @@ func (s *Store) SealPreparedContext(ctx context.Context, id string, in manuscrip
 		return err
 	}
 	if r.Status != "running" || r.CurrentNode != "context_assemble" || (len(base.Bundle.ManualEdits) == 0 && (r.Lookup == nil || r.Lookup.Stop != "ready")) {
-		return app.ErrGateBlocked
+		return app.ActionValidationError{Reason: "写作材料准备未完成或运行阶段已变化，请更新状态后恢复本次操作"}
 	}
 	if existing, readErr := frozenContext(ctx, tx, id); r.Planning != nil {
 		if readErr != nil || existing.Manifest.Digest != base.Manifest.Digest {
@@ -118,7 +118,7 @@ func (s *Store) SealPreparedContext(ctx context.Context, id string, in manuscrip
 		}
 	} else if err = readErr; !errors.Is(err, app.ErrContextMismatch) {
 		if err == nil {
-			return app.ErrGateBlocked
+			return app.ActionValidationError{Reason: "本次运行的写作材料已经固定，不能重复替换，请更新状态继续当前运行"}
 		}
 		return err
 	}

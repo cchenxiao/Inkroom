@@ -124,20 +124,26 @@ func ValidateChapterFactCandidates(in ChapterFactsInput, out ChapterFactsOutput)
 			return factError("validation", "candidate_fields", "候选编号重复、字段缺失或内容长度不符合要求。", ErrInvalidWrite)
 		}
 		ids[c.ID] = true
-		seenKnowers := map[string]bool{}
-		if len(c.SuggestedKnowers) > len(in.Knowledge.Characters) {
-			return factError("validation", "invalid_knower", "知情角色建议超出当前人物范围。", ErrInvalidWrite)
+		fact, _, factValid := factSource(in, c.Evidence)
+		if !factValid {
+			return factError("validation", "evidence_mismatch", fmt.Sprintf("第 %d 条候选的段落或引文与本次章稿不一致，未载入候选。", index+1), ErrInvalidWrite)
 		}
+		seenKnowers := map[string]bool{}
 		for _, k := range c.SuggestedKnowers {
+			if !slices.Contains(in.Knowledge.Characters, k.CharacterID) {
+				return factError("validation", "invalid_knower", fmt.Sprintf("第 %d 条候选建议了未登记的知情角色；模型不能为未命名人物自行编造角色编号。", index+1), ErrInvalidWrite)
+			}
+			if seenKnowers[k.CharacterID] {
+				return factError("validation", "invalid_knower", fmt.Sprintf("第 %d 条候选重复列出了同一知情角色。", index+1), ErrInvalidWrite)
+			}
 			p, _, valid := factSource(in, k.Evidence)
-			fact, _, factValid := factSource(in, c.Evidence)
-			if !valid || !factValid || p.StoryTime != fact.StoryTime || seenKnowers[k.CharacterID] || !slices.Contains(in.Knowledge.Characters, k.CharacterID) {
-				return factError("validation", "invalid_knower", "知情角色建议缺少同一时点的原文依据，或人物不属于当前作品。", ErrInvalidWrite)
+			if !valid {
+				return factError("validation", "invalid_knower", fmt.Sprintf("第 %d 条候选的角色知情引文无法在所引段落逐字找到。", index+1), ErrInvalidWrite)
+			}
+			if p.StoryTime != fact.StoryTime {
+				return factError("validation", "invalid_knower", fmt.Sprintf("第 %d 条候选的角色知情证据与事件不在同一故事时点，不能据此确认当时已知。", index+1), ErrInvalidWrite)
 			}
 			seenKnowers[k.CharacterID] = true
-		}
-		if _, _, ok := factSource(in, c.Evidence); !ok {
-			return factError("validation", "evidence_mismatch", "候选引用的段落或引文与本次章稿不一致，未载入候选。", ErrInvalidWrite)
 		}
 		if c.RelatedFactID != "" && !slices.ContainsFunc(in.Knowledge.Facts, func(f knowledge.Fact) bool { return f.ID == c.RelatedFactID }) {
 			return factError("validation", "unknown_fact_reference", fmt.Sprintf("第 %d 条候选关联了本次知识快照中不存在的事实，未载入候选。", index+1), ErrInvalidWrite)

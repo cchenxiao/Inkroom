@@ -24,7 +24,7 @@ func (s *Store) Finalize(ctx context.Context, id string, in app.FinalizeInput) (
 		return app.FinalCommit{}, app.ErrInvalidWrite
 	}
 	if !in.FactsConfirmed {
-		return app.FinalCommit{}, app.ErrFactsUnconfirmed
+		return app.FinalCommit{}, app.ActionValidationError{Reason: "请先勾选已核对本次候选的事实与台词含义，再采用正文", Cause: app.ErrFactsUnconfirmed}
 	}
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -97,7 +97,7 @@ func (s *Store) Finalize(ctx context.Context, id string, in app.FinalizeInput) (
 	}
 	for _, f := range report.Findings {
 		if (f.RequiresHuman || f.PossibleDialogueLie) && !orchestration.FindingKept(*r.Result, f.ID) {
-			return app.FinalCommit{}, app.ErrFactsUnconfirmed
+			return app.FinalCommit{}, app.ActionValidationError{Reason: "仍有待作者裁定的事实或台词含义，请先处理对应审查意见后采用", Cause: app.ErrFactsUnconfirmed}
 		}
 	}
 	refs, err := manuscript.ContextRefs(frozen.Bundle)
@@ -158,12 +158,12 @@ func (s *Store) Finalize(ctx context.Context, id string, in app.FinalizeInput) (
 		if check.DraftVersion == in.DraftVersion {
 			match := false
 			for _, c := range r.Result.CriticReviews {
-				if c.Critic == "hard_consistency" && reflect.DeepEqual(c, check.Review) {
+				if criticLookupMatches(check.Review, c, r.Result.RewriteRequest() != nil) {
 					match = true
 				}
 			}
 			if !match || check.Review.Status != "completed" {
-				return app.FinalCommit{}, app.ErrGateBlocked
+				return app.FinalCommit{}, app.ActionValidationError{Reason: "本次一致性查证记录与审核结果不一致或尚未完成，请重新复检当前稿后采用"}
 			}
 		}
 		payload, e := json.Marshal(check)

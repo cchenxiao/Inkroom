@@ -3,6 +3,7 @@ package prompts
 import (
 	"inkloom/internal/agents/contracts"
 	"inkloom/internal/agents/model"
+	"strings"
 	"testing"
 )
 
@@ -52,5 +53,15 @@ func TestContinuityDoesNotEnableChapterWriterOrLongThinking(t *testing.T) {
 		if err != nil || out.Thinking != tc.want {
 			t.Fatal(tc, out.Thinking, err)
 		}
+	}
+}
+
+func TestReplacementPromptOverridesHistoricalChapterTarget(t *testing.T) {
+	in, err := Render(model.Input{Role: "planned_writer", Material: []byte(`{"rewrite":{"instruction":"压缩到700字"},"context":{"targets":[{}],"writingTask":{"chapterTargetWords":6000}}}`), OutputSchema: contracts.ReplacementSchema})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if in.SchemaVersion != "replacement.v1" || !strings.Contains(in.SystemPrompt, `仅返回 {"text":"替换正文"}`) || !strings.Contains(in.SystemPrompt, "本次明确的字数要求优先") {
+		t.Fatal("rewrite must not use the frozen chapter-generation contract")
 	}
 }

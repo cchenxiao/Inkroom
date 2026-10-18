@@ -14,16 +14,19 @@ import (
 	"inkloom/internal/config"
 	"inkloom/internal/contextassembly"
 	"inkloom/internal/demo"
+	"inkloom/internal/domain/manuscript"
+	"inkloom/internal/domain/memory"
 	"inkloom/internal/domain/review"
 	"inkloom/internal/orchestration"
 )
 
 // 一组真实事务验证：冻结输入 → 自动评审 → 人审 → 定稿，及关键拒绝/回滚窗口。
 func TestFinalCommitFreezesMatchingVersions(t *testing.T) {
-	t.Run("clear", func(t *testing.T) { testFinalCommitFreezesMatchingVersions(t, false) })
-	t.Run("author_decision", func(t *testing.T) { testFinalCommitFreezesMatchingVersions(t, true) })
+	t.Run("clear", func(t *testing.T) { testFinalCommitFreezesMatchingVersions(t, false, false) })
+	t.Run("author_decision", func(t *testing.T) { testFinalCommitFreezesMatchingVersions(t, true, false) })
+	t.Run("lookup_then_author_check", func(t *testing.T) { testFinalCommitFreezesMatchingVersions(t, false, true) })
 }
-func testFinalCommitFreezesMatchingVersions(t *testing.T, withDecision bool) {
+func testFinalCommitFreezesMatchingVersions(t *testing.T, withDecision, withLookup bool) {
 	url := os.Getenv("INKLOOM_TEST_DATABASE_URL")
 	if url == "" {
 		t.Skip("set INKLOOM_TEST_DATABASE_URL")
@@ -80,6 +83,22 @@ func testFinalCommitFreezesMatchingVersions(t *testing.T, withDecision bool) {
 		state.Report.Findings = append(state.Report.Findings, review.Finding{ID: "author-dialogue", SegmentID: state.Segments[0].ID, Quote: state.Segments[0].Text, Severity: review.P3, RequiresHuman: true, PossibleDialogueLie: true, Critic: "hard_consistency", Reason: "台词是否故意隐瞒", Suggestion: "请作者判断", RepairScope: "segment", EvidenceStatus: "uncertain", EvidenceRefs: []string{}})
 		state.Reviews[len(state.Reviews)-1] = state.Report
 	}
+	var lookup app.CriticLookup
+	if withLookup {
+		for i := range state.CriticReviews {
+			if state.CriticReviews[i].Critic != "hard_consistency" {
+				continue
+			}
+			state.CriticReviews[i].Lookup = &memory.LookupTrace{Steps: []memory.LookupStep{}, Stop: "ready"}
+			digest, _ := manuscript.ContentDigest(struct {
+				Context  manuscript.ContextBundle
+				Segments []manuscript.Segment
+			}{state.Context, state.Segments})
+			lookup = app.CriticLookup{DraftVersion: state.DraftVersion, InputDigest: digest, Review: state.CriticReviews[i]}
+			state.CriticReviews[i].AuthorCheck = &review.AuthorCheck{Status: "addressed", Reason: "作者要求已核对", Quote: state.Segments[0].Text}
+		}
+		state.AuthorRequest = &manuscript.AuthorRewrite{SegmentID: state.Segments[0].ID, Instruction: "保持人物惯用手"}
+	}
 	r.Result = &state
 	r.DraftVersion = state.DraftVersion
 	before, _ := s.GetRun(ctx, id)
@@ -95,6 +114,11 @@ func testFinalCommitFreezesMatchingVersions(t *testing.T, withDecision bool) {
 	state.Context.POV = savedPOV
 	if err = s.SaveProgress(ctx, r, 0); err != nil {
 		t.Fatal(err)
+	}
+	if withLookup {
+		if err = s.SaveCriticLookup(ctx, id, lookup); err != nil {
+			t.Fatal(err)
+		}
 	}
 	if err = app.ExecuteHuman(ctx, cfg, r, s); err != nil {
 		t.Fatal(err)

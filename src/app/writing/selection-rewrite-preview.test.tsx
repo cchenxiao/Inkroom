@@ -35,7 +35,7 @@ describe('author-selected prose preview', () => {
     expect(screen.getByLabelText('修改后正文')).toHaveTextContent('敲门');
     expect(screen.queryByText(proposal.request.original)).not.toBeInTheDocument();
     expect(apply).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole('button', { name: '确认替换选中文字' }));
+    fireEvent.click(screen.getByRole('button', { name: '应用选区修改' }));
     await waitFor(() => expect(apply).toHaveBeenCalledWith('p'));
     expect(discard).not.toHaveBeenCalled();
   });
@@ -55,4 +55,20 @@ describe('author-selected prose preview', () => {
     expect(discard).toHaveBeenCalledWith('p');
     expect(apply).not.toHaveBeenCalled();
   });
+});
+
+it('names the whole-beat scope and exposes apply before long comparison content', () => {
+  const whole = {
+    ...proposal,
+    request: { ...proposal.request, start: 0, end: Array.from(proposal.request.original).length },
+  };
+  render(
+    <SelectionRewritePreview proposal={whole} busy={false} onApply={vi.fn()} onDiscard={vi.fn()} />,
+  );
+  const apply = screen.getByRole('button', { name: '应用到本段候选稿' });
+  expect(
+    apply.compareDocumentPosition(screen.getByLabelText('文字差异')) &
+      Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy();
+  expect(screen.getByText(/只替换当前情节段/)).toBeVisible();
 });

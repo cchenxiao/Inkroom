@@ -78,7 +78,7 @@ func (s *Store) DismissPlannedCandidate(ctx context.Context, scope, id string, v
 		return r, err
 	}
 	if !allowed {
-		return r, app.ErrGateBlocked
+		return r, app.ActionValidationError{Reason: "当前候选无法退回：请先完成在途操作，并确认涉及的每段都有已采用稿可恢复"}
 	}
 	r.Dismissed = true
 	if err = saveRun(ctx, tx, r); err != nil {

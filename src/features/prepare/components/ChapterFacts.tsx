@@ -105,7 +105,7 @@ export default function ChapterFacts({
       {pending && !start.isPending && (
         <Button onClick={() => start.mutate(pending)}>{t.retry}</Button>
       )}
-      {job && (
+      {job && !pending && !start.isPending && (
         <>
           <p role={job.status === 'failed' || job.status === 'interrupted' ? 'alert' : 'status'}>
             {job.status === 'running'

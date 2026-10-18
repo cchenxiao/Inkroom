@@ -50,15 +50,18 @@ func (s *Store) StartChapterFacts(ctx context.Context, scope string, req app.Cha
 	if !j.Current || j.InputDigest != req.InputDigest {
 		return job, false, app.ErrVersionMismatch
 	}
-	if j.ApprovalBlock != "" || j.Decision == nil || j.Decision.Action != "approve" {
-		return job, false, app.ErrGateBlocked
+	if j.ApprovalBlock != "" {
+		return job, false, app.ActionValidationError{Reason: j.ApprovalBlock}
+	}
+	if j.Decision == nil || j.Decision.Action != "approve" {
+		return job, false, app.ActionValidationError{Reason: "请先确认整章复审通过，再整理章末事实"}
 	}
 	var published, busy bool
 	if err = tx.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM chapter_publications WHERE review_id=$1),EXISTS(SELECT 1 FROM chapter_fact_jobs WHERE scope=$2 AND status='running')", j.ID, scope).Scan(&published, &busy); err != nil {
 		return job, false, err
 	}
 	if published {
-		return job, false, app.ErrGateBlocked
+		return job, false, app.ActionValidationError{Reason: "本版已经定稿，事实记录已固定；请在新章稿完成复审后整理新的事实"}
 	}
 	if busy {
 		return job, false, app.ErrRunBusy
@@ -280,8 +283,11 @@ func (s *Store) SelectChapterFacts(ctx context.Context, scope string, req app.Ch
 	if !state.Current || state.Job == nil || state.Job.ID != job.ID {
 		return empty, app.ErrVersionMismatch
 	}
-	if state.Published || job.Status != "completed" || job.Output == nil {
-		return empty, app.ErrGateBlocked
+	if state.Published {
+		return empty, app.ActionValidationError{Reason: "本版已经定稿，不能改写已冻结的事实决定；请基于新章稿处理"}
+	}
+	if job.Status != "completed" || job.Output == nil {
+		return empty, app.ActionValidationError{Reason: "事实整理尚未完整完成，请恢复或重新整理后保存决定"}
 	}
 	version := 0
 	if state.Selection != nil {

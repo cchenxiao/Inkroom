@@ -345,3 +345,62 @@ it.each(['stale', 'committed'])(
     client.clear();
   },
 );
+
+it('recovers a persisted failed manual save using its original source and text after reload', async () => {
+  const expected = {
+    planning: { input: 1, direction: 1, style: 1, core: 1 },
+    outline: 1,
+    bindings: 1,
+  };
+  const run = {
+    id: 'failed-save',
+    chapterId: 'draft',
+    status: 'failed',
+    draftVersion: 9,
+    planning: {
+      mode: 'beat',
+      planVersion: 1,
+      expected,
+      fromRunId: 'adopted-source',
+      sourceVersion: 4,
+      manualEdits: { s: '作者已输入的内容。' },
+    },
+  } as unknown as BackendRun;
+  vi.spyOn(plannedRunApi, 'get').mockResolvedValue({
+    ready: true,
+    draftVersion: 9,
+    planVersion: 1,
+    expected,
+    runs: [run],
+  } as PlannedRunReadiness);
+  vi.spyOn(trialApi, 'get').mockResolvedValue(run);
+  vi.spyOn(plannedRunApi, 'draft').mockResolvedValue({
+    draftVersion: 9,
+    segments: [],
+  } as unknown as StoredDraft);
+  const start = vi
+    .spyOn(plannedRunApi, 'start')
+    .mockResolvedValue({ ...run, id: 'retry', status: 'running' });
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const view = renderHook(() => usePlannedWriting('chapter', 'middle', false), {
+    wrapper: ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    ),
+  });
+  await waitFor(() => expect(view.result.current.failedManual?.fromRunId).toBe('adopted-source'));
+  await act(async () => {
+    expect(await view.result.current.retryManualSave()).toBe(true);
+  });
+  expect(start).toHaveBeenCalledTimes(1);
+  expect(start.mock.calls[0][0]).toMatchObject({
+    fromRunId: 'adopted-source',
+    sourceVersion: 4,
+    draftVersion: 9,
+    edits: { s: '作者已输入的内容。' },
+    autoRevise: false,
+  });
+  expect(start.mock.calls[0][0]).not.toHaveProperty('rewrite');
+  expect(start.mock.calls[0][0].requestId).not.toBe('failed-save');
+  view.unmount();
+  client.clear();
+});

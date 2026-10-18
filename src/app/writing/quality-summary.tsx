@@ -5,10 +5,12 @@ import type { BackendRun } from '@/features/prepare/types/backend';
 export function QualitySummary({
   run,
   dirty = false,
+  currentChapterTarget,
   onPrepareCondense,
 }: {
   run?: BackendRun;
   dirty?: boolean;
+  currentChapterTarget?: number;
   onPrepareCondense?: (target: number) => void;
 }) {
   if (!run || dirty || ['running', 'stale', 'interrupted'].includes(run.status)) return null;
@@ -22,6 +24,9 @@ export function QualitySummary({
       : reviews?.find((r) => r.critic === 'hard_consistency')?.continuity;
   const comparison = run.result?.reviewComparison;
   if (!length && !continuity?.length && !comparison) return null;
+  const frozenTarget = run.result?.context?.writingTask?.chapterTargetWords;
+  const targetChanged =
+    !!currentChapterTarget && !!frozenTarget && currentChapterTarget !== frozenTarget;
   const issues = continuity?.filter((c) => c.status !== 'clear').length || 0;
   return (
     <section className="writing-quality-summary" aria-label="篇幅与衔接">
@@ -34,9 +39,9 @@ export function QualitySummary({
       {length && (
         <p className={length.status === 'within' ? 'muted' : 'writing-length-notice'}>
           {length.scope === 'chapter' ? '本批候选' : '本段'}{' '}
-          <span className="stat-number">{length.actual.toLocaleString()}</span> 字 · 目标{' '}
+          <span className="stat-number">{length.actual.toLocaleString()}</span> 字 · 本轮核对目标{' '}
           <span className="stat-number">{length.target.toLocaleString()}</span> 字
-          {length.status !== 'within' && (
+          {!targetChanged && length.status !== 'within' && (
             <>
               {' '}
               ·{' '}
@@ -45,6 +50,12 @@ export function QualitySummary({
                 : '篇幅偏短，可检查情节是否展开充分'}
             </>
           )}
+        </p>
+      )}
+      {targetChanged && (
+        <p className="muted">
+          当前整章目标 {currentChapterTarget.toLocaleString()}{' '}
+          字；上方核对沿用生成时的篇幅目标，旧的长短判断不作为本次修改建议。
         </p>
       )}
       {!!continuity?.length && (
@@ -64,11 +75,14 @@ export function QualitySummary({
           ))}
         </details>
       )}
-      {length?.scope === 'beat' && length.status === 'long' && onPrepareCondense && (
-        <Button size="sm" variant="secondary" onClick={() => onPrepareCondense(length.target)}>
-          填写精简本段的要求
-        </Button>
-      )}
+      {!targetChanged &&
+        length?.scope === 'beat' &&
+        length.status === 'long' &&
+        onPrepareCondense && (
+          <Button size="sm" variant="secondary" onClick={() => onPrepareCondense(length.target)}>
+            填写精简本段的要求
+          </Button>
+        )}
       {length && length.status !== 'within' && (
         <p className="muted">
           篇幅是创作参考，系统不会自动删字或截断正文。按非空白字符计数，含标点。

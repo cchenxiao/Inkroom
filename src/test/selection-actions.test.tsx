@@ -74,7 +74,7 @@ it('binds a selected readonly quote to its source version and dismisses with Esc
     toString: () => '他放下钥匙。',
   } as Selection);
   fireEvent.contextMenu(screen.getByTestId('editor-selected-segment'));
-  await userEvent.click(screen.getByRole('menuitem', { name: '让模型修改' }));
+  await userEvent.click(screen.getByRole('menuitem', { name: '模型修改选中文字' }));
   expect(select).toHaveBeenCalledWith({
     segmentId: segment.id,
     version: 3,

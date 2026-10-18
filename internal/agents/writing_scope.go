@@ -108,7 +108,7 @@ func RewriteAuthor(ctx context.Context, chat model.ChatModel, segments []manuscr
 	type replacementOutput struct {
 		Text *string `json:"text"`
 	}
-	out, u, err := parse.Generate[replacementOutput](ctx, chat, model.Input{Role: "planned_writer", Task: "按 rewrite.instruction 重写指定范围。start/end 是原文 Unicode 码点偏移，end 不包含。selectedText 是唯一可替换的原文。只返回这个范围的替换正文 text，不包含前后缀。readOnlyBefore 和 readOnlyAfter 会由程序原样拼接，禁止把其中已有的句子再输出；要求“直接接后文”时，删除选区即可，不要复制后文。注意选区外已有的标点，避免拼接后重复；若要求删除选区内容，text 可为空字符串。其他正文与 neighbors 只读；后文不是角色已知事实。", Material: material, OutputSchema: contracts.ReplacementSchema}, func(out replacementOutput) error {
+	out, u, err := parse.Generate[replacementOutput](ctx, chat, model.Input{Role: "planned_writer", Task: "按 rewrite.instruction 重写指定范围。作者本次明确的篇幅、删减与结构要求优先于 context 中生成原稿时的目标字数；压缩时允许重组整个选区，不要为了保留原句而保留重复动作、问答和总结。先分配所要求的篇幅，输出前按非空白字符（含标点）核对。start/end 是原文 Unicode 码点偏移，end 不包含。selectedText 是唯一可替换的原文。只返回这个范围的替换正文 text，不包含前后缀。readOnlyBefore 和 readOnlyAfter 会由程序原样拼接，禁止把其中已有的句子再输出；要求“直接接后文”时，删除选区即可，不要复制后文。注意选区外已有的标点，避免拼接后重复；若要求删除选区内容，text 可为空字符串。其他正文与 neighbors 只读；后文不是角色已知事实。", Material: material, OutputSchema: contracts.ReplacementSchema}, func(out replacementOutput) error {
 		if out.Text == nil {
 			return fmt.Errorf("模型未返回替换正文 text")
 		}
