@@ -9,6 +9,7 @@ export interface FactCandidate {
   reason: string;
 }
 export interface FactDecision {
+  eventBasis?: 'observed_event' | 'speech_act';
   candidateId: string;
   action: 'confirm' | 'exclude' | 'keep_existing' | 'revise_manuscript';
   text: string;

@@ -3,7 +3,14 @@ package manuscript
 import "inkloom/internal/domain/memory"
 
 // WritingTask 是作者任务，不是角色已知事实。完整规划快照单独存档，不发给 Writer。
+type PublicationRef struct {
+	ID        string `json:"id"`
+	ChapterID string `json:"chapterId"`
+	Version   int    `json:"version"`
+}
 type WritingTask struct {
+	ChapterNumber int              `json:"chapterNumber,omitempty"`
+	Publications  []PublicationRef `json:"publications,omitempty"`
 	// ExperimentalContinuity is frozen per run; planned requests opt in explicitly, default off.
 	ExperimentalContinuity bool `json:"experimentalContinuity,omitempty"`
 	// Soft length guidance derived from the confirmed chapter and its Beat count.

@@ -1,5 +1,6 @@
 import { TechnicalDetails } from '@/shared/ui/technical-details';
-import { useEffect, useState } from 'react';
+import './chapter-review.css';
+import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ApiError } from '@/shared/api/client';
 import { useWritingPending } from '@/shared/lib/pending-writing';
@@ -13,11 +14,22 @@ import type { ChapterReviewJob } from '../api/chapter-review';
 export default function ChapterPublication({
   job,
   blocked,
+  continuation,
 }: {
   job: ChapterReviewJob;
   blocked: boolean;
+  continuation?: { label: string; onClick: () => void };
 }) {
   const client = useQueryClient();
+  const [step, setStep] = useState<'facts' | 'confirm'>('facts');
+  const heading = useRef<HTMLDivElement>(null);
+  const goTo = (next: 'facts' | 'confirm') => {
+    setStep(next);
+    heading.current?.scrollIntoView({ block: 'nearest' });
+  };
+  useEffect(() => {
+    heading.current?.scrollIntoView({ block: 'nearest' });
+  }, []);
   const [choice, setChoice] = useState('');
   const [stale, setStale] = useState(false);
   const [pending, setPending] = useState<ChapterPublicationRequest | null>(null);
@@ -51,6 +63,8 @@ export default function ChapterPublication({
       setPending(null);
       setChoice('');
       refresh();
+      void client.invalidateQueries({ queryKey: ['live-book'] });
+      void client.invalidateQueries({ queryKey: ['planned-run-gate'] });
     },
     onError: (e) => {
       if (e instanceof ApiError && e.status < 500) {
@@ -91,18 +105,40 @@ export default function ChapterPublication({
     gate || (choice === 'pending' ? t.factsBlocked : choice !== 'none' ? t.factsRequired : '');
   const current = query.data?.current && job.current;
   return (
-    <section className="page-stack" aria-label={t.title}>
-      <h3>{t.title}</h3>
-      {!receipt && <p className="muted">{t.note}</p>}
+    <section className="page-stack chapter-publication-workbench" aria-label={t.title}>
+      <div ref={heading} className="chapter-publication-heading">
+        {!receipt && (
+          <div className="chapter-review-tabs" role="group" aria-label="定稿操作">
+            <button aria-pressed={step === 'facts'} onClick={() => goTo('facts')}>
+              1 核对事实
+            </button>
+            <button aria-pressed={step === 'confirm'} onClick={() => goTo('confirm')}>
+              2 确认定稿
+            </button>
+          </div>
+        )}
+        {receipt && <h3>{t.title}</h3>}
+      </div>
       {receipt && <p role="status">{t.localFacts}</p>}
       {factsQuery.isError && <p role="alert">{t.error}</p>}
       {/* Keep local decisions and uncertain retries mounted if another window publishes. */}
-      <ChapterFacts
-        review={job}
-        state={factsQuery.data}
-        blocked={blocked || stale || factsQuery.isError || !!pending || save.isPending || !!receipt}
-        onChange={refresh}
-      />
+      <details className="chapter-publication-fact-record" open={!receipt}>
+        <summary hidden={!receipt}>已保存的事实决定</summary>
+        <div hidden={!receipt && step !== 'facts'} className="chapter-publication-facts">
+          <ChapterFacts
+            review={job}
+            state={factsQuery.data}
+            blocked={
+              blocked || stale || factsQuery.isError || !!pending || save.isPending || !!receipt
+            }
+            onChange={refresh}
+          />
+          {!receipt && !factsQuery.isPending && !factsQuery.isError && !factsQuery.data?.job && (
+            <p className="muted">如果核对后确认没有新增事实或冲突，可直接进入确认定稿。</p>
+          )}
+          {!receipt && <Button onClick={() => goTo('confirm')}>继续：确认定稿</Button>}
+        </div>
+      </details>
       {receipt ? (
         <>
           <Badge tone={current ? 'success' : 'muted'}>{current ? t.saved : t.historical}</Badge>
@@ -122,10 +158,31 @@ export default function ChapterPublication({
               </p>
             ))}
           </details>
+          {current && continuation && (
+            <Button
+              variant="default"
+              disabled={blocked || otherEdits || !!pending}
+              onClick={continuation.onClick}
+            >
+              {continuation.label}
+            </Button>
+          )}
           <p className="muted">{t.next}</p>
         </>
       ) : (
-        <>
+        <section
+          className="chapter-review-decision"
+          aria-label="确认整章定稿"
+          hidden={step !== 'confirm'}
+        >
+          <strong>确认本章定稿</strong>
+          <p className="muted">{t.note}</p>
+          {factsQuery.data?.selection && (
+            <p>
+              已保存事实决定 · {factsQuery.data.selection.package.facts.length}{' '}
+              条新增事实将供后续章节使用。
+            </p>
+          )}
           {query.isPending ? (
             <p role="status">{t.loading}</p>
           ) : (
@@ -152,8 +209,12 @@ export default function ChapterPublication({
             </fieldset>
           )}
           {reason && <p role={query.isError ? 'alert' : 'status'}>{reason}</p>}
+          {(factsQuery.data?.block || choice === 'pending' || otherEdits) && (
+            <Button onClick={() => goTo('facts')}>返回核对事实</Button>
+          )}
           <Button
             variant="human"
+            className="chapter-publication-submit"
             loading={save.isPending}
             disabled={!!reason || !!pending || !!receipt}
             disabledReason={reason || t.uncertain}
@@ -178,7 +239,7 @@ export default function ChapterPublication({
           >
             {t.publish}
           </Button>
-        </>
+        </section>
       )}
       {save.isError && (
         <p role="alert">{save.error instanceof ApiError ? save.error.message : t.uncertain}</p>

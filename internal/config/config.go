@@ -10,6 +10,10 @@ import (
 	"github.com/joho/godotenv"
 )
 
+// DefaultContextTokens is a conservative UTF-8-byte allowance, not provider token usage.
+// Four planned beats plus a finalized prior chapter exceed the old 32 KiB default.
+const DefaultContextTokens = 65536
+
 type Config struct {
 	ExperimentalContinuity  bool
 	ConsistencyOutputTokens int
@@ -27,6 +31,7 @@ type Config struct {
 	CallTimeout             time.Duration
 	MaxCalls                int
 	MaxTokens               int
+	HumanOperationTokens    int
 	MaxOutputTokens         int
 }
 
@@ -68,13 +73,16 @@ func Load() (Config, error) {
 	if cfg.EmbeddingDimensions, err = positive("INKLOOM_EMBEDDING_DIMENSIONS", 1024); err != nil {
 		return Config{}, err
 	}
-	if cfg.ContextTokens, err = positive("INKLOOM_CONTEXT_TOKENS", 32768); err != nil {
+	if cfg.ContextTokens, err = positive("INKLOOM_CONTEXT_TOKENS", DefaultContextTokens); err != nil {
 		return Config{}, err
 	}
 	if cfg.MaxCalls, err = positive("INKLOOM_MAX_CALLS", 14); err != nil {
 		return Config{}, err
 	}
 	if cfg.MaxTokens, err = positive("INKLOOM_MAX_TOKENS", 128000); err != nil {
+		return Config{}, err
+	}
+	if cfg.HumanOperationTokens, err = positive("INKLOOM_HUMAN_OPERATION_TOKENS", 256000); err != nil {
 		return Config{}, err
 	}
 	if cfg.MaxOutputTokens, err = positive("INKLOOM_MAX_OUTPUT_TOKENS", 8192); err != nil {

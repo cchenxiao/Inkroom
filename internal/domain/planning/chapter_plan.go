@@ -12,11 +12,25 @@ type ChapterPlanVersions struct {
 	Outline  int              `json:"outline"`
 	Bindings int              `json:"bindings"`
 }
+type ChapterHandoff struct {
+	PublicationID string               `json:"publicationId"`
+	ChapterID     string               `json:"chapterId"`
+	Version       int                  `json:"version"`
+	Ending        string               `json:"ending"`
+	Facts         []ChapterHandoffFact `json:"facts"`
+}
+type ChapterHandoffFact struct {
+	ID        string   `json:"id"`
+	Text      string   `json:"text"`
+	StoryTime int64    `json:"storyTime"`
+	KnownBy   []string `json:"knownBy"`
+}
 type ChapterPlanInput struct {
-	Base      OutlineInput     `json:"base"`
-	Outline   OutlineSelection `json:"outline"`
-	ChapterID string           `json:"chapterId"`
-	Request   string           `json:"request"`
+	PreviousChapter *ChapterHandoff  `json:"previousChapter,omitempty"`
+	Base            OutlineInput     `json:"base"`
+	Outline         OutlineSelection `json:"outline"`
+	ChapterID       string           `json:"chapterId"`
+	Request         string           `json:"request"`
 }
 
 func (in ChapterPlanInput) Versions() ChapterPlanVersions {
@@ -75,11 +89,15 @@ type ChapterBrief struct {
 	WritingGuidance string `json:"writingGuidance"`
 }
 type ChapterPlanContent struct {
-	Scenes []PlannedScene `json:"scenes"`
-	Brief  ChapterBrief   `json:"brief"`
+	TargetWords int            `json:"targetWords,omitempty"` // Author override for this chapter, without changing the book outline.
+	Scenes      []PlannedScene `json:"scenes"`
+	Brief       ChapterBrief   `json:"brief"`
 }
 
 func (out ChapterPlanContent) Validate(in ChapterPlanInput) error {
+	if out.TargetWords != 0 && (out.TargetWords < 200 || out.TargetWords > 12000) {
+		return fmt.Errorf("本章目标篇幅应为 200–12000 字")
+	}
 	if err := in.Validate(); err != nil {
 		return err
 	}

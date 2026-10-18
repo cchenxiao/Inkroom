@@ -2,6 +2,8 @@ import type { Finding, RunState } from '@/types/domain';
 
 /** I3 结果是隔离的单段候选，不是工作台正式稿本。 */
 export interface BackendRun extends Omit<RunState, 'status' | 'currentNode'> {
+  dismissed?: boolean;
+  canDismiss?: boolean;
   neighborsChanged?: boolean;
   planning?: {
     enhancedContinuity?: boolean;
@@ -239,6 +241,7 @@ export interface HumanAction {
     | 'inline_edit'
     | 'rewrite'
     | 'finding_decision'
+    | 'propose_selection'
     | 'propose_finding'
     | 'apply_finding'
     | 'discard_finding'
@@ -324,6 +327,7 @@ export interface LookupTrace {
 }
 
 export interface AuthorRewrite {
+  preview?: boolean;
   segmentId: string;
   original: string;
   start: number;

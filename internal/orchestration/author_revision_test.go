@@ -45,3 +45,29 @@ func TestApprovalRejectsLegacyAndStaleAuthorChecks(t *testing.T) {
 		t.Fatal("stale assessment passed")
 	}
 }
+
+func TestSelectedRewriteFromAdoptedSourceProducesPreviewWithoutCritics(t *testing.T) {
+	req := &manuscript.AuthorRewrite{Preview: true, SegmentID: "s", Original: "他开门。旁人等着。", Start: 1, End: 3, Instruction: "把开门改为敲门"}
+	chat := model.NewFake([]model.Step{{Role: "planned_writer", Content: `{"text":"敲门"}`}})
+	g, err := NewChapter(context.Background(), chat, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, err := g.Invoke(context.Background(), manuscript.ContextBundle{ChapterID: "chapter", BranchID: "main", Facts: []manuscript.SourceRef{{ID: "f", Version: 1, Text: "门关着。"}}, Beat: manuscript.Beat{ID: "beat", SceneID: "scene", Version: 1}, Rewrite: req, Original: []manuscript.Segment{{ID: "s", Text: req.Original}, {ID: "other", Text: "另一段不变。"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out.Segments[0].Text != req.Original || out.Segments[1].Text != "另一段不变。" || out.FindingProposal == nil || out.FindingProposal.Replacement != "敲门" || len(out.CriticReviews) != 0 {
+		t.Fatal("preview rewrote prose or ran critics", out)
+	}
+	if ApprovalReason(out) == "" {
+		t.Fatal("unconfirmed preview approved")
+	}
+	next, err := applyFindingAction(context.Background(), out, HumanAction{ID: "apply", Type: "apply_finding", DraftVersion: out.DraftVersion, ProposalID: out.FindingProposal.ID}, model.NewFake(nil))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if next.Segments[0].Text != "他敲门。旁人等着。" || next.Segments[1].Text != "另一段不变。" || !next.ReviewPending || next.AuthorRequest == nil {
+		t.Fatal("selection application changed outside selection")
+	}
+}

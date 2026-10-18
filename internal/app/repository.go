@@ -21,6 +21,8 @@ var ErrActionMismatch = errors.New("action id reused with different content")
 var ErrInvalidWrite = errors.New("invalid draft write")
 
 type Run struct {
+	Dismissed  bool `json:"dismissed,omitempty"`
+	CanDismiss bool `json:"canDismiss,omitempty"`
 	// Neighbor edits are checked at chapter review; they never revoke adoption.
 	NeighborsChanged  bool                        `json:"neighborsChanged,omitempty"`
 	Planning          *PlannedRunSource           `json:"planning,omitempty"`
@@ -94,6 +96,7 @@ type Repository interface {
 
 // HumanRepository 在 I6 Repository 之外增加人审事务；不把 Eino checkpoint 字节交给浏览器。
 type HumanRepository interface {
+	ActionStartedAt(context.Context, string, string) (time.Time, error)
 	Repository
 	Checkpoint(context.Context, string) ([]byte, bool, error)
 	SaveCheckpoint(context.Context, string, []byte, orchestration.ChapterState, string) error

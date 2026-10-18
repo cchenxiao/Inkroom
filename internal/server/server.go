@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"inkloom/internal/agents/model"
+	"inkloom/internal/agents/parse"
 	"inkloom/internal/app"
 	"inkloom/internal/config"
 	"inkloom/internal/demo"
@@ -83,6 +84,7 @@ func Serve(ctx context.Context) error {
 	mux.HandleFunc("GET /api/planning/chapter-reviews/{id}/publication", s.chapterPublication)
 	mux.HandleFunc("GET /api/planning/chapter-runs", s.plannedRuns)
 	mux.HandleFunc("POST /api/planning/chapter-runs", s.startPlannedRun)
+	mux.HandleFunc("POST /api/planning/chapter-runs/{id}/dismiss", s.dismissPlannedCandidate)
 	mux.HandleFunc("PATCH /api/planning/intake", s.savePlanning)
 	mux.HandleFunc("POST /api/planning/jobs", s.generatePlanning)
 	mux.HandleFunc("POST /api/planning/selection", s.selectPlanning)
@@ -293,7 +295,8 @@ func (s *service) execute(run app.Run) {
 	finish, stop := context.WithTimeout(context.Background(), 5*time.Second)
 	defer stop()
 	if persistErr != nil || err != nil {
-		status, reason := "failed", "运行未完成，保留最后成功落库的稿本"
+		status, reason := "failed", executionFailureReason(run.CurrentNode, err, persistErr)
+		slog.Error("run.failed", "run_id", run.ID, "node", run.CurrentNode, "error", err, "persist_error", persistErr)
 		if errors.Is(persistErr, app.ErrVersionMismatch) {
 			status = "stale"
 			reason = "稿本已变更，旧评审和迟到修订失效"
@@ -318,6 +321,44 @@ func (s *service) execute(run app.Run) {
 		return
 	}
 	s.executeHuman(ctx, run)
+}
+
+// Keep transport/internal details out of author-facing notices, but preserve the
+// failed stage and actionable validation reason instead of a generic stop message.
+func executionFailureReason(node string, runErr, persistErr error) string {
+	stage := "运行"
+	if node == "draft" {
+		stage = "正文生成"
+	} else if node == "critics" {
+		stage = "正文审核"
+	}
+	if persistErr != nil {
+		return stage + "的结果未能保存，请重试；此前已保存的稿件保留。"
+	}
+	var invalid *parse.Error
+	if errors.As(runErr, &invalid) {
+		detail := "模型未返回有效内容"
+		switch invalid.Kind {
+		case parse.InvalidContent:
+			detail = "模型结果未通过内容校验：" + invalid.Err.Error()
+		case parse.InvalidSchema:
+			detail = "模型返回的字段或结构不符合本次输出要求"
+		case parse.InvalidJSON:
+			detail = "模型返回的格式无法读取，自动格式修复也未成功"
+		case parse.Truncated:
+			detail = "模型回答达到输出上限，内容被截断"
+		case parse.Refused:
+			detail = "模型拒绝了这次请求"
+		}
+		return stage + "未完成：" + detail + "。请重试；此前已保存的稿件保留。"
+	}
+	if errors.Is(runErr, context.DeadlineExceeded) {
+		return stage + "等待超时，请重试；此前已保存的稿件保留。"
+	}
+	if errors.Is(runErr, model.ErrBudgetExhausted) {
+		return stage + "的本次调用额度已用完，请重新发起；此前已保存的稿件保留。"
+	}
+	return stage + "未完成：服务执行异常，请查看运行记录后重试；此前已保存的稿件保留。"
 }
 func (s *service) get(w http.ResponseWriter, r *http.Request) {
 	run, err := s.repo.GetRun(r.Context(), r.PathValue("id"))

@@ -101,7 +101,7 @@ func (s *Store) StartChapterReview(ctx context.Context, scope string, req app.Ch
 		if err = json.Unmarshal(raw, &c); err != nil {
 			return j, false, err
 		}
-		if c.DraftVersion != part.DraftVersion || !reflect.DeepEqual(c.Segments, part.Segments) {
+		if c.DraftVersion != part.DraftVersion || !reflect.DeepEqual(beatSegments(c.Segments, part.BeatID), part.Segments) {
 			return j, false, app.ErrContextMismatch
 		}
 		input, e := frozenContext(ctx, tx, c.RunID)
@@ -132,6 +132,7 @@ func (s *Store) StartChapterReview(ctx context.Context, scope string, req app.Ch
 	}
 	j.Current = true
 	j.ApprovalBlock = app.ChapterReviewBlock(j)
+	j.CanApproveAfterJudgement = app.ChapterReviewCanJudge(j)
 	return j, true, nil
 }
 func (s *Store) RecordChapterReviewCall(ctx context.Context, id string, c model.CallRecord) error {
@@ -168,6 +169,7 @@ func (s *Store) FinishChapterReview(ctx context.Context, id string, out app.Chap
 	j.Message = "整章复审未完整完成，不能批准；可查看调用记录后手动重试。"
 	if runErr != nil {
 		j.Message = runErr.Error()
+		j.Failure = app.DescribeChapterReviewFailure(runErr)
 	}
 	valid := len(out.Critics) == 2
 	seen := map[string]bool{}
@@ -231,7 +233,12 @@ func (s *Store) DecideChapterReview(ctx context.Context, scope, id string, req a
 	if !j.Current || req.AssemblyVersion != j.Input.DraftVersion || req.InputDigest != j.InputDigest {
 		return empty, app.ErrVersionMismatch
 	}
-	if j.Status == "running" || req.Action == "approve" && j.ApprovalBlock != "" {
+	if err = app.ValidateChapterJudgements(j, req); err != nil {
+		return empty, err
+	}
+	candidate := j
+	candidate.Decision = &req
+	if j.Status == "running" || req.Action == "approve" && app.ChapterReviewBlock(candidate) != "" {
 		return empty, app.ErrGateBlocked
 	}
 	req.CreatedAt = time.Now().UTC()
@@ -246,5 +253,7 @@ func (s *Store) DecideChapterReview(ctx context.Context, scope, id string, req a
 		return empty, err
 	}
 	j.Decision = &req
+	j.ApprovalBlock = app.ChapterReviewBlock(j)
+	j.CanApproveAfterJudgement = app.ChapterReviewCanJudge(j)
 	return j, nil
 }

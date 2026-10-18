@@ -214,3 +214,57 @@ it.each(['stale', 'committed'])(
     client.clear();
   },
 );
+
+it('keeps the adopted working run after dismissing a newer candidate and refreshing', async () => {
+  const adopted = {
+    id: 'adopted',
+    chapterId: 'whole',
+    status: 'committed',
+    commitId: 'commit',
+    draftVersion: 3,
+  } as BackendRun;
+  const candidate = {
+    id: 'new',
+    chapterId: 'beat',
+    status: 'waiting_human',
+    draftVersion: 1,
+    canDismiss: true,
+  } as BackendRun;
+  let dismissed = false;
+  vi.spyOn(plannedRunApi, 'get').mockImplementation(
+    async () =>
+      ({
+        ready: true,
+        runs: [{ ...candidate, dismissed }, adopted],
+        working: {
+          runId: dismissed ? adopted.id : candidate.id,
+          version: dismissed ? 3 : 1,
+          segments: [],
+        },
+      }) as unknown as PlannedRunReadiness,
+  );
+  vi.spyOn(trialApi, 'get').mockImplementation(async (id) =>
+    id === adopted.id ? adopted : { ...candidate, dismissed },
+  );
+  vi.spyOn(plannedRunApi, 'draft').mockResolvedValue({ segments: [] } as unknown as StoredDraft);
+  const discard = vi.spyOn(plannedRunApi, 'dismiss').mockImplementation(async () => {
+    dismissed = true;
+    return { ...candidate, dismissed: true, canDismiss: false };
+  });
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={client}>{children}</QueryClientProvider>
+  );
+  const view = renderHook(() => usePlannedWriting('chapter', 'middle', false), { wrapper });
+  await waitFor(() => expect(view.result.current.run?.id).toBe('new'));
+  await act(async () => {
+    await view.result.current.dismiss.mutateAsync();
+  });
+  await waitFor(() => expect(view.result.current.run?.id).toBe('adopted'));
+  expect(discard).toHaveBeenCalledWith('new', 1);
+  view.unmount();
+  const reopened = renderHook(() => usePlannedWriting('chapter', 'middle', false), { wrapper });
+  await waitFor(() => expect(reopened.result.current.run?.id).toBe('adopted'));
+  reopened.unmount();
+  client.clear();
+});

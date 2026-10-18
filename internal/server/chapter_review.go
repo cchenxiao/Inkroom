@@ -48,6 +48,9 @@ func (s *service) startChapterReview(w http.ResponseWriter, r *http.Request) {
 				defer stop()
 				return repo.RecordChapterReviewCall(saveCtx, job.ID, c)
 			})
+			if runErr != nil {
+				slog.Error("chapter review failed", "job_id", job.ID, "assembly_id", job.Input.AssemblyID, "error", runErr)
+			}
 			saveCtx, stop := context.WithTimeout(context.Background(), 5*time.Second)
 			defer stop()
 			if err := repo.FinishChapterReview(saveCtx, job.ID, out, runErr); err != nil {

@@ -1,5 +1,5 @@
 import { beforeAll, afterEach, afterAll, it, expect } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
@@ -103,6 +103,7 @@ it.each(['publish', 'remote publication'])(
     const writes: FactsSelectionRequest[] = [];
     const publications: Record<string, unknown>[] = [];
     server.use(
+      http.get('*/go-api/planning', () => HttpResponse.json({ jobs: [] })),
       http.get('*/go-api/planning/chapter-reviews/review/publication', () =>
         HttpResponse.json({ publication: receipt, current: !!receipt, reason: '' }),
       ),
@@ -170,7 +171,9 @@ it.each(['publish', 'remote publication'])(
     await waitFor(() => expect(screen.getByRole('button', { name: t.manual })).toBeEnabled());
     if (scenario === 'publish') {
       expect(await screen.findByText('候选引文与本次章稿不一致，未载入候选。')).toBeVisible();
+      await user.click(screen.getByRole('button', { name: '2 确认定稿' }));
       expect(screen.getByRole('button', { name: p.publish })).toBeDisabled();
+      await user.click(screen.getByRole('button', { name: '1 核对事实' }));
     }
     await user.click(screen.getByRole('button', { name: t.manual }));
     if (scenario === 'publish') {
@@ -182,11 +185,17 @@ it.each(['publish', 'remote publication'])(
     await user.type(screen.getByRole('textbox', { name: t.text }), '沈砚收到铜扣');
     await user.selectOptions(screen.getByRole('combobox', { name: /候选 1/ }), 'confirm');
     await user.click(screen.getByRole('checkbox', { name: 'shen' }));
+    await user.clear(screen.getByRole('textbox', { name: t.reason }));
     await user.type(
       screen.getByRole('textbox', { name: t.reason }),
       '原文明确交接，沈砚知道已收到',
     );
+    await user.click(screen.getByRole('button', { name: '2 确认定稿' }));
     expect(screen.getByRole('button', { name: p.publish })).toBeDisabled();
+    await user.click(screen.getByRole('button', { name: '返回核对事实' }));
+    expect(screen.getByRole('textbox', { name: t.reason })).toHaveValue(
+      '原文明确交接，沈砚知道已收到',
+    );
     await user.click(screen.getByRole('button', { name: t.save }));
     await screen.findByRole('button', { name: t.retrySave });
     readFails = true;
@@ -196,8 +205,10 @@ it.each(['publish', 'remote publication'])(
     await user.click(screen.getByRole('button', { name: t.retrySave }));
     await waitFor(() => expect(writes).toHaveLength(2));
     expect(writes[1]).toEqual(writes[0]);
+    await user.click(screen.getByRole('button', { name: '2 确认定稿' }));
     await waitFor(() => expect(screen.getByRole('radio', { name: p.none })).toBeEnabled());
     if (scenario === 'remote publication') {
+      await user.click(screen.getByRole('button', { name: '1 核对事实' }));
       await user.type(screen.getByRole('textbox', { name: t.reason }), '，另补一处判断');
       receipt = {
         id: 'published-elsewhere',
@@ -211,6 +222,7 @@ it.each(['publish', 'remote publication'])(
       await client.invalidateQueries({ queryKey: ['chapter-publication', 'review'] });
       await client.invalidateQueries({ queryKey: ['chapter-facts', 'review'] });
       await screen.findByText(p.saved);
+      await user.click(screen.getByText('已保存的事实决定', { selector: 'summary' }));
       expect(screen.getByRole('textbox', { name: t.reason })).toHaveValue(
         '原文明确交接，沈砚知道已收到，另补一处判断',
       );
@@ -233,3 +245,128 @@ it.each(['publish', 'remote publication'])(
     client.clear();
   },
 );
+
+it('offers direct and batch decisions without opening evidence, preserving previous decisions and knowledge boundaries', async () => {
+  const review = {
+    id: 'review',
+    current: true,
+    input: { parts: [] },
+  } as unknown as ChapterReviewJob;
+  const candidate = {
+    id: 'one',
+    text: '钥匙已归还',
+    kind: 'event',
+    relatedFactId: '',
+    evidence: { ref: 's', quote: '他把钥匙交还。' },
+    reason: '原文明确交接',
+  };
+  const job = {
+    id: 'facts',
+    status: 'completed',
+    provider: 'real',
+    calls: [],
+    message: '整理完成',
+    request: { mode: 'model' },
+    input: {
+      review: { parts: [] },
+      knowledge: { characters: ['shen'], facts: [{ id: 'old', text: '旧设定' }] },
+    },
+    output: {
+      candidates: [
+        candidate,
+        { ...candidate, id: 'two', text: '离开渡口' },
+        { ...candidate, id: 'speech', kind: 'statement', text: '台词中的说法' },
+        { ...candidate, id: 'conflict', relatedFactId: 'old', text: '涉及旧设定的候选' },
+      ],
+    },
+  } as unknown as FactsJob;
+  const writes: FactsSelectionRequest[] = [];
+  server.use(
+    http.get('*/go-api/planning', () => HttpResponse.json({ jobs: [] })),
+    http.post('*/go-api/planning/chapter-fact-selections', async ({ request }) => {
+      writes.push((await request.json()) as FactsSelectionRequest);
+      return HttpResponse.json({ message: '保存结果未确认' }, { status: 503 });
+    }),
+  );
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const { default: ChapterFacts } = await import('./components/ChapterFacts');
+  const view = render(
+    <QueryClientProvider client={client}>
+      <ChapterFacts
+        review={review}
+        state={{ job, selection: null, current: true, published: false, block: '' }}
+        blocked={false}
+        onChange={() => {}}
+      />
+    </QueryClientProvider>,
+  );
+  const user = userEvent.setup();
+  const first = within(screen.getByRole('article', { name: '事实 1' }));
+  const detail = first.getByText('证据与调整', { selector: 'summary' });
+  expect(detail.closest('details')).not.toHaveAttribute('open');
+  await user.click(first.getByRole('button', { name: '不记入事实' }));
+  await user.click(screen.getByRole('button', { name: '将 1 条普通事件计入' }));
+  expect(first.getByText('· 已选不计入', { exact: false })).toBeVisible();
+  expect(first.queryByRole('button', { name: '计入事实' })).not.toBeInTheDocument();
+  const second = within(screen.getByRole('article', { name: '事实 2' }));
+  expect(second.getByText('· 已选计入', { exact: false })).toBeVisible();
+  expect(second.getByRole('checkbox', { name: 'shen' })).not.toBeChecked();
+  expect(screen.getByText('已处理 2/4 条 · 未保存')).toBeVisible();
+  expect(
+    within(screen.getByRole('article', { name: '事实 3' })).queryByRole('button', {
+      name: '计入事实',
+    }),
+  ).not.toBeInTheDocument();
+  expect(
+    within(screen.getByRole('article', { name: '事实 4' })).queryByRole('button', {
+      name: '计入事实',
+    }),
+  ).not.toBeInTheDocument();
+  await user.click(detail);
+  expect(first.getByRole('textbox', { name: t.reason })).toHaveValue('作者选择不写入章末事实');
+  await user.clear(first.getByRole('textbox', { name: t.reason }));
+  await user.type(first.getByRole('textbox', { name: t.reason }), '已在上一章记录');
+  await user.click(detail);
+  await user.click(first.getByRole('button', { name: '更改决定' }));
+  await user.click(first.getByRole('button', { name: '计入事实' }));
+  await user.click(detail);
+  expect(first.getByRole('textbox', { name: t.reason })).toHaveValue('已在上一章记录');
+  const speech = within(screen.getByRole('article', { name: '事实 3' }));
+  await user.click(speech.getByRole('button', { name: '调整分类并计入' }));
+  expect(screen.getByRole('button', { name: t.save })).toBeDisabled();
+  await user.clear(speech.getByRole('textbox', { name: '修正后的事实' }));
+  await user.type(speech.getByRole('textbox', { name: '修正后的事实' }), '陆青说过钥匙已归还');
+  await user.click(speech.getByRole('button', { name: '应用修正并计入' }));
+  expect(speech.getByText('作者修正：记录说话 / 回忆这一行为，不判定话中内容为真')).toBeVisible();
+  expect(speech.queryByRole('button', { name: '计入事实' })).not.toBeInTheDocument();
+  expect(speech.getByRole('checkbox', { name: 'shen' })).not.toBeChecked();
+  await user.click(screen.getByRole('button', { name: '排除其余 1 条' }));
+  expect(screen.getByText('已处理 4/4 条 · 未保存')).toBeVisible();
+  await user.click(first.getByRole('button', { name: '更改决定' }));
+  await user.click(first.getByRole('button', { name: '撤销决定' }));
+  expect(screen.getByText('已处理 3/4 条 · 未保存')).toBeVisible();
+  expect(writes).toHaveLength(0);
+  await user.click(screen.getByRole('button', { name: t.save }));
+  await waitFor(() => expect(writes).toHaveLength(1));
+  expect(writes[0].decisions).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        candidateId: 'two',
+        action: 'confirm',
+        knownBy: [],
+        reason: '作者选择确认为新增事实',
+      }),
+      expect.objectContaining({
+        candidateId: 'speech',
+        action: 'confirm',
+        eventBasis: 'speech_act',
+        text: '陆青说过钥匙已归还',
+        knownBy: [],
+      }),
+      expect.objectContaining({ candidateId: 'conflict', action: 'exclude' }),
+    ]),
+  );
+  expect(writes[0].decisions.some((d) => d.candidateId === 'one')).toBe(false);
+  view.unmount();
+  client.clear();
+});

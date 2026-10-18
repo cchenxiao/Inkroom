@@ -36,6 +36,7 @@ type ChapterFactsRequest struct {
 	Mode        string `json:"mode"` // model | manual
 }
 type ChapterFactDecision struct {
+	EventBasis  string   `json:"eventBasis,omitempty"` // Explicit author correction: observed_event | speech_act. Original model kind remains in the job.
 	CandidateID string   `json:"candidateId"`
 	Action      string   `json:"action"` // confirm | exclude | keep_existing | revise_manuscript
 	Text        string   `json:"text"`
@@ -145,10 +146,13 @@ func BuildChapterFacts(in ChapterFactsInput, out ChapterFactsOutput, req Chapter
 			return pack, "", ErrInvalidWrite
 		}
 		seen[d.CandidateID] = true
+		if d.EventBasis != "" && !slices.Contains([]string{"observed_event", "speech_act"}, d.EventBasis) {
+			return pack, "", fmt.Errorf("%w: 作者事实分类无效", ErrInvalidWrite)
+		}
 		switch d.Action {
 		case "confirm":
-			if c.Kind != "event" || c.RelatedFactID != "" || strings.TrimSpace(d.Text) == "" || utf8.RuneCountInString(d.Text) > 500 {
-				return pack, "", fmt.Errorf("%w: 台词/不确定内容或关联旧事实不能直接作为新增事实", ErrInvalidWrite)
+			if (c.Kind != "event" && d.EventBasis == "") || c.RelatedFactID != "" || strings.TrimSpace(d.Text) == "" || utf8.RuneCountInString(d.Text) > 500 {
+				return pack, "", fmt.Errorf("%w: 台词或不确定内容需作者修正分类；关联旧事实不能直接作为新增事实", ErrInvalidWrite)
 			}
 			known := map[string]bool{}
 			for _, id := range d.KnownBy {

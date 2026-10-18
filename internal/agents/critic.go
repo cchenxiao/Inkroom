@@ -32,6 +32,7 @@ func Critique(ctx context.Context, chat model.ChatModel, segments []manuscript.S
 		Role: "ai_taste", Task: `检查套话、重复描写和过度解释。逐项引用原文并给出原因和修改建议；只有未发现可支持问题时才返回空 findings。`,
 		Material: material, OutputSchema: contracts.CriticSchema,
 	}, func(out contracts.CriticOutput) error {
+		bindReviewVersion(out.Findings, version)
 		normalizeNeighborRefs(out.Findings, segments, context.Neighbors)
 		// Schema 负责字段与枚举；领域规则负责“这句证据是否真的在本稿里”。
 		_, err := review.Aggregate(out.Findings, segments, version, context.ReadingSources()...)
@@ -41,4 +42,14 @@ func Critique(ctx context.Context, chat model.ChatModel, segments []manuscript.S
 		return nil, usage, fmt.Errorf("critic model: %w", err)
 	}
 	return result.Findings, usage, nil
+}
+
+// Only fresh model responses are stamped here, inside the version-bound request.
+// Individual segment revisions can differ from the chapter draft version. The
+// program owns this metadata; quote/evidence validation and persisted stale-report
+// checks remain strict in review.Aggregate and the approval transaction.
+func bindReviewVersion(findings []review.Finding, version int) {
+	for i := range findings {
+		findings[i].DraftVersion = version
+	}
 }

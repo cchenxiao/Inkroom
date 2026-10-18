@@ -1,0 +1,251 @@
+.chapter-review-workbench [hidden] {
+  display: none !important;
+}
+.chapter-review-tabs {
+  display: flex;
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  gap: 4px;
+  padding: 5px;
+  background: var(--paper);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.chapter-review-tabs button {
+  flex: 1;
+  padding: 9px 8px;
+  border-radius: 6px;
+  color: var(--text-dim);
+  font-weight: 600;
+}
+.chapter-review-tabs button[aria-selected='true'] {
+  color: var(--text);
+  background: var(--bg);
+  box-shadow: inset 0 -2px var(--ai);
+}
+.chapter-review-tabs button:focus-visible {
+  outline: 2px solid var(--ai);
+  outline-offset: 1px;
+}
+.chapter-review-findings,
+.chapter-review-decision,
+.chapter-review-groups {
+  display: grid;
+  gap: 12px;
+}
+.chapter-review-reading {
+  display: grid;
+  gap: 6px;
+}
+.chapter-review-reading p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.chapter-review-workbench .chapter-review-group {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0 !important;
+  overflow: clip;
+}
+.chapter-review-workbench .chapter-review-group > summary {
+  padding: 12px !important;
+  font-weight: 600;
+  color: var(--text);
+}
+.chapter-review-group-body,
+.chapter-review-reference-body {
+  padding: 0 12px 12px;
+  display: grid;
+  gap: 10px;
+}
+.chapter-review-workbench .chapter-review-finding {
+  padding: 0 !important;
+  border: 0;
+  border-left: 2px solid var(--border);
+  padding-left: 10px !important;
+}
+.chapter-review-workbench .chapter-review-finding > summary {
+  padding: 8px 0 !important;
+}
+.chapter-review-quote {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  margin: 5px 0 0 16px;
+  color: var(--text-dim);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.chapter-review-finding-body {
+  display: grid;
+  gap: 10px;
+  padding: 8px 0 12px 12px;
+}
+.chapter-review-finding-body p,
+.chapter-review-finding-body blockquote {
+  margin: 0;
+}
+.chapter-review-finding-body blockquote {
+  border-left: 2px solid var(--border);
+  padding-left: 10px;
+}
+.chapter-review-decision {
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.chapter-review-decision p {
+  margin: 0;
+}
+.chapter-review-decision label {
+  display: grid;
+  gap: 6px;
+}
+.chapter-review-decision textarea {
+  min-height: 80px;
+}
+.chapter-review-decision .core-heading {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.chapter-review-reference > summary,
+.chapter-review-history > summary {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.chapter-review-reference-body {
+  margin-left: 8px;
+  border-left: 2px solid var(--border);
+}
+
+.chapter-publication-workbench [hidden] {
+  display: none !important;
+}
+.chapter-review-tabs button[aria-pressed='true'] {
+  color: var(--text);
+  background: var(--bg);
+  box-shadow: inset 0 -2px var(--ai);
+}
+.chapter-publication-heading {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--paper);
+}
+.chapter-publication-heading .chapter-review-tabs {
+  position: static;
+}
+.chapter-publication-workbench .chapter-publication-fact-record,
+.chapter-review-workbench > .chapter-review-archive {
+  padding: 0 !important;
+  border-bottom: 0;
+}
+.chapter-publication-facts {
+  display: grid;
+  gap: 12px;
+}
+.chapter-facts-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 0;
+  position: sticky;
+  top: 52px;
+  z-index: 4;
+  background: var(--paper);
+  border-bottom: 1px solid var(--border);
+}
+.chapter-publication-workbench .chapter-fact-card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0 !important;
+}
+.chapter-publication-workbench .chapter-fact-card > summary {
+  padding: 10px !important;
+}
+.chapter-fact-body {
+  padding: 0 12px 12px;
+}
+
+.chapter-publication-submit {
+  width: 100%;
+}
+.chapter-publication-workbench .chapter-review-decision label.outline-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.chapter-publication-workbench .chapter-review-decision label.outline-check input {
+  flex: none;
+  margin-top: 3px;
+}
+.chapter-facts-batch {
+  display: grid;
+  gap: 8px;
+}
+.chapter-facts-batch p,
+.chapter-fact-overview p {
+  margin: 0;
+}
+.chapter-fact-overview {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+.chapter-fact-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.chapter-fact-choices button[aria-pressed='true'] {
+  background: var(--ai-dim, var(--bg));
+  color: var(--ai);
+  box-shadow: inset 0 -2px var(--ai);
+}
+.chapter-fact-knowers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+.chapter-fact-knowers legend {
+  margin-bottom: 6px;
+  font-size: 12px;
+}
+.chapter-fact-knowers .outline-check {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 5px;
+}
+.chapter-fact-knowers p {
+  flex-basis: 100%;
+  font-size: 12px;
+}
+.chapter-publication-workbench .chapter-fact-card > details {
+  border-top: 1px solid var(--border);
+  border-bottom: 0;
+  padding: 0 !important;
+}
+.chapter-publication-workbench .chapter-fact-card > details > summary {
+  padding: 8px 12px !important;
+  font-size: 12px;
+}
+.chapter-fact-correction {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.chapter-fact-correction label {
+  display: grid;
+  gap: 6px;
+}
+.chapter-fact-correction blockquote {
+  margin: 0;
+  padding-left: 10px;
+  border-left: 2px solid var(--ai);
+}

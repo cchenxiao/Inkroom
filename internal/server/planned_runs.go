@@ -69,3 +69,35 @@ func (s *service) consistencyCheck(run app.Run) orchestration.ConsistencyCheck {
 	} // 仅固定初始材料，不能查询教学 ch7 的检索目录。
 	return app.NewConsistencyCheck(s.retriever, s.repo, run.ID)
 }
+
+func (s *service) dismissPlannedCandidate(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		DraftVersion int `json:"draftVersion"`
+	}
+	if !planningBody(w, r, &req) {
+		return
+	}
+	if req.DraftVersion < 1 {
+		fail(w, 400, "invalid_request", "需要当前候选版本")
+		return
+	}
+	repo, ok := s.repo.(interface {
+		DismissPlannedCandidate(context.Context, string, string, int) (app.Run, error)
+	})
+	if !ok {
+		fail(w, 503, "planning_unavailable", "规划写作存储不可用")
+		return
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.active {
+		fail(w, 409, "run_busy", "请等待当前运行完成后再选择稿件")
+		return
+	}
+	run, err := repo.DismissPlannedCandidate(r.Context(), planningScope, r.PathValue("id"), req.DraftVersion)
+	if err != nil {
+		storageError(w, err)
+		return
+	}
+	send(w, 200, run)
+}

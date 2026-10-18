@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"reflect"
+	"strings"
 	"testing"
 
 	"inkloom/internal/agents/model"
@@ -26,6 +27,9 @@ func TestChapterWriterOneCallPreservesEveryTarget(t *testing.T) {
 	got, _, err := WriteScope(context.Background(), chat, b)
 	if err != nil || len(got) != 2 || len(chat.inputs) != 1 || got[1].BeatID != "b" || got[1].POV != "乙" || got[1].ChapterID != "chapter" {
 		t.Fatal(got, err)
+	}
+	if !strings.Contains(chat.inputs[0].Task, "beatId=a") || !strings.Contains(chat.inputs[0].Task, "beatId=b") || !strings.Contains(chat.inputs[0].Task, "不是每段重复完成") {
+		t.Fatal("missing per-beat scope instructions")
 	}
 	for _, bad := range []string{`{"parts":[{"beatId":"b","text":"乱序"},{"beatId":"a","text":"错位"}]}`, `{"parts":[{"beatId":"a","text":"漏段"}]}`, `{"parts":[{"beatId":"a","text":"重复"},{"beatId":"a","text":"重复"}]}`} {
 		chat := model.NewFake([]model.Step{{Role: "planned_writer", Content: bad}})

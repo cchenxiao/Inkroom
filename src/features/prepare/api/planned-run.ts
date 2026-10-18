@@ -34,6 +34,10 @@ export interface PlannedRunRequest {
   autoRevise: boolean;
 }
 export const plannedRunApi = {
+  dismiss: (id: string, draftVersion: number) =>
+    backendApi.post<BackendRun>(`/planning/chapter-runs/${encodeURIComponent(id)}/dismiss`, {
+      draftVersion,
+    }),
   draft: (id: string, signal?: AbortSignal) =>
     backendApi.get<StoredDraft>(`/chapters/${encodeURIComponent(id)}?branchId=main`, signal),
   get: (chapterId: string, signal?: AbortSignal, beatId?: string, mode?: 'chapter') =>

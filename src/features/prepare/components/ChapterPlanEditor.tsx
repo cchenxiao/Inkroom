@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/shared/ui';
 import { chapterPlanMessages as t } from '@/shared/lib/messages-chapter-plan';
 import type {
+  ChapterPlanInput,
   ChapterPlanContent,
   ChapterPlanSaveRequest,
   PlannedScene,
@@ -10,6 +11,12 @@ import type { CoreSelection } from '../types/core-settings';
 import type { OutlineChapter } from '../types/outline';
 
 export function chapterPlanError(c: ChapterPlanContent, chapter: OutlineChapter) {
+  if (
+    c.targetWords != null &&
+    c.targetWords !== 0 &&
+    (!Number.isSafeInteger(c.targetWords) || c.targetWords < 200 || c.targetWords > 12000)
+  )
+    return '本章目标篇幅应为 200–12000 字';
   const bytes = (s: string) => new TextEncoder().encode(s).length;
   const beats = c.scenes.flatMap((s) => s.beats);
   const ids = [...c.scenes.map((s) => s.id), ...beats.map((b) => b.id)];
@@ -65,7 +72,9 @@ export default function ChapterPlanEditor({
   onClose,
   disabled,
   saving,
+  previousChapter,
 }: {
+  previousChapter?: ChapterPlanInput['previousChapter'];
   value: ChapterPlanSaveRequest;
   chapter: OutlineChapter;
   core: CoreSelection;
@@ -317,6 +326,24 @@ export default function ChapterPlanEditor({
         <div className="outline-detail chapter-plan-brief">
           <h3>{t.brief}</h3>
           <label>
+            本章目标字数
+            <input
+              type="number"
+              min={200}
+              max={12000}
+              step={100}
+              value={content.targetWords === 0 ? '' : (content.targetWords ?? chapter.targetWords)}
+              onChange={(e) =>
+                change((c) => {
+                  c.targetWords = Number(e.target.value);
+                })
+              }
+            />
+          </label>
+          <p className="muted">
+            按本章分配各段篇幅，不改变其他章节的规划。常规章节可设为 2000–3000 字。
+          </p>
+          <label>
             {t.selectedBeatId}
             <select
               value={content.brief.selectedBeatId}
@@ -353,7 +380,11 @@ export default function ChapterPlanEditor({
               ),
             )}
           </div>
-          <p className="muted">{t.noPrevious}</p>
+          <p className="muted">
+            {previousChapter
+              ? `已引用前章定稿 v${previousChapter.version}，包含结尾与 ${previousChapter.facts.length} 条确认事实。`
+              : '尚无前章定稿材料；首章可直接创作，后续章节开始正文前需先完成前章定稿。'}
+          </p>
         </div>
       </fieldset>
       {error && <p role="alert">{error}</p>}

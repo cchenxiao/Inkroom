@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"inkloom/internal/agents/model"
 	"inkloom/internal/config"
 	"inkloom/internal/domain/review"
@@ -104,5 +105,64 @@ func TestWithinPassageContinuityRequiresAuthor(t *testing.T) {
 	findings, err := reviewChapterContinuity(context.Background(), chat, in)
 	if err != nil || ValidateChapterFindings(in, "hard_consistency", findings) != nil || len(findings) != 1 || !findings[0].RequiresHuman {
 		t.Fatal(findings, err)
+	}
+}
+
+func TestChapterAuthorJudgementIsExplicitVersionedAndCannotWaiveHardIssues(t *testing.T) {
+	j := ChapterReviewJob{Current: true, Status: "completed", Input: reviewInputFixture(), InputDigest: "digest", Output: &ChapterReviewOutput{Critics: []ChapterCriticResult{{Critic: "hard_consistency", Status: "completed"}, {Critic: "ai_taste", Status: "completed", Findings: []ChapterFinding{{Finding: review.Finding{ID: "f", Severity: review.P3, RequiresHuman: true}}}}}}}
+	if ChapterReviewBlock(j) == "" || !ChapterReviewCanJudge(j) {
+		t.Fatal("missing explicit judgement gate")
+	}
+	d := ChapterReviewDecision{Action: "approve", AssemblyVersion: 2, InputDigest: "digest", KeptFindings: []string{"ai_taste/f"}}
+	j.Decision = &d
+	if ValidateChapterJudgements(j, d) != nil || ChapterReviewBlock(j) != "" {
+		t.Fatal("author judgement did not resolve P3")
+	}
+	d.AssemblyVersion = 1
+	if ChapterReviewBlock(j) == "" {
+		t.Fatal("old version judgement accepted")
+	}
+	d.AssemblyVersion = 2
+	j.Output.Critics[1].Findings[0].Severity = review.P1
+	if ChapterReviewBlock(j) == "" || ChapterReviewCanJudge(j) || ValidateChapterJudgements(j, d) == nil {
+		t.Fatal("hard finding waived")
+	}
+	j.Current = false
+	if ChapterReviewBlock(j) == "" {
+		t.Fatal("stale chapter accepted")
+	}
+}
+
+func TestChapterEvidenceFailureDistinguishesExactCause(t *testing.T) {
+	in := reviewInputFixture()
+	base := ChapterFinding{Finding: review.Finding{ID: "language-1", Critic: "ai_taste", Severity: review.P3, SegmentID: "s-1", Quote: "铁锁", EvidenceRefs: []string{"s-1"}, Reason: "措辞", Suggestion: "核对", RepairScope: "phrase", DraftVersion: 2, EvidenceStatus: "confirmed"}, Evidence: []ChapterEvidence{{Ref: "s-1", Quote: "铁锁"}}}
+	for _, tc := range []struct {
+		name, code string
+		refs       []string
+		evidence   []ChapterEvidence
+	}{
+		{"unknown", "evidence_source_unknown", []string{"bad"}, []ChapterEvidence{{Ref: "bad", Quote: "铁锁"}}},
+		{"duplicate", "evidence_source_duplicate", []string{"s-1", "s-1"}, []ChapterEvidence{{Ref: "s-1", Quote: "铁锁"}, {Ref: "s-1", Quote: "剪断"}}},
+		{"order", "evidence_order_mismatch", []string{"s-2"}, []ChapterEvidence{{Ref: "s-1", Quote: "铁锁"}}},
+		{"quote", "evidence_quote_mismatch", []string{"s-1"}, []ChapterEvidence{{Ref: "s-1", Quote: "不存在的证据"}}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			f := base
+			f.EvidenceRefs = tc.refs
+			f.Evidence = tc.evidence
+			err := ValidateChapterFindings(in, "ai_taste", []ChapterFinding{f})
+			detail := DescribeChapterReviewFailure(err)
+			if detail == nil || detail.Code != tc.code || detail.Finding != 1 || detail.Stage != "结果校验" {
+				t.Fatalf("%+v %v", detail, err)
+			}
+		})
+	}
+	legacy := DescribeChapterReviewFailure(fmt.Errorf("invalid_content: unknown or fabricated evidence"))
+	if legacy.Code != "evidence_invalid" || !strings.Contains(legacy.Message, "旧记录") {
+		t.Fatal(legacy)
+	}
+	secret := DescribeChapterReviewFailure(fmt.Errorf("upstream Authorization: secret"))
+	if strings.Contains(secret.Message, "secret") {
+		t.Fatal(secret)
 	}
 }

@@ -29,6 +29,12 @@ func TestChapterPlanBoundariesAndKnowledge(t *testing.T) {
 	if len(out.Scenes) != 1 || out.Brief.SelectedBeatID != out.Scenes[0].Beats[0].ID {
 		t.Fatal("invalid fake candidate")
 	}
+	in.PreviousChapter = &planning.ChapterHandoff{PublicationID: "pub-1", ChapterID: "first", Version: 1, Ending: "前章真实结尾", Facts: []planning.ChapterHandoffFact{{ID: "f", Text: "已确认交接", KnownBy: []string{"shen"}}}}
+	raw, err = chapterPlanMaterial(in)
+	if err != nil || !strings.Contains(string(raw), "前章真实结尾") || !strings.Contains(string(raw), "已确认交接") {
+		t.Fatal("planner handoff omitted", err)
+	}
+	in.PreviousChapter = nil
 	in.Outline.Confirmed = false
 	if _, err = GenerateChapterPlan(context.Background(), cfg, in, nil); err == nil {
 		t.Fatal("unconfirmed outline accepted")

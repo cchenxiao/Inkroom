@@ -20,6 +20,7 @@ type Passage struct {
 
 // AuthorRewrite uses rune offsets into a pinned segment. Only this range is writable.
 type AuthorRewrite struct {
+	Preview     bool   `json:"preview,omitempty"` // Author selection: preview before changing prose.
 	SegmentID   string `json:"segmentId"`
 	Original    string `json:"original"`
 	Start       int    `json:"start"`

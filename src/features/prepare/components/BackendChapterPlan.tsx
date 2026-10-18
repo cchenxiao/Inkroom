@@ -331,6 +331,7 @@ function ChapterPlanWorkbench() {
             value={edit}
             chapter={chapter}
             core={s.coreSelection}
+            previousChapter={(edit.sourceVersion ? selected?.input : job?.input)?.previousChapter}
             onChange={setEdit}
             onSave={(confirmed) => save.mutate({ ...edit, confirmed })}
             onClose={() => {

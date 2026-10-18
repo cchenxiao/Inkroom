@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"reflect"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"inkloom/internal/app"
@@ -49,6 +50,9 @@ func lockHuman(ctx context.Context, tx pgx.Tx, id string) (app.Run, error) {
 	r, err := decodeRun(raw)
 	if err != nil {
 		return r, err
+	}
+	if r.Dismissed {
+		return r, app.ErrGateBlocked
 	}
 	if r.DraftVersion != head || r.Status == "stale" {
 		return r, app.ErrVersionMismatch
@@ -260,4 +264,10 @@ func (s *Store) Approve(ctx context.Context, id, actionID string, version int) e
 		return err
 	}
 	return tx.Commit(ctx)
+}
+
+func (s *Store) ActionStartedAt(ctx context.Context, runID, actionID string) (time.Time, error) {
+	var started time.Time
+	err := s.pool.QueryRow(ctx, "SELECT created_at FROM run_actions WHERE run_id=$1 AND action_id=$2", runID, actionID).Scan(&started)
+	return started, err
 }

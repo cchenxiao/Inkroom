@@ -25,6 +25,7 @@ export interface ChapterReviewRequest {
   assemblyDigest: string;
 }
 export interface ChapterReviewDecision {
+  keptFindings?: string[];
   requestId: string;
   assemblyVersion: number;
   inputDigest: string;
@@ -32,7 +33,14 @@ export interface ChapterReviewDecision {
   reason: string;
   createdAt?: string;
 }
+export interface ChapterReviewFailure {
+  stage: string;
+  code: string;
+  message: string;
+  finding?: number;
+}
 export interface ChapterReviewJob {
+  failure?: ChapterReviewFailure;
   id: string;
   status: 'running' | 'completed' | 'failed' | 'interrupted';
   provider: string;
@@ -50,12 +58,14 @@ export interface ChapterReviewJob {
       critic: string;
       status: string;
       error?: string;
+      failure?: ChapterReviewFailure;
       findings: (BackendFinding & { evidence: { ref: string; quote: string }[] })[];
     }[];
   };
   message: string;
   current: boolean;
   approvalBlock: string;
+  canApproveAfterJudgement?: boolean;
   createdAt: string;
   decision?: ChapterReviewDecision;
   calls: {

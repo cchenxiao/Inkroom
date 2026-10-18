@@ -3,6 +3,6 @@ import { liveWorkspacePath, livePreparePath } from '@/shared/lib/writing-mode';
 export { livePreparePath } from '@/shared/lib/writing-mode';
 export function nextBookPath(b: LiveBook) {
   return b.nextSection || !b.currentChapterId
-    ? livePreparePath(b.nextSection || 'outline')
+    ? livePreparePath(b.nextSection || 'outline', b.currentChapterId || undefined)
     : liveWorkspacePath(b.currentChapterId, b.nextStage);
 }

@@ -101,14 +101,23 @@ func render(in model.Input, candidate string) (model.Input, error) {
 		return in, fmt.Errorf("prompt material and schema must be JSON")
 	}
 	promptVersion := name + ".v1"
+	if name == "chapter_consistency" || name == "chapter_language" {
+		promptVersion = name + ".v2"
+	}
 	if name == "hard_consistency" {
 		promptVersion = "hard_consistency.v6"
 		if continuityPass {
 			promptVersion = "hard_consistency.v13"
 		}
 	}
+	if name == "showrunner" {
+		promptVersion = "showrunner.v2"
+	}
+	if name == "chapter_facts" {
+		promptVersion = "chapter_facts.v2"
+	}
 	if name == "planned_writer" {
-		promptVersion = "planned_writer.v6"
+		promptVersion = "planned_writer.v7"
 	}
 	if name == "writer" {
 		promptVersion = "writer.v2"

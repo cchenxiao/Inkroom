@@ -70,7 +70,11 @@ func (s *Store) StartPlannedRun(ctx context.Context, scope string, req app.Plann
 	if req.Mode == "chapter" {
 		target = p.Content.Brief.SelectedBeatID
 	}
-	frozen, err := app.PreparePlannedContext(cfg, scope, req.RequestID, req.DraftVersion, p, target)
+	history, err := chapterHistory(ctx, tx, scope, p)
+	if err != nil {
+		return r, false, err
+	}
+	frozen, err := app.PreparePlannedContextWithHistory(cfg, scope, req.RequestID, req.DraftVersion, p, history, target)
 	if err != nil {
 		return r, false, fmt.Errorf("%w: %v", app.ErrPlanningNotReady, err)
 	}
@@ -86,7 +90,7 @@ func (s *Store) StartPlannedRun(ctx context.Context, scope string, req app.Plann
 		return r, false, fmt.Errorf("%w: %v", app.ErrPlanningNotReady, err)
 	}
 	if req.Mode == "chapter" {
-		frozen, err = app.PrepareChapterWriting(cfg, scope, req.RequestID, req.DraftVersion, p, current.Snapshot)
+		frozen, err = app.PrepareChapterWriting(cfg, scope, req.RequestID, req.DraftVersion, p, current.Snapshot, history...)
 	} else {
 		frozen.Bundle.Neighbors, err = freezeNeighbors(ctx, tx, scope, p, frozen.Bundle.Beat.ID)
 	}
@@ -97,7 +101,7 @@ func (s *Store) StartPlannedRun(ctx context.Context, scope string, req app.Plann
 		if err == nil {
 			err = json.Unmarshal(raw, &origin)
 		}
-		if err == nil && (origin.Planning == nil || origin.Planning.Scope != scope || origin.Planning.ChapterID != p.ChapterID || origin.Result == nil || origin.DraftVersion != req.SourceVersion || origin.Status == "running") {
+		if err == nil && (origin.Planning == nil || origin.Planning.Scope != scope || origin.Planning.ChapterID != p.ChapterID || origin.Result == nil || origin.Dismissed || origin.DraftVersion != req.SourceVersion || origin.Status == "running") {
 			err = app.ErrVersionMismatch
 		}
 		if err == nil && req.Mode == "chapter" {
@@ -141,7 +145,7 @@ func (s *Store) StartPlannedRun(ctx context.Context, scope string, req app.Plann
 	if err != nil {
 		return r, false, err
 	}
-	source := &app.PlannedRunSource{EnhancedContinuity: req.EnhancedContinuity, NeighborPolicy: "working-v1", Mode: req.Mode, Neighbors: frozen.Bundle.Neighbors, Knowledge: frozen.Bundle.WritingTask.Knowledge, Scope: scope, ChapterID: p.ChapterID, BeatID: frozen.Bundle.Beat.ID, Expected: versions, PlanVersion: p.Version}
+	source := &app.PlannedRunSource{Publications: frozen.Bundle.WritingTask.Publications, EnhancedContinuity: req.EnhancedContinuity, NeighborPolicy: "working-v1", Mode: req.Mode, Neighbors: frozen.Bundle.Neighbors, Knowledge: frozen.Bundle.WritingTask.Knowledge, Scope: scope, ChapterID: p.ChapterID, BeatID: frozen.Bundle.Beat.ID, Expected: versions, PlanVersion: p.Version}
 	source.FromRunID, source.SourceVersion = req.FromRunID, req.SourceVersion
 	baselineTargets := []string{frozen.Bundle.Beat.ID}
 	if req.Mode == "chapter" {
@@ -213,6 +217,19 @@ func planningRunCurrent(ctx context.Context, q queryRow, p *app.PlannedRunSource
 			return false, err
 		}
 		if version != p.Knowledge.Version || digest != p.Knowledge.Digest {
+			return false, nil
+		}
+	}
+	for _, pub := range p.Publications {
+		var id string
+		err = q.QueryRow(ctx, "SELECT id FROM chapter_publications WHERE scope=$1 AND chapter_id=$2 ORDER BY version DESC LIMIT 1", p.Scope, pub.ChapterID).Scan(&id)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return false, nil
+		}
+		if err != nil {
+			return false, err
+		}
+		if id != pub.ID {
 			return false, nil
 		}
 	}
@@ -290,7 +307,11 @@ func (s *Store) PlannedRunReadiness(ctx context.Context, scope, chapter string, 
 			if previewBeat == app.ChapterBeatID {
 				previewBeat = p.Content.Brief.SelectedBeatID
 			}
-			_, e = app.PreparePlannedContext(cfg, scope, "preview", out.DraftVersion, *p, previewBeat)
+			history, historyErr := chapterHistory(ctx, s.pool, scope, *p)
+			e = historyErr
+			if e == nil {
+				_, e = app.PreparePlannedContextWithHistory(cfg, scope, "preview", out.DraftVersion, *p, history, previewBeat)
+			}
 			if e != nil {
 				out.Reason = e.Error()
 			} else {
@@ -302,12 +323,12 @@ func (s *Store) PlannedRunReadiness(ctx context.Context, scope, chapter string, 
 				if !publishedForPlan(current, *p) {
 					out.Reason = "请先在知识快照页发布当前已确认设定"
 				} else {
-					prepared, prepErr := app.PreparePlannedContext(cfg, scope, "preview", out.DraftVersion, *p, previewBeat)
+					prepared, prepErr := app.PreparePlannedContextWithHistory(cfg, scope, "preview", out.DraftVersion, *p, history, previewBeat)
 					if prepErr == nil {
 						_, prepErr = app.FreezePublishedKnowledge(prepared, current.Snapshot)
 					}
 					if prepErr == nil && out.BeatID == app.ChapterBeatID {
-						_, prepErr = app.PrepareChapterWriting(cfg, scope, "preview", out.DraftVersion, *p, current.Snapshot)
+						_, prepErr = app.PrepareChapterWriting(cfg, scope, "preview", out.DraftVersion, *p, current.Snapshot, history...)
 					}
 					if prepErr != nil {
 						out.Reason = prepErr.Error()

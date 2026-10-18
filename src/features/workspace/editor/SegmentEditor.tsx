@@ -117,7 +117,7 @@ export function SegmentEditor({
   editRequest,
 }: {
   editRequest?: { quote: string; requestId: number };
-  review?: { id: string; quote: string; content: ReactNode };
+  review?: { id: string; quote: string; content: ReactNode; keepVisibleOnClose?: boolean };
   availableActions?: SelectionAction[];
   segment: Segment;
   text: string;
@@ -285,18 +285,39 @@ export function SegmentEditor({
       annotationRevisionRef.current = annotationRevision;
     }
   }, [text, editor, bible, segment, annotationRevision, editable]);
+  const previewBlock = useRef<number | null>(null);
   const reviewId = review?.id,
-    reviewQuote = review?.quote;
+    reviewQuote = review?.quote,
+    keepVisibleOnClose = review?.keepVisibleOnClose;
   useEffect(() => {
     if (!editor || editor.isDestroyed) return;
-    setReviewLocated(reviewQuote ? reviewAnchor(editor.state.doc, reviewQuote) !== null : false);
+    const anchor = reviewQuote ? reviewAnchor(editor.state.doc, reviewQuote) : null;
+    setReviewLocated(anchor !== null);
+    const previousBlock = previewBlock.current;
+    if (keepVisibleOnClose && anchor !== null) {
+      editor.state.doc.forEach((node, offset, index) => {
+        if (offset + node.nodeSize === anchor) previewBlock.current = index;
+      });
+    } else if (!reviewId) {
+      previewBlock.current = null;
+    }
     editor.view.dispatch(
       editor.state.tr.setMeta(
         inlineReviewKey,
         reviewId ? { id: reviewId, quote: reviewQuote ?? '', host: reviewHost } : null,
       ),
     );
-  }, [editor, reviewId, reviewQuote, reviewHost, text]);
+    if (!reviewId && previousBlock !== null) {
+      // Removing the preview can collapse hundreds of pixels. Keep its sentence
+      // in view instead of leaving the reader below the replacement.
+      let target: HTMLElement | null = null;
+      editor.state.doc.forEach((_node, offset, index) => {
+        if (index === previousBlock) target = editor.view.nodeDOM(offset) as HTMLElement | null;
+      });
+      const block = target as HTMLElement | null;
+      block?.scrollIntoView?.({ block: 'nearest' });
+    }
+  }, [editor, reviewId, reviewQuote, reviewHost, text, keepVisibleOnClose]);
   const select = (action: SelectionAction) => {
     if (!editor) return;
     const { from, to } = editor.state.selection;
@@ -415,7 +436,7 @@ export function SegmentEditor({
           <BubbleMenu
             editor={editor}
             shouldShow={({ editor: currentEditor }) =>
-              !contextMenu && !currentEditor.state.selection.empty
+              !contextMenu && !review && !currentEditor.state.selection.empty
             }
             tippyOptions={{ duration: 120, placement: 'top', maxWidth: 'none' }}
           >

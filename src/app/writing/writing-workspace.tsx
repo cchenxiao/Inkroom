@@ -1,3 +1,4 @@
+import { SelectionRewritePreview } from './selection-rewrite-preview';
 import { findingRewrite, replaceFindingQuote } from './finding-actions';
 import { ContinuityOption } from '@/features/prepare/components/continuity-option';
 import { ReviewProgress } from '@/features/prepare/components/review-progress';
@@ -113,6 +114,8 @@ function Desk({
     [params, setParams] = useSearchParams();
   const chapters = planning.outlineSelection?.content.chapters ?? [];
   const chapter = chapters.find((c) => c.id === chapterId);
+  const nextChapter = chapters[chapters.findIndex((c) => c.id === chapterId) + 1];
+  const nextPlan = planning.chapterPlans?.find((p) => p.chapterId === nextChapter?.id);
   const plan = planning.chapterPlans?.find((p) => p.chapterId === chapterId);
   const requestedBeat = params.get('beatId');
   const beatId =
@@ -125,7 +128,6 @@ function Desk({
   const beat = scene?.beats.find((b) => b.id === beatId);
   const ready =
     !!chapter &&
-    chapter.id === chapters[0]?.id &&
     chapterPlanReady(planning) &&
     !!plan?.confirmed &&
     sameChapterPlanVersions(plan.versions, chapterPlanVersions(planning));
@@ -165,6 +167,7 @@ function Desk({
   const inspect = (view: ManuscriptInspection) => {
     if (draft.dirty) return;
     setInspection(view);
+    if (compact) setSide(null);
     setSelectedFinding(view.selectedFinding ?? null);
   };
   const side = panelFrom(params);
@@ -204,9 +207,11 @@ function Desk({
     )
       draft.remove(action.segmentId);
     if (
-      (action.type === 'instruct' || action.type === 'rewrite') &&
+      (action.type === 'instruct' ||
+        action.type === 'rewrite' ||
+        action.type === 'propose_selection') &&
       instructionDraft.dirty &&
-      (action.type === 'rewrite'
+      (action.type === 'rewrite' || action.type === 'propose_selection'
         ? action.rewrite?.instruction === instruction
         : action.instruction ===
           (selection ? '针对「' + selection.quote + '」：' : '') + instruction)
@@ -273,14 +278,9 @@ function Desk({
     retry: false,
     refetchInterval: 5000,
   });
-  const busy = actions.busy || writer.start.isPending || !!writer.pendingStart;
-  const block = !chapter
-    ? t.prerequisite
-    : chapter.id !== chapters[0]?.id
-      ? t.laterChapter
-      : !ready
-        ? t.prerequisite
-        : (writer.block ?? '');
+  const busy =
+    actions.busy || writer.start.isPending || writer.dismiss.isPending || !!writer.pendingStart;
+  const block = !chapter ? t.prerequisite : !ready ? t.prerequisite : (writer.block ?? '');
   // During a run the draft head and SSE snapshot arrive separately. This is
   // normal progress, not evidence that a completed review became obsolete.
   // A lower cached head is catching up; only a newer head invalidates this run.
@@ -323,7 +323,7 @@ function Desk({
         const candidateQuery = candidates[chapterBeats.findIndex((beat) => beat.id === b.id)];
         const working = candidateQuery?.data?.working;
         const candidate = candidateQuery?.data?.runs.find(
-          (candidate) => candidate.result?.segments.length,
+          (candidate) => !candidate.dismissed && candidate.result?.segments.length,
         );
         const current = !!run && (b.id === beatId || run.planning?.mode === 'chapter');
         const allTexts =
@@ -589,11 +589,21 @@ function Desk({
           : !writer.current || !reviewGate.data?.ready || reviewGate.isError
             ? reviewGate.data?.reason || '正在核对创作准备状态；准备就绪后可复检。'
             : '';
+  const selectionPreviewRunning =
+    run?.status === 'running' &&
+    (run.pendingAction?.type === 'propose_selection' ||
+      (!run.pendingAction &&
+        (run.result?.context.rewrite?.preview ||
+          (writer.start.data?.id === run.id && writer.start.variables?.rewrite?.preview))));
   const localActionRunning =
     run?.status === 'running' &&
-    ['propose_finding', 'apply_finding', 'discard_finding', 'edit_finding'].includes(
-      run.pendingAction?.type ?? '',
-    );
+    [
+      'propose_selection',
+      'propose_finding',
+      'apply_finding',
+      'discard_finding',
+      'edit_finding',
+    ].includes(run.pendingAction?.type ?? '');
   const canRewrite =
     !!run?.result &&
     !busy &&
@@ -629,10 +639,20 @@ function Desk({
     }
     try {
       const request = rewriteRequest(segment, instruction, quote);
-      const ok = await (rewriteInPlace ? actions.rewrite(request) : writer.revise(request));
+      if (quote) request.preview = true;
+      const ok = await (rewriteInPlace
+        ? quote
+          ? actions.proposeSelection(request)
+          : actions.rewrite(request)
+        : writer.revise(request));
       if (ok) {
         instructionDraft.clear();
-        setRewriteFeedback('修改要求已提交，正在生成新候选。');
+        setRewriteFeedback(
+          quote
+            ? '正在生成选区预览，原文保持不变；完成后在原文旁确认。'
+            : '修改要求已提交。处理进度和结果见上方当前稿。',
+        );
+        if (quote) setSide(null);
       } else {
         setRewriteFeedback('修改要求尚未提交，输入已保留。请查看上方状态或重试原请求。');
       }
@@ -698,7 +718,9 @@ function Desk({
   const primaryLabel = writer.loading
     ? '读取中…'
     : run?.status === 'running'
-      ? t.running
+      ? selectionPreviewRunning
+        ? '正在生成选区预览'
+        : t.running
       : run?.status === 'committed'
         ? t.assembly
         : run
@@ -752,7 +774,11 @@ function Desk({
                       >
                         {part?.accepted ? <Check size={13} /> : <Circle size={10} />}
                         <span>{b.title}</span>
-                        <small>{b.id === beatId ? findings.length || '' : ''}</small>
+                        <small>
+                          {findings.filter((f) =>
+                            part?.segments.some((segment) => segment.id === f.segmentId),
+                          ).length || ''}
+                        </small>
                       </button>
                     );
                   })}
@@ -763,9 +789,14 @@ function Desk({
       </div>
       <footer className="writing-sidebar-footer">
         <span>
-          {parts.filter((p) => p.accepted).length}/{parts.length} 段已采用 · 目标{' '}
-          {chapter?.targetWords?.toLocaleString() ?? '—'} 字
+          {parts.filter((p) => p.accepted || p.adoptedVersion).length}/{parts.length} 段已有采用稿 ·
+          目标 {(plan?.content.targetWords || chapter?.targetWords)?.toLocaleString() ?? '—'} 字
         </span>
+        {parts.some((p) => p.adoptedVersion && !p.accepted) && (
+          <small>
+            其中 {parts.filter((p) => p.adoptedVersion && !p.accepted).length} 段有新修改待采用
+          </small>
+        )}
         <Link to={livePreparePath('outline', chapterId)}>{t.prepare} →</Link>
       </footer>
     </aside>
@@ -880,11 +911,13 @@ function Desk({
             ))}
           <main className="route-content">
             <ReviewProgress run={run} />
-            {localActionRunning && (
+            {(localActionRunning || selectionPreviewRunning) && (
               <div className="writing-operation-progress" role="status" aria-label="局部处理进度">
-                {run.pendingAction?.type === 'propose_finding'
-                  ? '正在生成这条问题的修改预览，正文尚未改变。'
-                  : '正在保存你的局部处理，不会重新审核整段。'}
+                {selectionPreviewRunning
+                  ? '正在生成选中文字的修改预览，正文尚未改变。'
+                  : run?.pendingAction?.type === 'propose_finding'
+                    ? '正在生成这条问题的修改预览，正文尚未改变。'
+                    : '正在保存你的局部处理，不会重新审核整段。'}
               </div>
             )}
             {selectionNotice && (
@@ -898,6 +931,9 @@ function Desk({
             {inspection && (
               <div className="manuscript-alert inspection-banner">
                 <span>{inspection.title} · 只读来源快照</span>
+                <Button size="sm" onClick={() => setSide('assembly')}>
+                  继续整章审核
+                </Button>
                 <Button
                   size="sm"
                   onClick={() => {
@@ -911,6 +947,7 @@ function Desk({
             )}
             {plan ? (
               <WritingManuscript
+                snapshot={!!inspection}
                 parts={inspectedParts ?? parts}
                 activeBeat={inspection ? '' : beatId}
                 title={inspection?.title ?? beat?.title ?? chapter?.title ?? ''}
@@ -946,6 +983,30 @@ function Desk({
                       }}
                     />
                   ) : undefined
+                }
+                selectionPreview={
+                  run?.result?.findingProposal &&
+                  !run.result.findingProposal.findingId &&
+                  !inspection
+                    ? {
+                        id: run.result.findingProposal.id,
+                        segmentId: run.result.findingProposal.request.segmentId,
+                        quote: Array.from(run.result.findingProposal.request.original)
+                          .slice(
+                            run.result.findingProposal.request.start,
+                            run.result.findingProposal.request.end,
+                          )
+                          .join(''),
+                        content: (
+                          <SelectionRewritePreview
+                            proposal={run.result.findingProposal}
+                            busy={busy || !actions.waiting}
+                            onApply={actions.applyFinding}
+                            onDiscard={actions.discardFinding}
+                          />
+                        ),
+                      }
+                    : undefined
                 }
                 busy={busy || run?.status === 'running'}
                 onChange={draft.change}
@@ -1150,6 +1211,19 @@ function Desk({
                   enhancedContinuity={writer.enhancedContinuity}
                   onRead={inspect}
                   onReviewBeat={showReview}
+                  continuation={
+                    nextChapter
+                      ? {
+                          label: `继续第 ${chapters.indexOf(nextChapter) + 1} 章 · ${nextChapter.title}`,
+                          onClick: () =>
+                            navigate(
+                              nextPlan?.confirmed
+                                ? liveWorkspacePath(nextChapter.id)
+                                : livePreparePath('outline', nextChapter.id),
+                            ),
+                        }
+                      : undefined
+                  }
                 />
               )}
             </div>
@@ -1169,7 +1243,7 @@ function Desk({
                   {writer.loading
                     ? '正在读取当前稿与审核状态…'
                     : run?.status === 'running'
-                      ? run.pendingAction?.type === 'propose_finding'
+                      ? selectionPreviewRunning || run.pendingAction?.type === 'propose_finding'
                         ? '正在生成局部修改预览，正文保持不变。'
                         : ['apply_finding', 'edit_finding', 'discard_finding'].includes(
                               run.pendingAction?.type ?? '',
@@ -1187,7 +1261,7 @@ function Desk({
                               ? '整章候选已批准，核对事实后采用全部段落。'
                               : '本段已批准，核对事实后采用到章稿。'
                             : run?.result?.findingProposal
-                              ? '这条问题的修改预览已就绪，请核对后确认替换。'
+                              ? '局部修改预览已就绪，请在正文旁核对后确认替换。'
                               : run?.result?.reviewPending
                                 ? '局部修改已保存。可继续处理其他问题，完成后统一复审。'
                                 : actions.waiting
@@ -1230,7 +1304,7 @@ function Desk({
                     )}
                   </div>
                 )}
-                {run?.result?.findingProposal && (
+                {run?.result?.findingProposal?.findingId && (
                   <Button
                     size="sm"
                     onClick={() => setSelectedFinding(run.result!.findingProposal!.findingId)}
@@ -1542,6 +1616,17 @@ function Desk({
                       </div>
                     </>
                   )}
+                  {run?.canDismiss && !adoptedCurrent && (
+                    <Button
+                      variant="ghost"
+                      disabled={busy || locked || instructionDraft.dirty}
+                      loading={writer.dismiss.isPending}
+                      onClick={() => writer.dismiss.mutate()}
+                    >
+                      放弃新候选，保留已采用稿
+                    </Button>
+                  )}
+                  {writer.dismiss.isError && <p role="alert">{writer.dismiss.error.message}</p>}
                   <small>采用候选不会自动定稿整章。</small>
                 </section>
               )}
@@ -1590,7 +1675,7 @@ function Desk({
                     {!writer.gate.data?.runs.length && <option value="">{t.noRun}</option>}
                     {writer.gate.data?.runs.map((r) => (
                       <option key={r.id} value={r.id}>
-                        v{r.draftVersion} · {t.statuses[r.status]} ·{' '}
+                        v{r.draftVersion} · {r.dismissed ? '已放弃' : t.statuses[r.status]} ·{' '}
                         {new Date(r.createdAt).toLocaleString('zh-CN')}
                       </option>
                     ))}
@@ -1600,7 +1685,14 @@ function Desk({
               <details>
                 <summary>生成范围与自动修订</summary>
                 <Button
-                  disabled={busy || locked || !!block || !writer.chapterGate.data?.ready}
+                  disabled={
+                    busy ||
+                    run?.status === 'running' ||
+                    !!run?.pendingAction ||
+                    locked ||
+                    !!block ||
+                    !writer.chapterGate.data?.ready
+                  }
                   onClick={writer.beginChapter}
                 >
                   生成整章候选

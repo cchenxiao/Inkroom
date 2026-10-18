@@ -121,6 +121,12 @@ it('requires fact confirmation and preserves the exact request across uncertain 
     </QueryClientProvider>,
   );
   const user = userEvent.setup();
+  await screen.findByRole('group', { name: '定稿操作' });
+  expect(screen.getByText('已完成的复审 · 意见与作者决定').closest('details')).not.toHaveAttribute(
+    'open',
+  );
+  expect(screen.queryByRole('button', { name: t.publish })).not.toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: '2 确认定稿' }));
   await screen.findByRole('radio', { name: t.none });
   expect(screen.getByRole('button', { name: t.publish })).toBeDisabled();
   await user.click(screen.getByRole('radio', { name: t.pending }));

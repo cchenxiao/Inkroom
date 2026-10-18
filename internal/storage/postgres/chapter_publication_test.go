@@ -144,9 +144,10 @@ func exerciseChapterPublication(t *testing.T, s *Store, scope string, j app.Chap
 		t.Fatal("changed retry payload accepted", err)
 	}
 	overview, e := s.BookOverview(ctx, scope)
-	if e != nil || overview.FinalizedChapters != 1 || overview.AcceptedWords == 0 || overview.DoneBeats != 2 || overview.CurrentChapterID != j.ChapterID || overview.NextStage != "assembly" {
+	if e != nil || overview.FinalizedChapters != 1 || overview.AcceptedWords == 0 || overview.DoneBeats != 2 || overview.CurrentChapterID == j.ChapterID || overview.NextSection != "outline" {
 		t.Fatal("live overview publication", e, overview)
 	}
+	exerciseNextChapter(t, s, scope, *p)
 	return req
 }
 

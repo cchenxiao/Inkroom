@@ -35,18 +35,23 @@ func WriteScope(ctx context.Context, chat model.ChatModel, b manuscript.ContextB
 	if err != nil {
 		return nil, model.Usage{}, err
 	}
-	task := "一次写完整章。严格按 targets 的顺序为每个情节段返回一个 parts 条目，保持相邻段连续；每段只使用该 target 的视角与可知事实。"
+	task := "一次写完整章。parts 是一章内连续的情节段，不是多篇各自完整的故事。严格按下面的分段清单推进，每段只完成自己的动作和转折，不能提前写后续段，也不能把第一段写成完整章后再续写新章节。最后一段达到规划终点即结束，不新增后续拜访、证人、调查结果。全章 Brief 是各段共同完成的总目标，不是每段重复完成的任务。"
 	if t := b.WritingTask; t != nil && t.ChapterTargetWords > 0 {
 		target := t.ChapterTargetWords
-		task += fmt.Sprintf("全章合计目标 %d 字，按非空白字符（含标点）计数，参考区间 %d–%d 字；这是全部 %d 段的总量，不是单段目标。先分配各段篇幅；避免反复确认同一件事，不能截断结尾来凑数。", target, (target*3+3)/4, target*4/3, len(b.Targets))
+		task += fmt.Sprintf("全章合计目标 %d 字，按非空白字符（含标点）计数，参考区间 %d–%d 字；这是全部 %d 段的总量，不是单段目标。每段参考 %d 字，先分配篇幅，不重复确认已完成的事件，不截断结尾。", target, target*4/5, target*6/5, len(b.Targets), target/len(b.Targets))
 	}
+	task += "\n按顺序执行的分段清单（beatId 必须逐字复制）：\n"
+	for i, target := range b.Targets {
+		task += fmt.Sprintf("%d. beatId=%s；标题=%s；本段唯一任务及结束状态=%s\n", i+1, target.Beat.ID, target.Beat.Title, target.Beat.Description)
+	}
+	task += "输出前核对：每段仅完成对应任务；段与段直接衔接；最后一段没有越过规划终点；全部段落合计符合本章篇幅。"
 	output, usage, err := parse.Generate[result](ctx, chat, model.Input{Role: "planned_writer", Task: task, Material: material, OutputSchema: contracts.ChapterWriterSchema}, func(out result) error {
 		if len(out.Parts) != len(b.Targets) {
-			return fmt.Errorf("chapter must contain every target exactly once")
+			return fmt.Errorf("整章应包含 %d 个情节段，模型只返回了 %d 个；未保存不完整候选", len(b.Targets), len(out.Parts))
 		}
 		for i, p := range out.Parts {
 			if p.BeatID != b.Targets[i].Beat.ID || strings.TrimSpace(p.Text) == "" {
-				return fmt.Errorf("chapter target order or text invalid")
+				return fmt.Errorf("第 %d 个情节段与细纲顺序不符或正文为空；未保存错位候选", i+1)
 			}
 		}
 		return nil

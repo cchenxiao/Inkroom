@@ -56,7 +56,7 @@ export const writingDesk = {
     waiting_human: '待审核',
     needs_human: '需人工处理',
     escalated: '已上报人工',
-    approved: '已批准',
+    approved: '审核通过 · 待采用',
     committed: '已采用',
     stale: '版本失效',
     failed: '运行失败',

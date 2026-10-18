@@ -5,6 +5,7 @@ import (
 	"inkloom/internal/agents/model"
 	"inkloom/internal/domain/manuscript"
 	"inkloom/internal/domain/review"
+	"strings"
 	"testing"
 )
 
@@ -26,5 +27,18 @@ func TestNeighborAliasCannotChangeTargetsOrResolveAmbiguity(t *testing.T) {
 	}
 	if _, err := review.Aggregate(fs, ss, 1); err == nil {
 		t.Fatal("invalid target accepted")
+	}
+}
+
+func TestFreshCriticResponseUsesRequestVersionAndStillChecksQuote(t *testing.T) {
+	raw := `{"findings":[{"id":"style-1","critic":"ai_taste","severity":"P3","segmentId":"s1","quote":"她收紧袋口。","evidenceRefs":["s1"],"reason":"动作重复","suggestion":"删去重复动作","repairScope":"phrase","draftVersion":2}]}`
+	segments := []manuscript.Segment{{ID: "s1", Version: 2, Text: "她收紧袋口。"}, {ID: "s2", Version: 3, Text: "他转身。"}}
+	out, _, err := Critique(context.Background(), model.NewFake([]model.Step{{Role: "ai_taste", Content: raw}}), segments, 3, nil)
+	if err != nil || len(out) != 1 || out[0].DraftVersion != 3 {
+		t.Fatal(out, err)
+	}
+	raw = strings.ReplaceAll(raw, "她收紧袋口。", "不存在的句子。")
+	if _, _, err = Critique(context.Background(), model.NewFake([]model.Step{{Role: "ai_taste", Content: raw}}), segments, 3, nil); err == nil {
+		t.Fatal("accepted nonexistent quote")
 	}
 }

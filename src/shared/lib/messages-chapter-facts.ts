@@ -1,6 +1,6 @@
 export const chapterFactsMessages = {
   title: '章末事实整理',
-  note: '先提出候选，再逐条决定。确认的新增事实随整章定稿保存，供后续章节使用。',
+  note: '核对候选后可批量确认普通事件，单独处理例外。确认的事实将在定稿后供后续章节使用。',
   model: '从章稿提取候选',
   manual: '我来整理事实',
   restart: '重新整理会替换当前候选批次的采用资格，未定稿决定需重新核对。继续？',
@@ -36,7 +36,7 @@ export const chapterFactsMessages = {
   knownNote: '仅勾选你确认该句证明已获知的人物；不选则不会进入任何角色的已知材料。',
   candidate: '候选',
   saved: '事实决定已保存',
-  save: '保存逐条决定',
+  save: '保存事实决定',
   draft: '有未保存决定',
   cancel: '放弃本地修改',
   conflict: '此条涉及已有事实，请对照判断。改变旧设定需要另走变更流程。',

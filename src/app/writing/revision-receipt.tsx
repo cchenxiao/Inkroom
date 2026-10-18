@@ -8,6 +8,11 @@ export function RevisionReceipt({ run }: { run?: BackendRun }) {
     run?.result?.context.revisionRequest ??
     run?.result?.context.rewrite;
   if (!request) return null;
+  if (
+    request.preview &&
+    (run?.status === 'running' || run?.result?.findingProposal || run?.result?.reviewPending)
+  )
+    return null;
   const check = run?.result?.criticReviews?.find(
     (r) =>
       r.critic === 'hard_consistency' &&

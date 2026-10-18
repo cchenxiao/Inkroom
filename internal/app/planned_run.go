@@ -42,13 +42,17 @@ func PlannedDraftID(scope, chapter, beat string) string {
 	return fmt.Sprintf("planned-%x", hash[:16])
 }
 func PreparePlannedContext(cfg config.Config, scope, runID string, base int, p planning.ChapterPlanSelection, target ...string) (manuscript.FrozenInput, error) {
+	return PreparePlannedContextWithHistory(cfg, scope, runID, base, p, nil, target...)
+}
+func PreparePlannedContextWithHistory(cfg config.Config, scope, runID string, base int, p planning.ChapterPlanSelection, history []ChapterPublication, target ...string) (manuscript.FrozenInput, error) {
 	var empty manuscript.FrozenInput
 	project, branch, validScope := strings.Cut(scope, "/")
 	if !validScope || project == "" || branch != "main" || !p.Confirmed || p.Version < 1 || p.ChapterID != p.Input.ChapterID || p.Versions != p.Input.Versions() || p.Content.Validate(p.Input) != nil {
 		return empty, ErrVersionMismatch
 	}
-	if p.Input.Outline.Content.Chapters[0].ID != p.ChapterID {
-		return empty, fmt.Errorf("后续章尚未接入前章定稿来源；当前只支持第一章选定 Beat")
+	previous, refs, chapterNumber, err := chapterHandoff(scope, p, history)
+	if err != nil {
+		return empty, err
 	}
 	selectedBeat := p.Content.Brief.SelectedBeatID
 	if len(target) > 0 && target[0] != "" {
@@ -121,15 +125,19 @@ func PreparePlannedContext(cfg config.Config, scope, runID string, base int, p p
 	}
 	rules := p.Input.Base.Style.Rules
 	style := manuscript.WritingStyle{POV: rules.POV, Tense: rules.Tense, Tone: rules.Tone, SentenceLength: manuscript.WritingRange(rules.SentenceLength), DialogueRatio: manuscript.WritingRange(rules.DialogueRatio), BannedPhrases: rules.BannedPhrases, StyleArc: rules.StyleArc}
-	b.WritingTask = &manuscript.WritingTask{ExperimentalContinuity: cfg.ExperimentalContinuity, Scope: scope, ChapterID: p.ChapterID, Versions: map[string]int{"input": p.Versions.Planning.Input, "direction": p.Versions.Planning.Direction, "style": p.Versions.Planning.Style, "core": p.Versions.Planning.Core, "outline": p.Versions.Outline, "bindings": p.Versions.Bindings}, PlanVersion: p.Version, SourceDigest: sourceDigest, Opening: true, StoryTime: *scene.StoryTime, Brief: manuscript.WritingBrief(p.Content.Brief), Style: style, SceneGoal: scene.Goal, SceneConflict: scene.Conflict, SceneOutcome: scene.Outcome, Voices: voices}
+	b.WritingTask = &manuscript.WritingTask{ExperimentalContinuity: cfg.ExperimentalContinuity, Scope: scope, ChapterID: p.ChapterID, Versions: map[string]int{"input": p.Versions.Planning.Input, "direction": p.Versions.Planning.Direction, "style": p.Versions.Planning.Style, "core": p.Versions.Planning.Core, "outline": p.Versions.Outline, "bindings": p.Versions.Bindings}, PlanVersion: p.Version, SourceDigest: sourceDigest, Opening: chapterNumber == 1, ChapterNumber: chapterNumber, Publications: refs, StoryTime: *scene.StoryTime, Brief: manuscript.WritingBrief(p.Content.Brief), Style: style, SceneGoal: scene.Goal, SceneConflict: scene.Conflict, SceneOutcome: scene.Outcome, Voices: voices}
 	if chapter, ok := p.Input.Chapter(); ok {
-		b.WritingTask.ChapterTargetWords = chapter.TargetWords
+		targetWords := chapter.TargetWords
+		if p.Content.TargetWords > 0 {
+			targetWords = p.Content.TargetWords
+		}
+		b.WritingTask.ChapterTargetWords = targetWords
 		beatCount := 0
 		for _, plannedScene := range p.Content.Scenes {
 			beatCount += len(plannedScene.Beats)
 		}
 		if beatCount > 0 {
-			b.WritingTask.BeatTargetWords = (chapter.TargetWords + beatCount - 1) / beatCount
+			b.WritingTask.BeatTargetWords = (targetWords + beatCount - 1) / beatCount
 		}
 	}
 	b.WritingTask.Brief.SelectedBeatID = beat.ID
@@ -137,16 +145,19 @@ func PreparePlannedContext(cfg config.Config, scope, runID string, base int, p p
 	b.WritingTask.Genre = p.Input.Base.Source.Intake.Genres
 	budget, output := cfg.ContextTokens, cfg.MaxOutputTokens
 	if budget == 0 {
-		budget = 32768
+		budget = config.DefaultContextTokens
 	}
 	if output == 0 {
 		output = 8192
 	}
-	return contextassembly.Assemble(b, contextassembly.PreviousChapter{}, contextassembly.Options{RunID: runID, BaseDraftVersion: base, Budget: budget, ReservedOutputTokens: output, Excluded: []manuscript.ExcludedSource{
-		{Title: "前章定稿", Reason: "第一章无前章；未引用演示 ch7 的前情"},
-		{Title: "跨章检索", Reason: "本轮只核对固定的初始设定，尚未接入全书检索"},
+	appendChapterFacts(&b, history)
+	excluded := []manuscript.ExcludedSource{
 		{Title: "非当前角色知识", Reason: "未确认项、未知/未来获知时点、其他 POV 事实与未来章规划未送入模型"},
-	}})
+	}
+	if chapterNumber == 1 {
+		excluded = append(excluded, manuscript.ExcludedSource{Title: "前章定稿", Reason: "第一章无前章"})
+	}
+	return contextassembly.Assemble(b, previous, contextassembly.Options{RunID: runID, BaseDraftVersion: base, Budget: budget, ReservedOutputTokens: output, Excluded: excluded})
 }
 
 // Fake 仅是管线样例，文字不假称模型已创作；避免沿用演示小说正文与证据引用。
@@ -170,6 +181,7 @@ func ValidPlannedRequest(r PlannedRunRequest) bool {
 }
 
 type PlannedRunSource struct {
+	Publications       []manuscript.PublicationRef  `json:"publications,omitempty"`
 	EnhancedContinuity bool                         `json:"enhancedContinuity,omitempty"`
 	NeighborPolicy     string                       `json:"neighborPolicy,omitempty"`
 	Baseline           []manuscript.Passage         `json:"baseline,omitempty"`
@@ -206,5 +218,9 @@ var ErrPlanningNotReady = errors.New("规划材料尚未就绪")
 
 func ReassemblePlanned(in manuscript.FrozenInput) (manuscript.FrozenInput, error) {
 	m := in.Manifest
-	return contextassembly.Assemble(in.Bundle, contextassembly.PreviousChapter{}, contextassembly.Options{RunID: m.RunID, BaseDraftVersion: m.BaseDraftVersion, Budget: m.Budget, ReservedOutputTokens: m.ReservedOutputTokens, Excluded: m.Excluded})
+	previous := contextassembly.PreviousChapter{}
+	if in.Bundle.PreviousEnding != nil {
+		previous = contextassembly.PreviousChapter{ProjectID: in.Bundle.ProjectID, BranchID: in.Bundle.BranchID, Confirmed: true, Source: *in.Bundle.PreviousEnding}
+	}
+	return contextassembly.Assemble(in.Bundle, previous, contextassembly.Options{RunID: m.RunID, BaseDraftVersion: m.BaseDraftVersion, Budget: m.Budget, ReservedOutputTokens: m.ReservedOutputTokens, Excluded: m.Excluded})
 }

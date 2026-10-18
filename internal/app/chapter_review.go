@@ -144,6 +144,7 @@ func reviewChapterWith(ctx context.Context, chat model.ChatModel, in ChapterRevi
 			if e != nil {
 				c.Status = "failed"
 				c.Error = e.Error()
+				c.Failure = DescribeChapterReviewFailure(e)
 				c.Findings = []ChapterFinding{}
 			}
 			out.Critics[i] = c

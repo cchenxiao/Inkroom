@@ -46,8 +46,11 @@ export function WritingManuscript({
   onReview,
   startDisabled,
   children,
+  selectionPreview,
   onRewrite,
+  snapshot = false,
 }: {
+  snapshot?: boolean;
   parts: ManuscriptPart[];
   activeBeat: string;
   title: string;
@@ -75,6 +78,7 @@ export function WritingManuscript({
   onReview: (beatId?: string) => void;
   startDisabled: boolean;
   children?: ReactNode;
+  selectionPreview?: { id: string; segmentId: string; quote: string; content: ReactNode };
   onRewrite: (beatId: string) => void;
 }) {
   const [mode, setMode] = useState<EditorMode>('editor');
@@ -190,7 +194,7 @@ export function WritingManuscript({
                               : t.candidate
                             : ''}
                       </span>
-                      {!!part.segments.length && (
+                      {!snapshot && !!part.segments.length && (
                         <Button
                           size="sm"
                           variant="ghost"
@@ -202,7 +206,7 @@ export function WritingManuscript({
                           作者审核
                         </Button>
                       )}
-                      {!!part.segments.length && (
+                      {!snapshot && !!part.segments.length && (
                         <Button
                           size="sm"
                           variant="ghost"
@@ -279,13 +283,15 @@ export function WritingManuscript({
                             onSelection(selection);
                           }}
                           review={
-                            selectedFinding && selectedSegment === segment.id && children
-                              ? {
-                                  id: selectedFinding,
-                                  quote: selectedQuote ?? '',
-                                  content: children,
-                                }
-                              : undefined
+                            selectionPreview?.segmentId === segment.id
+                              ? { ...selectionPreview, keepVisibleOnClose: true }
+                              : selectedFinding && selectedSegment === segment.id && children
+                                ? {
+                                    id: selectedFinding,
+                                    quote: selectedQuote ?? '',
+                                    content: children,
+                                  }
+                                : undefined
                           }
                           availableActions={['edit', 'instruct', 'rewrite', 'review', 'bible']}
                         />
@@ -341,7 +347,7 @@ export function WritingManuscript({
               : incomplete
                 ? '正文尚未完整载入'
                 : busy
-                  ? '正在处理，完成后更新审核结果'
+                  ? '正在处理，正文已保留'
                   : t.saved}
           </span>
           {!dirty && (

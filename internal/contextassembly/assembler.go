@@ -72,7 +72,7 @@ func Assemble(b manuscript.ContextBundle, previous PreviousChapter, opts Options
 	}
 	raw, _ := json.Marshal(frozen)
 	if len(raw) > opts.Budget {
-		return manuscript.FrozenInput{}, fmt.Errorf("required context exceeds budget: %d > %d", len(raw), opts.Budget)
+		return manuscript.FrozenInput{}, fmt.Errorf("必需创作材料超出上下文预算（%d > %d），尚未发起生成。请提高上下文预算，或改为逐段创作", len(raw), opts.Budget)
 	}
 	m := manuscript.ContextManifest{RunID: opts.RunID, ProjectID: b.ProjectID, ChapterID: b.ChapterID, BranchID: b.BranchID, BaseDraftVersion: opts.BaseDraftVersion, AssemblerVersion: manuscript.AssemblerVersion, Digest: digest, TokenEstimate: len(raw), Budget: opts.Budget, ReservedOutputTokens: opts.ReservedOutputTokens, Sources: []manuscript.ContextSource{}, Excluded: append([]manuscript.ExcludedSource{}, opts.Excluded...)}
 	for _, ref := range refs {

@@ -97,6 +97,7 @@ func assessFacts(ctx context.Context, chat model.ChatModel, segments []manuscrip
 	type output = ConsistencyAssessment
 	task := "核对本轮正文与明确事实；证据不足不判硬伤；需要事实裁决或越界修改时标记交人。"
 	result, usage, err := parse.Generate[output](ctx, chat, model.Input{Role: "hard_consistency", Task: task, Material: material, OutputSchema: schema}, func(out output) error {
+		bindReviewVersion(out.Findings, version)
 		normalizeNeighborRefs(out.Findings, segments, bundle.Neighbors)
 		if request != nil {
 			if out.AuthorCheck == nil || strings.TrimSpace(out.AuthorCheck.Reason) == "" || strings.TrimSpace(out.AuthorCheck.Quote) == "" {

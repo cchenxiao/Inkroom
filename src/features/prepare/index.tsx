@@ -160,7 +160,10 @@ export default function PreparePage() {
           {section === 'world' && <BackendCoreSettings />}
           {section === 'outline' && (
             <div className="chapter-planning-stack">
-              <BackendOutline />
+              <details open={!searchParams.get('planningChapterId')}>
+                <summary>查看全书章纲与规划记录</summary>
+                <BackendOutline />
+              </details>
               <BackendChapterPlan />
             </div>
           )}

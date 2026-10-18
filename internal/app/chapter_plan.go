@@ -19,16 +19,21 @@ func chapterPlanMaterial(in planning.ChapterPlanInput) (json.RawMessage, error) 
 		return nil, err
 	}
 	chapter, _ := in.Chapter()
+	var ending *string
+	if in.PreviousChapter != nil {
+		ending = &in.PreviousChapter.Ending
+	}
 	return json.Marshal(struct {
-		Intake         planning.Intake             `json:"intake"`
-		Direction      planning.Direction          `json:"direction"`
-		Rules          planning.StyleRules         `json:"styleRules"`
-		Core           planning.CoreSettingsOutput `json:"confirmedCore"`
-		Outline        planning.OutlineContent     `json:"confirmedOutline"`
-		Chapter        planning.OutlineChapter     `json:"currentChapter"`
-		Request        string                      `json:"request"`
-		PreviousEnding *string                     `json:"previousEnding"`
-	}{in.Base.Source.Intake, in.Base.Direction.Direction, in.Base.Style.Rules, confirmed, in.Outline.Content, chapter, in.Request, nil})
+		Intake          planning.Intake             `json:"intake"`
+		Direction       planning.Direction          `json:"direction"`
+		Rules           planning.StyleRules         `json:"styleRules"`
+		Core            planning.CoreSettingsOutput `json:"confirmedCore"`
+		Outline         planning.OutlineContent     `json:"confirmedOutline"`
+		Chapter         planning.OutlineChapter     `json:"currentChapter"`
+		Request         string                      `json:"request"`
+		PreviousEnding  *string                     `json:"previousEnding"`
+		PreviousChapter *planning.ChapterHandoff    `json:"previousChapter,omitempty"`
+	}{in.Base.Source.Intake, in.Base.Direction.Direction, in.Base.Style.Rules, confirmed, in.Outline.Content, chapter, in.Request, ending, in.PreviousChapter})
 }
 
 func GenerateChapterPlan(ctx context.Context, cfg config.Config, in planning.ChapterPlanInput, onCall func(context.Context, model.CallRecord) error) (planning.ChapterPlanContent, error) {

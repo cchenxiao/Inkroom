@@ -9,6 +9,7 @@ import type { LiveBook } from '@/types/domain/live-book';
 import { liveBookText as t } from '@/shared/lib/messages-live-book';
 import { liveBookKey } from './api/live-book';
 import LibraryPage from './LibraryPage';
+import { nextBookPath } from './live-book-path';
 import BookPage from './BookPage';
 const empty: LiveBook = {
   scope: 'zhuoliu/main',
@@ -115,4 +116,16 @@ it('shows backend progress, routes with planning chapter IDs, and never falls ba
   expect(screen.queryByText('渡口来信')).not.toBeInTheDocument();
   expect(screen.queryByText('夜谈')).not.toBeInTheDocument();
   view.close();
+});
+
+it('continues into the next chapter preparation with its stable chapter ID', () => {
+  const path = nextBookPath({
+    ...empty,
+    currentChapterId: 'chapter-two',
+    nextSection: 'outline',
+    finalizedChapters: 1,
+  });
+  const url = new URL(path, 'http://localhost');
+  expect(url.pathname).toBe('/prepare');
+  expect(url.searchParams.get('planningChapterId')).toBe('chapter-two');
 });

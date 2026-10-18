@@ -57,3 +57,23 @@ func TestConsistencyBudgetMatchesProviderAndAudit(t *testing.T) {
 		t.Fatal("unreserved provider call", err)
 	}
 }
+
+func TestAuthorOperationBudgetKeepsHistoryAndBoundsResume(t *testing.T) {
+	now := time.Now().UTC()
+	history := []CallRecord{{Number: 14, StartedAt: now.Add(-time.Minute), Phase: "finished", Usage: Usage{Known: true, InputTokens: 128000}}}
+	records := []CallRecord{}
+	limits := Limits{History: history, BudgetSince: now, Calls: 1, Tokens: 1000, OutputTokens: 100, Timeout: time.Second, OnCall: func(_ context.Context, c CallRecord) error { records = append(records, c); return nil }}
+	g := NewGuard(&policyProbe{}, limits)
+	input := Input{Role: "ai_taste", SystemPrompt: "check", UserPrompt: "text", PromptVersion: "test"}
+	if _, _, err := g.Generate(context.Background(), input); err != nil {
+		t.Fatal(err)
+	}
+	if records[1].Number != 15 || g.Usage().InputTokens != 128000 {
+		t.Fatal(records, g.Usage())
+	}
+	limits.History = append(history, records[1])
+	resumed := NewGuard(&policyProbe{}, limits)
+	if _, _, err := resumed.Generate(context.Background(), input); err != ErrBudgetExhausted {
+		t.Fatal("resume reset budget", err)
+	}
+}

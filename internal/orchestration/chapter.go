@@ -93,7 +93,23 @@ func NewChapter(ctx context.Context, chat model.ChatModel, opts Options) (compos
 		state := start(ChapterState{Context: frozen, AuthorRequest: request, CriticReviews: []CriticReview{}, Report: review.Report{Findings: []review.Finding{}}, Status: "running", DraftVersion: opts.BaseDraftVersion, MaxRounds: opts.MaxRounds, Segments: []manuscript.Segment{}, Reviews: []review.Report{}, Revisions: []revision.Revision{}, Metrics: []style.Stats{}}, "draft")
 		segments, usage, err := agents.WriteScope(ctx, chat, frozen)
 		if err != nil {
+			state.Usage = usage
+			emit(state)
 			return state, err
+		}
+		if frozen.Rewrite != nil && frozen.Rewrite.Preview {
+			req := *frozen.Rewrite
+			for _, segment := range segments {
+				if segment.ID != req.SegmentID {
+					continue
+				}
+				end := len([]rune(segment.Text)) - (len([]rune(req.Original)) - req.End)
+				state.FindingProposal = &FindingProposal{ID: "selection-preview", DraftVersion: opts.BaseDraftVersion + 1, Request: req, Replacement: string([]rune(segment.Text)[req.Start:end])}
+			}
+			segments = append([]manuscript.Segment{}, frozen.Original...)
+			state.AuthorRequest = nil
+			state.ReviewPending = true // New candidate has not yet been reviewed.
+			state.StopReason = "选区修改预览已生成，正文未变；请确认或放弃"
 		}
 		for i := range segments {
 			segments[i].Version = opts.BaseDraftVersion + 1
@@ -209,7 +225,7 @@ func NewChapter(ctx context.Context, chat model.ChatModel, opts Options) (compos
 			return nil, err
 		}
 	}
-	for _, edge := range [][2]string{{compose.START, "writer"}, {"writer", "critic"}, {"critic", "aggregate"}} {
+	for _, edge := range [][2]string{{compose.START, "writer"}, {"critic", "aggregate"}} {
 		if err := g.AddEdge(edge[0], edge[1]); err != nil {
 			return nil, err
 		}
@@ -221,6 +237,14 @@ func NewChapter(ctx context.Context, chat model.ChatModel, opts Options) (compos
 			}
 			return next, nil
 		}
+	}
+	if err := g.AddBranch("writer", compose.NewGraphBranch(func(_ context.Context, s ChapterState) (string, error) {
+		if s.FindingProposal != nil {
+			return compose.END, nil
+		}
+		return "critic", nil
+	}, map[string]bool{"critic": true, compose.END: true})); err != nil {
+		return nil, err
 	}
 	if err := g.AddBranch("aggregate", compose.NewGraphBranch(func(_ context.Context, s ChapterState) (string, error) {
 		if s.Status != "running" {

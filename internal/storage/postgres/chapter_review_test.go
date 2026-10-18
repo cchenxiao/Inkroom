@@ -71,9 +71,13 @@ func exerciseChapterReview(t *testing.T, s *Store, scope string, a app.ChapterAs
 		t.Fatal("new review did not supersede old approval", err)
 	}
 	assertHistoricalPublication(t, s, scope, publication)
-	failed := app.ChapterReviewOutput{Critics: []app.ChapterCriticResult{{Critic: "hard_consistency", Status: "completed", Findings: []app.ChapterFinding{}}, {Critic: "ai_taste", Status: "failed", Findings: []app.ChapterFinding{}, Error: "provider timeout"}}}
-	if err = s.FinishChapterReview(ctx, newJob.ID, failed, errors.New("provider timeout")); err != nil {
+	failed := app.ChapterReviewOutput{Critics: []app.ChapterCriticResult{{Critic: "hard_consistency", Status: "completed", Findings: []app.ChapterFinding{}}, {Critic: "ai_taste", Status: "failed", Findings: []app.ChapterFinding{}, Error: "invalid_content: unknown or fabricated evidence"}}}
+	if err = s.FinishChapterReview(ctx, newJob.ID, failed, errors.New("invalid_content: unknown or fabricated evidence")); err != nil {
 		t.Fatal(err)
+	}
+	listing, err = s.ChapterReviews(ctx, scope, a.ID)
+	if err != nil || listing.Jobs[0].Failure == nil || listing.Jobs[0].Failure.Code != "evidence_invalid" || listing.Jobs[0].Output.Critics[1].Failure == nil {
+		t.Fatal("failure diagnosis missing after reload", listing, err)
 	}
 	decision.RequestID = rand.Text()
 	decision.InputDigest = newJob.InputDigest

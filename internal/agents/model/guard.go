@@ -13,6 +13,8 @@ import (
 var ErrBudgetExhausted = errors.New("run model budget exhausted before call")
 
 type Limits struct {
+	// BudgetSince scopes author-operation limits without resetting audit numbering or total usage.
+	BudgetSince                 time.Time
 	ConsistencyOutputTokens     int
 	ConsistencyTimeout          time.Duration
 	History                     []CallRecord
@@ -22,11 +24,11 @@ type Limits struct {
 	ModelName                   string
 }
 type Guard struct {
-	inner           ChatModel
-	limits          Limits
-	mu              sync.Mutex
-	calls, reserved int
-	usage           Usage
+	inner                        ChatModel
+	limits                       Limits
+	mu                           sync.Mutex
+	calls, budgetCalls, reserved int
+	usage                        Usage
 }
 
 func NewGuard(inner ChatModel, limits Limits) *Guard {
@@ -39,6 +41,10 @@ func NewGuard(inner ChatModel, limits Limits) *Guard {
 		g.usage.OutputTokens += c.Usage.OutputTokens
 		known := c.Phase == "finished" && c.Usage.Known
 		g.usage.Known = g.usage.Known && known
+		if !limits.BudgetSince.IsZero() && !c.StartedAt.IsZero() && c.StartedAt.Before(limits.BudgetSince) {
+			continue
+		}
+		g.budgetCalls++
 		if known {
 			g.reserved += c.Usage.InputTokens + c.Usage.OutputTokens
 		} else if c.ReservedTokens > 0 {
@@ -74,11 +80,12 @@ func (g *Guard) Generate(ctx context.Context, in Input) (Output, Usage, error) {
 		tools, _ := json.Marshal(in.Tools)
 		estimate := len(history) + len(tools) + len(in.SystemPrompt) + len(in.UserPrompt) + in.OutputTokens + 128
 		g.mu.Lock()
-		if g.calls >= g.limits.Calls || g.reserved+estimate > g.limits.Tokens {
+		if g.budgetCalls >= g.limits.Calls || g.reserved+estimate > g.limits.Tokens {
 			g.mu.Unlock()
 			return Output{}, total, ErrBudgetExhausted
 		}
 		g.calls++
+		g.budgetCalls++
 		g.reserved += estimate
 		call := g.calls
 		g.mu.Unlock()

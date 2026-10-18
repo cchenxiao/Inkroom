@@ -23,6 +23,18 @@ func readChapterReview(ctx context.Context, tx pgx.Tx, scope, id string) (app.Ch
 	return j, err
 }
 func decorateChapterReview(ctx context.Context, tx pgx.Tx, j app.ChapterReviewJob) (app.ChapterReviewJob, error) {
+	if (j.Status == "failed" || j.Status == "interrupted") && j.Failure == nil {
+		j.Failure = app.DescribeChapterReviewFailure(errors.New(j.Message))
+	}
+	if j.Output != nil {
+		for i := range j.Output.Critics {
+			c := &j.Output.Critics[i]
+			if c.Status == "failed" && c.Failure == nil {
+				c.Failure = app.DescribeChapterReviewFailure(errors.New(c.Error))
+			}
+		}
+	}
+
 	a, err := readAssembly(ctx, tx, j.Scope, j.Input.AssemblyID)
 	if err != nil {
 		return j, err
@@ -37,6 +49,7 @@ func decorateChapterReview(ctx context.Context, tx pgx.Tx, j app.ChapterReviewJo
 	}
 	j.Current = j.Current && latest == j.ID
 	j.ApprovalBlock = app.ChapterReviewBlock(j)
+	j.CanApproveAfterJudgement = app.ChapterReviewCanJudge(j)
 	rows, err := tx.Query(ctx, "SELECT record FROM chapter_review_calls WHERE job_id=$1 ORDER BY number", j.ID)
 	if err != nil {
 		return j, err
@@ -66,6 +79,8 @@ func decorateChapterReview(ctx context.Context, tx pgx.Tx, j app.ChapterReviewJo
 		return j, err
 	}
 	j.Decision = &d
+	j.ApprovalBlock = app.ChapterReviewBlock(j)
+	j.CanApproveAfterJudgement = app.ChapterReviewCanJudge(j)
 	return j, nil
 }
 func (s *Store) ChapterReviews(ctx context.Context, scope, assembly string) (app.ChapterReviewState, error) {

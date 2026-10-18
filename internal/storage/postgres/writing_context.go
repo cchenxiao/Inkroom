@@ -9,6 +9,7 @@ import (
 	"inkloom/internal/domain/manuscript"
 	"inkloom/internal/domain/planning"
 	"reflect"
+	"time"
 )
 
 // Chosen prose is an immutable adopted version, separate from POV knowledge.
@@ -28,7 +29,7 @@ func adoptedPassage(ctx context.Context, q queryRow, scope, chapter, beat string
 	if err = json.Unmarshal(raw, &c); err != nil {
 		return manuscript.Passage{}, err
 	}
-	p := manuscript.Passage{BeatID: beat, DraftID: c.ChapterID, RunID: c.RunID, Version: c.DraftVersion}
+	p := manuscript.Passage{State: "adopted", BeatID: beat, DraftID: c.ChapterID, RunID: c.RunID, Version: c.DraftVersion}
 	for _, s := range c.Segments {
 		if s.BeatID == beat {
 			p.Segments = append(p.Segments, s)
@@ -77,7 +78,8 @@ func workingPassage(ctx context.Context, q queryRow, scope, chapter, beat string
 	var p manuscript.Passage
 	var raw []byte
 	var adopted bool
-	err := q.QueryRow(ctx, `SELECT v.chapter_id,COALESCE(v.run_id,owner.id),v.draft_version,v.segments,
+	var selectedAt time.Time
+	err := q.QueryRow(ctx, `SELECT v.chapter_id,COALESCE(v.run_id,owner.id),v.draft_version,v.segments,GREATEST(freshness.modified_at,adoption.adopted_at),
         EXISTS(SELECT 1 FROM manuscript_commits c WHERE c.chapter_id=v.chapter_id AND c.branch_id=v.branch_id AND c.draft_version=v.draft_version)
         FROM chapters h JOIN chapter_versions v ON v.chapter_id=h.id AND v.branch_id=h.branch_id AND v.draft_version=h.draft_version
         JOIN LATERAL(SELECT r.id FROM runs r JOIN planning_run_inputs b ON b.run_id=r.id
@@ -103,13 +105,26 @@ func workingPassage(ctx context.Context, q queryRow, scope, chapter, beat string
           WHERE c.chapter_id=v.chapter_id AND c.branch_id=v.branch_id AND c.draft_version<=v.draft_version
           AND EXISTS(SELECT 1 FROM jsonb_array_elements(c.payload->'segments') s WHERE s->>'beatId'=$3)
         ) adoption ON true
-        WHERE EXISTS(SELECT 1 FROM jsonb_array_elements(v.segments) s WHERE s->>'beatId'=$3)
-        ORDER BY GREATEST(freshness.modified_at,adoption.adopted_at) DESC,v.created_at DESC,v.chapter_id DESC LIMIT 1`, scope, chapter, beat).Scan(&p.DraftID, &p.RunID, &p.Version, &raw, &adopted)
+        WHERE NOT EXISTS(SELECT 1 FROM runs rejected WHERE rejected.id=COALESCE(v.run_id,owner.id) AND rejected.payload->>'dismissed'='true')
+        AND EXISTS(SELECT 1 FROM jsonb_array_elements(v.segments) s WHERE s->>'beatId'=$3)
+        ORDER BY GREATEST(freshness.modified_at,adoption.adopted_at) DESC,v.created_at DESC,v.chapter_id DESC LIMIT 1`, scope, chapter, beat).Scan(&p.DraftID, &p.RunID, &p.Version, &raw, &selectedAt, &adopted)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return adoptedPassage(ctx, q, scope, chapter, beat)
 	}
 	if err != nil {
 		return p, err
+	}
+	// An explicit keep-adopted choice also supersedes older candidates from
+	// other draft heads. A genuinely newer narrative can become working again.
+	var keptAdopted bool
+	err = q.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM runs r JOIN planning_run_inputs b ON b.run_id=r.id
+	 WHERE b.scope=$1 AND b.chapter_id=$2 AND r.payload->>'dismissed'='true' AND r.updated_at>$4
+	 AND EXISTS(SELECT 1 FROM jsonb_array_elements(r.payload->'result'->'segments') s WHERE s->>'beatId'=$3))`, scope, chapter, beat, selectedAt).Scan(&keptAdopted)
+	if err != nil {
+		return p, err
+	}
+	if keptAdopted {
+		return adoptedPassage(ctx, q, scope, chapter, beat)
 	}
 	var segments []manuscript.Segment
 	if err = json.Unmarshal(raw, &segments); err != nil {

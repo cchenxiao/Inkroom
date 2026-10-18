@@ -32,10 +32,18 @@ export interface ChapterBrief {
   writingGuidance: string;
 }
 export interface ChapterPlanContent {
+  targetWords?: number;
   scenes: PlannedScene[];
   brief: ChapterBrief;
 }
 export interface ChapterPlanInput {
+  previousChapter?: {
+    publicationId: string;
+    chapterId: string;
+    version: number;
+    ending: string;
+    facts: { id: string; text: string; storyTime: number; knownBy: string[] }[];
+  };
   base: OutlineJob['input'];
   outline: OutlineSelection;
   chapterId: string;

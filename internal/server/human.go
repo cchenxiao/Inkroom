@@ -61,7 +61,7 @@ func (s *service) action(w http.ResponseWriter, r *http.Request) {
 }
 func (s *service) executeHuman(ctx context.Context, run app.Run) {
 	if err := app.ExecuteHuman(ctx, s.cfg, run, s.repo, s.consistencyCheck(run)); err != nil {
-		status, reason := "failed", "本次人工操作未完成；已落库产物保留，可用同一操作 ID 继续"
+		status, reason := "failed", humanFailureReason(run, err)
 		if errors.Is(err, app.ErrVersionMismatch) {
 			status, reason = "stale", "稿本已更新，旧审核与操作失效"
 		} else if s.root.Err() != nil {
@@ -73,6 +73,18 @@ func (s *service) executeHuman(ctx context.Context, run app.Run) {
 			slog.Error("human operation stop could not be persisted")
 		}
 		// 不输出供应商响应、连接串或故事材料。
-		slog.Error("human operation stopped", "run_id", run.ID, "kind", status)
+		slog.Error("human operation stopped", "run_id", run.ID, "kind", status, "reason", reason)
 	}
+}
+
+// Keep transport/provider details private, while retaining validated failure reasons.
+func humanFailureReason(run app.Run, err error) string {
+	node := "human_edit"
+	if run.PendingAction != nil {
+		switch run.PendingAction.Type {
+		case "inline_edit", "recheck", "revalidate":
+			node = "critics"
+		}
+	}
+	return executionFailureReason(node, err, nil) + " 可恢复本次操作，已保存的修改不会重复应用。"
 }

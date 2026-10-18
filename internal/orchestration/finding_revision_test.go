@@ -105,3 +105,33 @@ func TestLocalFindingRejectsWideningAndOldQuote(t *testing.T) {
 		t.Fatal("stale original accepted")
 	}
 }
+
+func TestAuthorSelectionWithoutFindingPreservesOtherIssues(t *testing.T) {
+	s := localFindingState()
+	req := &manuscript.AuthorRewrite{Preview: true, SegmentID: s.Segments[0].ID, Original: s.Segments[0].Text, Start: 0, End: 1, Instruction: "换一个称呼"}
+	a := HumanAction{ID: "selection", Type: "propose_selection", DraftVersion: s.DraftVersion, Rewrite: req}
+	if err := ValidateHumanAction(s, a); err != nil {
+		t.Fatal(err)
+	}
+	out, err := applyFindingAction(context.Background(), s, a, model.NewFake([]model.Step{{Role: "planned_writer", Content: `{"text":"丙"}`}}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(out.Segments, s.Segments) || !reflect.DeepEqual(out.Report, s.Report) {
+		t.Fatal("preview mutated prose/worklist")
+	}
+	stale := *out.FindingProposal
+	stale.Request.Original = "旧版本"
+	out.FindingProposal = &stale
+	if ValidateHumanAction(out, HumanAction{ID: "bad", Type: "apply_finding", DraftVersion: out.DraftVersion, ProposalID: stale.ID}) == nil {
+		t.Fatal("stale preview accepted")
+	}
+	out.FindingProposal = &FindingProposal{ID: a.ID, Request: *req, DraftVersion: s.DraftVersion, Replacement: "丙"}
+	out, err = applyFindingAction(context.Background(), out, HumanAction{ID: "apply", Type: "apply_finding", ProposalID: a.ID}, model.NewFake(nil))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(out.Report, s.Report) || out.Segments[0].Text != "丙"+string([]rune(req.Original)[1:]) || !out.ReviewPending {
+		t.Fatal("author selection did not retain surrounding prose and issues")
+	}
+}

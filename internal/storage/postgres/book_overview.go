@@ -103,7 +103,7 @@ func (s *Store) BookOverview(ctx context.Context, scope string) (app.BookOvervie
 				}
 			}
 			var runRaw []byte
-			e = tx.QueryRow(ctx, "SELECT r.payload FROM runs r JOIN planning_run_inputs p ON p.run_id=r.id WHERE p.scope=$1 AND p.chapter_id=$2 ORDER BY r.created_at DESC,r.id DESC LIMIT 1", scope, ch.ID).Scan(&runRaw)
+			e = tx.QueryRow(ctx, "SELECT r.payload FROM runs r JOIN planning_run_inputs p ON p.run_id=r.id WHERE p.scope=$1 AND p.chapter_id=$2 AND COALESCE(r.payload->>'dismissed','false')<>'true' ORDER BY r.created_at DESC,r.id DESC LIMIT 1", scope, ch.ID).Scan(&runRaw)
 			if e != nil && !errors.Is(e, pgx.ErrNoRows) {
 				return out, e
 			}
@@ -202,6 +202,34 @@ func (s *Store) BookOverview(ctx context.Context, scope string) (app.BookOvervie
 		out.DoneBeats += c.DoneBeats
 		out.TotalBeats += c.TotalBeats
 		out.Chapters = append(out.Chapters, c)
+	}
+	// Continue at the first unfinished chapter, never permanently pin the book to chapter one.
+	if outline {
+		for _, ch := range out.Chapters {
+			if ch.Status == "finalized" {
+				continue
+			}
+			out.CurrentChapterID, out.NextStage, out.NextSection = ch.ID, "write", ""
+			if ch.TotalBeats == 0 {
+				out.NextSection = "outline"
+			} else {
+				for _, plan := range state.ChapterPlans {
+					if plan.ChapterID == ch.ID {
+						head, e := planningKnowledgeHead(ctx, tx, scope)
+						if e != nil {
+							return out, e
+						}
+						if !publishedForPlan(head, plan) {
+							out.NextSection = "knowledge"
+						}
+					}
+				}
+				if ch.DoneBeats == ch.TotalBeats || ch.Status == "in_review" || ch.Status == "human" {
+					out.NextStage = "assembly"
+				}
+			}
+			break
+		}
 	}
 	return out, nil
 }

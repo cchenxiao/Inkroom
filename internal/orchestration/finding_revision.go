@@ -31,7 +31,7 @@ type FindingChange struct {
 
 func isFindingAction(kind string) bool {
 	switch kind {
-	case "propose_finding", "apply_finding", "discard_finding", "edit_finding":
+	case "propose_selection", "propose_finding", "apply_finding", "discard_finding", "edit_finding":
 		return true
 	}
 	return false
@@ -52,6 +52,12 @@ func validateFindingAction(s ChapterState, a HumanAction) error {
 	}
 	if err := a.Rewrite.Validate(s.Segments); err != nil {
 		return err
+	}
+	if a.Type == "propose_selection" {
+		if a.FindingID != "" {
+			return fmt.Errorf("选区修改不应绑定审查问题")
+		}
+		return nil
 	}
 	if s.Report.DraftVersion != s.DraftVersion && !s.ReviewPending {
 		return fmt.Errorf("请先复审当前稿")
@@ -88,7 +94,7 @@ func applyFindingAction(ctx context.Context, s ChapterState, a HumanAction, chat
 	if err := validateFindingAction(s, a); err != nil {
 		return s, err
 	}
-	if a.Type == "propose_finding" {
+	if a.Type == "propose_finding" || a.Type == "propose_selection" {
 		segments, _, err := agents.RewriteAuthor(ctx, chat, s.Segments, s.Context, *a.Rewrite)
 		if err != nil {
 			return s, err
@@ -126,6 +132,10 @@ func applyFindingAction(ctx context.Context, s ChapterState, a HumanAction, chat
 		}
 	}
 	s.FindingChanges = append(append([]FindingChange{}, s.FindingChanges...), FindingChange{FindingID: findingID, SegmentID: req.SegmentID, Before: string([]rune(req.Original)[req.Start:req.End]), After: replacement, FromVersion: s.DraftVersion, ToVersion: s.DraftVersion + 1})
+	if findingID == "" {
+		request := *req
+		s.AuthorRequest = &request
+	}
 	s.DraftVersion++
 	s.ReviewPending = true
 	s.FindingProposal = nil

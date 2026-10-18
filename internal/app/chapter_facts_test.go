@@ -47,3 +47,38 @@ func TestChapterFactEvidenceAndHumanBoundary(t *testing.T) {
 		t.Fatal("unresolved conflict not blocked", err)
 	}
 }
+
+func TestAuthorCanCorrectModelClassificationWithoutOverwritingEvidenceOrOldFacts(t *testing.T) {
+	in := ChapterFactsInput{Knowledge: knowledge.Snapshot{Characters: []string{"shen"}, Facts: []knowledge.Fact{{ID: "old", Text: "旧事实"}}}, Review: ChapterReviewInput{Parts: []ChapterReviewPart{{Segments: []ChapterReviewSource{{ID: "s", Text: "陆青说：“别说是渡口叫去的。”", SourceID: "segment", SourceVersion: 1}}}}}}
+	for _, kind := range []string{"statement", "uncertain"} {
+		out := ChapterFactsOutput{Candidates: []ChapterFactCandidate{{ID: "f", Kind: kind, Text: "陆青的叮嘱", Evidence: ChapterEvidence{Ref: "s", Quote: "陆青说：“别说是渡口叫去的。”"}}}}
+		req := ChapterFactsSelectionRequest{Decisions: []ChapterFactDecision{{CandidateID: "f", Action: "confirm", Text: "陆青叮嘱沈砚不要说是渡口叫去的", Reason: "作者按原文记录言语行为"}}}
+		if _, _, err := BuildChapterFacts(in, out, req); err == nil {
+			t.Fatal("model classification bypassed without author correction")
+		}
+		for _, basis := range []string{"speech_act", "observed_event"} {
+			req.Decisions[0].EventBasis = basis
+			pack, block, err := BuildChapterFacts(in, out, req)
+			if err != nil || block != "" || len(pack.Facts) != 1 || pack.Facts[0].Text != req.Decisions[0].Text || pack.Facts[0].Evidence != out.Candidates[0].Evidence || len(pack.Facts[0].KnownBy) != 0 {
+				t.Fatal(pack, block, err)
+			}
+			if out.Candidates[0].Kind != kind {
+				t.Fatal("original model classification was mutated")
+			}
+		}
+		req.Decisions[0].EventBasis = "anything"
+		if _, _, err := BuildChapterFacts(in, out, req); err == nil {
+			t.Fatal("invalid author classification accepted")
+		}
+		req.Decisions[0].EventBasis = "speech_act"
+		out.Candidates[0].RelatedFactID = "old"
+		if _, _, err := BuildChapterFacts(in, out, req); err == nil {
+			t.Fatal("author classification bypassed old-fact protection")
+		}
+		out.Candidates[0].RelatedFactID = ""
+		out.Candidates[0].Evidence.Quote = "没有发生的对话"
+		if _, _, err := BuildChapterFacts(in, out, req); err == nil {
+			t.Fatal("author classification bypassed evidence validation")
+		}
+	}
+}

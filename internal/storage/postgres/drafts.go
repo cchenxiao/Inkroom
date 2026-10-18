@@ -84,6 +84,13 @@ func (s *Store) EditSegment(ctx context.Context, chapter, branch, id string, exp
 	if current != expected {
 		return app.Draft{}, app.ErrVersionMismatch
 	}
+	var dismissed bool
+	if err = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM chapter_versions v JOIN runs r ON r.id=v.run_id WHERE v.chapter_id=$1 AND v.branch_id=$2 AND v.draft_version=$3 AND r.payload->>'dismissed'='true')`, chapter, branch, current).Scan(&dismissed); err != nil {
+		return app.Draft{}, err
+	}
+	if dismissed {
+		return app.Draft{}, app.ErrGateBlocked
+	}
 	var raw []byte
 	if err = tx.QueryRow(ctx, "SELECT segments FROM chapter_versions WHERE chapter_id=$1 AND branch_id=$2 AND draft_version=$3", chapter, branch, current).Scan(&raw); err != nil {
 		return app.Draft{}, err

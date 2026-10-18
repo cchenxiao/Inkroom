@@ -84,6 +84,7 @@ export function useWritingActions(run: BackendRun | undefined, currentVersion?: 
     mutation,
     busy: !!pending || mutation.isPending,
     approve: () => action({ type: 'approve' }),
+    proposeSelection: (rewrite: AuthorRewrite) => action({ type: 'propose_selection', rewrite }),
     proposeFinding: (findingId: string, rewrite: AuthorRewrite) =>
       action({ type: 'propose_finding', findingId, rewrite }),
     applyFinding: (proposalId: string) => action({ type: 'apply_finding', proposalId }),

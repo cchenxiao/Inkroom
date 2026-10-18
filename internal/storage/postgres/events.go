@@ -78,6 +78,16 @@ func snapshot(ctx context.Context, q queryRow, id string) (app.Run, error) {
 		}
 		stored.NeighborsChanged = !current
 	}
+	stored.CanDismiss, err = canDismissCandidate(ctx, q, stored)
+	if err != nil {
+		return stored, err
+	}
+	if stored.Dismissed {
+		stored.Status = "stale"
+		stored.CanResume = false
+		stored.ApprovalBlock = "此候选已放弃，当前继续使用已采用稿"
+		stored.InstructionBlock = stored.ApprovalBlock
+	}
 	return stored, nil
 }
 

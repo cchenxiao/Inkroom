@@ -12,11 +12,11 @@ import (
 const ChapterBeatID = "__chapter__"
 
 // Build every target through the same POV/time projection used for single-beat writing.
-func PrepareChapterWriting(cfg config.Config, scope, runID string, base int, p planning.ChapterPlanSelection, k knowledge.Snapshot) (manuscript.FrozenInput, error) {
+func PrepareChapterWriting(cfg config.Config, scope, runID string, base int, p planning.ChapterPlanSelection, k knowledge.Snapshot, history ...ChapterPublication) (manuscript.FrozenInput, error) {
 	targets := []manuscript.ContextBundle{}
 	for _, scene := range p.Content.Scenes {
 		for _, beat := range scene.Beats {
-			in, err := PreparePlannedContext(cfg, scope, runID, base, p, beat.ID)
+			in, err := PreparePlannedContextWithHistory(cfg, scope, runID, base, p, history, beat.ID)
 			if err != nil {
 				return in, err
 			}
@@ -35,7 +35,7 @@ func PrepareChapterWriting(cfg config.Config, scope, runID string, base int, p p
 	b.Targets = targets
 	in := manuscript.FrozenInput{Bundle: b, Manifest: manuscript.ContextManifest{RunID: runID, BaseDraftVersion: base, Budget: cfg.ContextTokens, ReservedOutputTokens: cfg.MaxOutputTokens}}
 	if in.Manifest.Budget == 0 {
-		in.Manifest.Budget = 32768
+		in.Manifest.Budget = config.DefaultContextTokens
 	}
 	if in.Manifest.ReservedOutputTokens == 0 {
 		in.Manifest.ReservedOutputTokens = 8192

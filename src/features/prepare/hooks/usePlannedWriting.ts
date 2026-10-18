@@ -44,7 +44,8 @@ export function usePlannedWriting(
     retry: false,
     refetchInterval: 5000,
   });
-  const activeID = runId ?? gate.data?.runs[0]?.id ?? null;
+  const activeID =
+    runId ?? gate.data?.working?.runId ?? gate.data?.runs.find((r) => !r.dismissed)?.id ?? null;
   useEffect(() => {
     if (activeID)
       setSelection((old) => (old?.target === target && old.id ? old : { target, id: activeID }));
@@ -89,7 +90,26 @@ export function usePlannedWriting(
       refresh();
     },
   });
-  useWritingPending(start.isPending || !!pendingStart);
+  const dismiss = useMutation({
+    mutationFn: () => plannedRunApi.dismiss(run!.id, run!.draftVersion),
+    retry: false,
+    onSuccess: async (result) => {
+      client.setQueryData(['backend-trial', result.id], result);
+      await client.invalidateQueries({ queryKey: ['planned-run-gate', chapterId] });
+      const fresh = await gate.refetch();
+      setRunId(
+        fresh.data?.working?.runId ?? fresh.data?.runs.find((r) => !r.dismissed)?.id ?? null,
+      );
+      await Promise.all([
+        client.invalidateQueries({ queryKey: ['chapter-assembly'] }),
+        client.invalidateQueries({ queryKey: ['chapter-review'] }),
+        client.invalidateQueries({ queryKey: ['chapter-facts'] }),
+        client.invalidateQueries({ queryKey: ['chapter-publication'] }),
+      ]);
+      refresh();
+    },
+  });
+  useWritingPending(start.isPending || !!pendingStart || dismiss.isPending);
   const { isError: startFailed, reset: resetStart } = start;
   useEffect(() => {
     const id = pendingStart?.requestId;
@@ -245,6 +265,7 @@ export function usePlannedWriting(
     }
   };
   return {
+    dismiss,
     chapterGate,
     beginChapter,
     revise,

@@ -33,7 +33,9 @@ export default function ChapterAssembly({
   onRead,
   onReviewBeat,
   enhancedContinuity,
+  continuation,
 }: {
+  continuation?: { label: string; onClick: () => void };
   chapterId: string;
   editing: boolean;
   embedded?: boolean;
@@ -43,6 +45,7 @@ export default function ChapterAssembly({
 }) {
   const client = useQueryClient();
   const [step, setStep] = useState('auto');
+  const [reviewPhase, setReviewPhase] = useState<'review' | 'finalize' | 'done'>('review');
   const [openedRecords, setOpenedRecords] = useState<string[]>([]);
   const [choices, setChoices] = useState<Record<string, string>>({});
   const [confirmed, setConfirmed] = useState('');
@@ -114,8 +117,12 @@ export default function ChapterAssembly({
           {embedded && (
             <ol className="chapter-workflow-progress" aria-label="整章审核步骤">
               <li aria-current={!data.ready ? 'step' : undefined}>处理段落</li>
-              <li aria-current={data.ready ? 'step' : undefined}>检查整章</li>
-              <li>确认定稿</li>
+              <li aria-current={data.ready && reviewPhase === 'review' ? 'step' : undefined}>
+                检查整章
+              </li>
+              <li aria-current={data.ready && reviewPhase !== 'review' ? 'step' : undefined}>
+                {reviewPhase === 'done' ? '已定稿' : '确认定稿'}
+              </li>
             </ol>
           )}
           <div
@@ -128,10 +135,16 @@ export default function ChapterAssembly({
               </Button>
             )}
             <div className="chapter-workflow-summary">
-              <strong>{data.ready ? '正文已齐，可以核对章稿' : '先完成段落审核'}</strong>
+              <strong>
+                {data.ready
+                  ? '正文已齐，可以核对章稿'
+                  : data.slots.some((s) => s.choices.length)
+                    ? '核对新修改，再组章'
+                    : '先完成段落审核'}
+              </strong>
               <p>
                 {data.slots.length
-                  ? `${data.slots.filter((s) => !s.reason).length}/${data.slots.length} 段已采用`
+                  ? `${data.slots.filter((s) => s.choices.length || !s.reason).length}/${data.slots.length} 段已有采用稿 · ${data.slots.filter((s) => !s.reason).length} 段最新稿可组章`
                   : readableMessage(data.reason, '请先完成章节创作准备。')}
               </p>
             </div>
@@ -142,7 +155,11 @@ export default function ChapterAssembly({
                   .map((slot) => (
                     <li key={slot.part.beatId}>
                       <strong>{slot.part.beatTitle}</strong>
-                      <p>请先核对并采用这一段的最新正文。</p>
+                      <p>
+                        {slot.choices.length
+                          ? `已采用 v${slot.choices[0].draftVersion} 保留；最新正文尚未采用，或组稿来源需更新。`
+                          : '这一段尚无采用稿，请先审核并采用。'}
+                      </p>
                       {onReviewBeat && (
                         <Button
                           size="sm"
@@ -210,7 +227,7 @@ export default function ChapterAssembly({
                 <input
                   type="checkbox"
                   checked={!!confirmed && confirmed === data.previewDigest}
-                  disabled={!!block || locked || query.isFetching}
+                  disabled={!!block || locked || query.isPending}
                   onChange={(e) => {
                     setStale(false);
                     setConfirmed(e.target.checked ? data.previewDigest : '');
@@ -224,7 +241,7 @@ export default function ChapterAssembly({
                 disabled={
                   !!block ||
                   locked ||
-                  query.isFetching ||
+                  query.isPending ||
                   !confirmed ||
                   confirmed !== data.previewDigest
                 }
@@ -275,6 +292,8 @@ export default function ChapterAssembly({
               editing={editing}
               onRead={onRead}
               enhancedContinuity={enhancedContinuity}
+              continuation={continuation}
+              onPhase={setReviewPhase}
             />
           </div>
           <div className="chapter-workflow-history">

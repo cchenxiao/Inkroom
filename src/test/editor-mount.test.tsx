@@ -2,6 +2,11 @@ import { render, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { SegmentEditor } from '@/features/workspace/editor/SegmentEditor';
 import { seedDocuments } from '@/mocks/data/seed';
+// Keep the real editor/transactions; floating tooltip positioning requires a browser.
+vi.mock('@tiptap/react', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@tiptap/react')>()),
+  BubbleMenu: () => null,
+}));
 describe('editor document hydration', () => {
   it('does not autosave when mounting a manuscript or toggling its editability', async () => {
     const segment = seedDocuments().ch7.segments[0];
@@ -102,4 +107,44 @@ it('updates findings and heatmap without recreating the editor or saving text', 
   expect(container.querySelector('.tiptap')).toBe(original);
   expect(container.querySelector('.ai-heat')).toBeInTheDocument();
   expect(onChange).not.toHaveBeenCalled();
+});
+
+it('keeps the changed sentence visible when its selection preview closes', async () => {
+  const segment = { ...seedDocuments().ch7.segments[0], text: '前段。\n选中原句。\n后段。' };
+  const props = {
+    segment,
+    text: segment.text,
+    findings: [],
+    editable: false,
+    heatmap: false,
+    onChange: vi.fn(),
+    onFocus: vi.fn(),
+    onSelection: vi.fn(),
+    onFinding: vi.fn(),
+  };
+  const scrolled: string[] = [];
+  const previous = HTMLElement.prototype.scrollIntoView;
+  HTMLElement.prototype.scrollIntoView = function () {
+    scrolled.push(this.textContent ?? '');
+  };
+  try {
+    const { container, rerender } = render(
+      <SegmentEditor
+        {...props}
+        review={{
+          id: 'selection',
+          quote: '选中原句。',
+          keepVisibleOnClose: true,
+          content: <aside>替换预览</aside>,
+        }}
+      />,
+    );
+    await waitFor(() => expect(container.querySelector('.inline-review-host')).toBeInTheDocument());
+    rerender(<SegmentEditor {...props} text={'前段。\n修改后的句子。\n后段。'} />);
+    await waitFor(() => expect(scrolled).toContain('修改后的句子。'));
+    expect(props.onChange).not.toHaveBeenCalled();
+    expect(container.querySelector('.inline-review-host')).toBeNull();
+  } finally {
+    HTMLElement.prototype.scrollIntoView = previous;
+  }
 });

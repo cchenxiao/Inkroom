@@ -44,6 +44,7 @@ func exercisePlannedRun(t *testing.T, s *Store, scope string, p planning.Chapter
 	}
 	if len(target) > 0 {
 		cfg.MaxCalls = 4
+		cfg.MaxTokens = 128000 // Reserve both parallel critics and the full neighboring manuscript.
 	} // Writer, two base critics, and the opted-in review
 	cfg.ExperimentalContinuity = len(target) == 0 // opposite of the explicit request
 	req := app.PlannedRunRequest{EnhancedContinuity: len(target) > 0, BeatID: ready.BeatID, RequestID: rand.Text(), ChapterID: p.ChapterID, Expected: p.Versions, PlanVersion: p.Version, DraftVersion: ready.DraftVersion}

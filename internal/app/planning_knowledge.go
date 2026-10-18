@@ -99,14 +99,20 @@ func FreezePublishedKnowledge(input manuscript.FrozenInput, s knowledge.Snapshot
 	if v["input"] != p.Input || v["direction"] != p.Direction || v["style"] != p.Style || v["core"] != p.Core {
 		return input, ErrVersionMismatch
 	}
-	selected, err := knowledge.Project(s, memory.View{ProjectID: input.Bundle.ProjectID, BranchID: input.Bundle.BranchID, POV: input.Bundle.POVCharacterID, At: memory.Moment{Chapter: 1, StoryTime: t.StoryTime}})
+	selected, err := knowledge.Project(s, memory.View{ProjectID: input.Bundle.ProjectID, BranchID: input.Bundle.BranchID, POV: input.Bundle.POVCharacterID, At: memory.Moment{Chapter: max(1, t.ChapterNumber), StoryTime: t.StoryTime}})
 	if err != nil {
 		return input, err
 	}
 	if len(selected.CharacterContext) == 0 {
 		return input, fmt.Errorf("已发布知识中没有当前 POV/时间可用事实")
 	}
-	input.Bundle.Facts = []manuscript.SourceRef{}
+	carried := []manuscript.SourceRef{}
+	for _, f := range input.Bundle.Facts {
+		if strings.HasPrefix(f.ID, "publication/") {
+			carried = append(carried, f)
+		}
+	}
+	input.Bundle.Facts = carried
 	for _, f := range selected.CharacterContext {
 		input.Bundle.Facts = append(input.Bundle.Facts, manuscript.SourceRef{ID: "knowledge/" + f.ID, Version: s.Version, Text: f.Text})
 	}

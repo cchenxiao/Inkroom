@@ -11,6 +11,7 @@ import (
 	"inkloom/internal/app"
 	"inkloom/internal/domain/planning"
 	"reflect"
+	"strings"
 	"time"
 )
 
@@ -54,7 +55,7 @@ func (s *Store) StartChapterPlan(ctx context.Context, scope string, r planning.C
 	if busy {
 		return empty, false, app.ErrRunBusy
 	}
-	j := planning.ChapterPlanJob{ID: r.RequestID, Version: 1, Status: "running", Request: r, Input: in, Model: modelName, PromptVersion: "showrunner.v1", SchemaVersion: "showrunner.v1", Calls: []model.CallRecord{}, CreatedAt: time.Now()}
+	j := planning.ChapterPlanJob{ID: r.RequestID, Version: 1, Status: "running", Request: r, Input: in, Model: modelName, PromptVersion: "showrunner.v2", SchemaVersion: "showrunner.v1", Calls: []model.CallRecord{}, CreatedAt: time.Now()}
 	raw, _ = json.Marshal(j)
 	if _, err = tx.Exec(ctx, "INSERT INTO planning_chapter_plan_jobs(id,scope,status,record) VALUES($1,$2,'running',$3)", j.ID, scope, raw); err != nil {
 		return empty, false, err
@@ -171,6 +172,43 @@ func currentChapterPlanInput(ctx context.Context, tx pgx.Tx, scope string, v pla
 	in.Base = base
 	in.ChapterID = chapterID
 	in.Request = request
+	// Future chapters can still be planned ahead. Once a predecessor is finalized,
+	// freeze its actual ending and confirmed facts rather than inventing a bridge.
+	for i, ch := range in.Outline.Content.Chapters {
+		if ch.ID != chapterID || i == 0 {
+			continue
+		}
+		var receipt []byte
+		e := tx.QueryRow(ctx, "SELECT record FROM chapter_publications WHERE scope=$1 AND chapter_id=$2 ORDER BY version DESC LIMIT 1", scope, in.Outline.Content.Chapters[i-1].ID).Scan(&receipt)
+		if errors.Is(e, pgx.ErrNoRows) {
+			break
+		}
+		if e != nil {
+			return in, e
+		}
+		var pub app.ChapterPublication
+		if e = json.Unmarshal(receipt, &pub); e != nil {
+			return in, e
+		}
+		handoff := &planning.ChapterHandoff{PublicationID: pub.ID, ChapterID: pub.ChapterID, Version: pub.Version, Facts: []planning.ChapterHandoffFact{}}
+		for _, part := range pub.Assembly.Parts {
+			for _, seg := range part.Segments {
+				handoff.Ending += seg.Text + "\n"
+			}
+		}
+		ending := []rune(strings.TrimSpace(handoff.Ending))
+		if len(ending) > 1200 {
+			ending = ending[len(ending)-1200:]
+		}
+		handoff.Ending = string(ending)
+		if pub.FactSelection != nil {
+			for _, f := range pub.FactSelection.Package.Facts {
+				handoff.Facts = append(handoff.Facts, planning.ChapterHandoffFact{ID: f.ID, Text: f.Text, StoryTime: f.StoryTime, KnownBy: f.KnownBy})
+			}
+		}
+		in.PreviousChapter = handoff
+		break
+	}
 	if in.Validate() != nil {
 		return in, app.ErrInvalidWrite
 	}

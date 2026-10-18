@@ -18,6 +18,11 @@ import (
 )
 
 func TestFindingPreviewRecoveryAndBatchReview(t *testing.T) {
+	for _, kind := range []string{"propose_finding", "propose_selection"} {
+		t.Run(kind, func(t *testing.T) { exercisePreviewRecovery(t, kind) })
+	}
+}
+func exercisePreviewRecovery(t *testing.T, kind string) {
 	url := os.Getenv("INKLOOM_TEST_DATABASE_URL")
 	if url == "" {
 		t.Skip("set INKLOOM_TEST_DATABASE_URL")
@@ -111,7 +116,11 @@ func TestFindingPreviewRecoveryAndBatchReview(t *testing.T) {
 			t.Fatalf("idempotent retry: %v", e)
 		}
 	}
-	preview := orchestration.HumanAction{ID: rand.Text(), Type: "propose_finding", DraftVersion: 1, FindingID: "f1", Rewrite: request(original, "待修改甲")}
+	preview := orchestration.HumanAction{ID: rand.Text(), Type: kind, DraftVersion: 1, FindingID: "f1", Rewrite: request(original, "待修改甲")}
+	if kind == "propose_selection" {
+		preview.FindingID = ""
+		preview.Rewrite.Preview = true
+	}
 	perform(preview, true)
 	calls, err := store.Calls(ctx, id)
 	if err != nil || len(calls) != 1 {
