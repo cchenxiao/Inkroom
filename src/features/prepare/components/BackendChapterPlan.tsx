@@ -1,5 +1,5 @@
 import { Link, useSearchParams } from 'react-router-dom';
-import { liveWorkspacePath } from '@/shared/lib/writing-mode';
+import { liveContinuationPath, liveWorkspacePath } from '@/shared/lib/writing-mode';
 import { liveWriting } from '@/shared/lib/messages-live-writing';
 import { useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -138,6 +138,24 @@ function ChapterPlanWorkbench() {
         </Button>
       </div>
       <p className="muted">{t.boundary}</p>
+      {ready &&
+        chapter &&
+        !edit &&
+        !running &&
+        !busy &&
+        !query.isError &&
+        (!selected || selected.confirmed) && (
+          <Card>
+            <h3>继续本章创作</h3>
+            <p>
+              自动获取章纲、前章定稿与已确认事实；补齐细纲后生成整章候选，保留已有正文。无需重新填写展开要求。
+            </p>
+            <Link className="button button-default" to={liveContinuationPath(chapter.id)}>
+              按已确认章纲开始本章 →
+            </Link>
+            <p className="muted">下方保留手动展开和调整细纲的入口。</p>
+          </Card>
+        )}
       {!ready && <p className="core-notice">{t.prerequisite}</p>}
       {query.isError && <p role="alert">{t.error}</p>}
       {notice && <p role="alert">{notice}</p>}

@@ -1145,3 +1145,15 @@
   background: var(--panel);
   padding: 8px 0;
 }
+
+.chapter-continuation {
+  padding: 24px;
+  margin: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
+}
+.chapter-continuation p {
+  margin-top: 12px;
+  line-height: 1.7;
+}

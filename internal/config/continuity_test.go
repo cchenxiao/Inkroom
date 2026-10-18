@@ -48,3 +48,29 @@ func TestConsistencyPolicyIsSeparateAndValidated(t *testing.T) {
 		})
 	}
 }
+
+func TestChapterBudgetDoesNotReuseSingleBeatCap(t *testing.T) {
+	t.Setenv("INKLOOM_MODEL", "fake")
+	t.Setenv("INKLOOM_EMBEDDER", "none")
+	t.Setenv("INKLOOM_MAX_CALLS", "10")
+	t.Setenv("INKLOOM_MAX_TOKENS", "128000")
+	t.Setenv("INKLOOM_CHAPTER_MAX_CALLS", "")
+	t.Setenv("INKLOOM_CHAPTER_MAX_TOKENS", "")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	chapter := cfg.ChapterLimits()
+	if cfg.MaxCalls != 10 || chapter.MaxCalls != 48 || chapter.MaxTokens != 512000 {
+		t.Fatal("scope budgets not separated")
+	}
+	t.Setenv("INKLOOM_CHAPTER_MAX_CALLS", "20")
+	cfg, err = Load()
+	if err != nil || cfg.ChapterLimits().MaxCalls != 20 {
+		t.Fatal("explicit chapter cap ignored")
+	}
+	t.Setenv("INKLOOM_CHAPTER_MAX_TOKENS", "0")
+	if _, err := Load(); err == nil {
+		t.Fatal("invalid chapter cap accepted")
+	}
+}

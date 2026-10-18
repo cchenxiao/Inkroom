@@ -34,3 +34,7 @@ export function livePreparePath(section = 'premise', chapterId?: string) {
   if (chapterId) q.set('planningChapterId', chapterId);
   return `/prepare?${q}`;
 }
+
+export function liveContinuationPath(chapterId: string) {
+  return `${liveWorkspacePath(chapterId)}&continuation=${crypto.randomUUID()}&panel=closed`;
+}

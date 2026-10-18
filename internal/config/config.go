@@ -29,6 +29,8 @@ type Config struct {
 	ModelName               string
 	BaseURL                 string
 	CallTimeout             time.Duration
+	ChapterMaxCalls         int
+	ChapterMaxTokens        int
 	MaxCalls                int
 	MaxTokens               int
 	HumanOperationTokens    int
@@ -82,6 +84,12 @@ func Load() (Config, error) {
 	if cfg.MaxTokens, err = positive("INKLOOM_MAX_TOKENS", 128000); err != nil {
 		return Config{}, err
 	}
+	if cfg.ChapterMaxCalls, err = positive("INKLOOM_CHAPTER_MAX_CALLS", 48); err != nil {
+		return Config{}, err
+	}
+	if cfg.ChapterMaxTokens, err = positive("INKLOOM_CHAPTER_MAX_TOKENS", 512000); err != nil {
+		return Config{}, err
+	}
 	if cfg.HumanOperationTokens, err = positive("INKLOOM_HUMAN_OPERATION_TOKENS", 256000); err != nil {
 		return Config{}, err
 	}
@@ -120,4 +128,16 @@ func positive(key string, fallback int) (int, error) {
 		return n, nil
 	}
 	return fallback, nil
+}
+
+// ChapterLimits separates multi-beat context/consistency work from single-beat
+// trials. Explicit chapter limits remain hard caps and are frozen on the run.
+func (c Config) ChapterLimits() Config {
+	if c.ChapterMaxCalls > 0 {
+		c.MaxCalls = c.ChapterMaxCalls
+	}
+	if c.ChapterMaxTokens > 0 {
+		c.MaxTokens = c.ChapterMaxTokens
+	}
+	return c
 }

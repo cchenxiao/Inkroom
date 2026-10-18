@@ -239,7 +239,11 @@ func (s *service) start(w http.ResponseWriter, r *http.Request) {
 func (s *service) execute(run app.Run) {
 	defer s.workers.Done()
 	defer func() { s.mu.Lock(); s.active = false; s.mu.Unlock() }()
-	ctx, cancel := context.WithTimeout(s.root, 2*time.Minute)
+	timeout := 2 * time.Minute
+	if run.Planning != nil && run.Planning.Mode == "chapter" {
+		timeout = 8 * time.Minute
+	}
+	ctx, cancel := context.WithTimeout(s.root, timeout)
 	defer cancel()
 	started := time.Now()
 	expected := run.BaseDraftVersion
@@ -274,7 +278,7 @@ func (s *service) execute(run app.Run) {
 		_ = s.repo.StopRun(ctx, run.ID, "failed", "模型调用预算读取失败，未启动 Writer")
 		return
 	}
-	result, err := app.ExecuteChapter(ctx, s.cfg, run.Scenario, orchestration.Options{
+	result, err := app.ExecuteChapter(ctx, s.runConfig(run), run.Scenario, orchestration.Options{
 		ConsistencyCheck: s.consistencyCheck(run),
 		FrozenInput:      &input,
 		CallHistory:      history,

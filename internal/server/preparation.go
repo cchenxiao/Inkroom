@@ -4,6 +4,7 @@ import (
 	"context"
 	"inkloom/internal/agents/model"
 	"inkloom/internal/app"
+	"inkloom/internal/config"
 	"inkloom/internal/domain/manuscript"
 	"inkloom/internal/domain/memory"
 	"time"
@@ -19,7 +20,7 @@ func (s *service) prepare(ctx context.Context, r app.Run) (app.Run, manuscript.F
 		return r, base, err
 	}
 	// 准备阶段也受整条 run 的超时与调用预算约束，不占 HTTP 请求。
-	input, err := app.LookupContext(ctx, s.cfg, base, s.retriever, func(_ context.Context, c model.CallRecord) error {
+	input, err := app.LookupContext(ctx, s.runConfig(r), base, s.retriever, func(_ context.Context, c model.CallRecord) error {
 		save, stop := context.WithTimeout(context.Background(), 5*time.Second)
 		defer stop()
 		if c.Phase == "started" {
@@ -45,4 +46,17 @@ func (s *service) prepare(ctx context.Context, r app.Run) (app.Run, manuscript.F
 	}
 	r, err = s.repo.GetRun(ctx, r.ID)
 	return r, input, err
+}
+
+// Execution and preparation consume the same persisted run budget. A server
+// configuration change must not silently replace the budget of an active run.
+func (s *service) runConfig(r app.Run) config.Config {
+	cfg := s.cfg
+	if r.MaxCalls > 0 {
+		cfg.MaxCalls = r.MaxCalls
+	}
+	if r.MaxTokens > 0 {
+		cfg.MaxTokens = r.MaxTokens
+	}
+	return cfg
 }

@@ -1,3 +1,4 @@
+import { ChapterContinuation } from './chapter-continuation';
 import { savedChanges, SavedChangeCard, type SavedChange } from './saved-changes';
 import { SelectionRewritePreview } from './selection-rewrite-preview';
 import { findingRewrite, replaceFindingQuote, submitFindingRewrite } from './finding-actions';
@@ -30,7 +31,11 @@ import {
 } from 'lucide-react';
 import { PendingWritingProvider, useWritingLocked } from '@/shared/lib/pending-writing';
 import { useUIStore } from '@/shared/lib/ui-store';
-import { livePreparePath, liveWorkspacePath } from '@/shared/lib/writing-mode';
+import {
+  liveContinuationPath,
+  livePreparePath,
+  liveWorkspacePath,
+} from '@/shared/lib/writing-mode';
 import { writingDesk as t } from '@/shared/lib/messages-writing-desk';
 import { AsyncState, Badge, Button, Modal } from '@/shared/ui';
 import {
@@ -117,7 +122,7 @@ function Desk({
   const chapters = planning.outlineSelection?.content.chapters ?? [];
   const chapter = chapters.find((c) => c.id === chapterId);
   const nextChapter = chapters[chapters.findIndex((c) => c.id === chapterId) + 1];
-  const nextPlan = planning.chapterPlans?.find((p) => p.chapterId === nextChapter?.id);
+  const continuationId = params.get('continuation');
   const plan = planning.chapterPlans?.find((p) => p.chapterId === chapterId);
   const requestedBeat = params.get('beatId');
   const beatId =
@@ -1156,6 +1161,26 @@ function Desk({
               </aside>
             ))}
           <main className="route-content">
+            {continuationId && (
+              <ChapterContinuation
+                key={continuationId}
+                chapterId={chapterId}
+                requestId={continuationId}
+                onRetry={() => navigate(liveContinuationPath(chapterId), { replace: true })}
+                onDone={(runId) => {
+                  if (runId) writer.setRunId(runId);
+                  writer.refresh();
+                  setParams(
+                    (current) => {
+                      const next = new URLSearchParams(current);
+                      next.delete('continuation');
+                      return next;
+                    },
+                    { replace: true },
+                  );
+                }}
+              />
+            )}
             <ReviewProgress run={run} />
             {writer.failedManual && (
               <section className="manuscript-edit-actions" aria-label="恢复正文保存">
@@ -1507,14 +1532,20 @@ function Desk({
                   />
                 )}
               </WritingManuscript>
-            ) : (
+            ) : !continuationId ? (
               <div className="writing-empty">
                 <h2>{chapter?.title ?? '尚未准备章节'}</h2>
                 <p>{block || t.prerequisite}</p>
-                <small>按细纲生成候选，保留已采用正文。单句或单段修改在正文中操作。</small>
-                <Link to={livePreparePath('outline', chapterId)}>{t.prepare}</Link>
+                <p>自动获取已确认章纲、前章定稿与事实，准备细纲后开始整章候选创作。</p>
+                <Button
+                  disabled={!chapterPlanReady(planning) || locked}
+                  onClick={() => navigate(liveContinuationPath(chapterId))}
+                >
+                  按章纲开始本章创作
+                </Button>
+                <Link to={livePreparePath('outline', chapterId)}>手动调整本章细纲</Link>
               </div>
-            )}
+            ) : null}
           </main>
           {compact && !focus && !!side && (
             <button
@@ -1585,12 +1616,7 @@ function Desk({
                     nextChapter
                       ? {
                           label: `继续第 ${chapters.indexOf(nextChapter) + 1} 章 · ${nextChapter.title}`,
-                          onClick: () =>
-                            navigate(
-                              nextPlan?.confirmed
-                                ? liveWorkspacePath(nextChapter.id)
-                                : livePreparePath('outline', nextChapter.id),
-                            ),
+                          onClick: () => navigate(liveContinuationPath(nextChapter.id)),
                         }
                       : undefined
                   }

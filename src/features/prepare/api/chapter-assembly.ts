@@ -52,11 +52,19 @@ export interface AssemblySaveRequest {
   confirm: boolean;
 }
 export const assemblyApi = {
-  preview: (chapterId: string, choices: Record<string, string>) =>
-    backendApi.post<AssemblyPreview>('/planning/chapter-assemblies/preview', {
+  preview: async (chapterId: string, choices: Record<string, string>) => {
+    const preview = await backendApi.post<AssemblyPreview>('/planning/chapter-assemblies/preview', {
       chapterId,
       choices,
-    }),
+    });
+    // An unassembled new chapter has no adopted parts; Go's nil slice is null.
+    return {
+      ...preview,
+      slots: preview.slots ?? [],
+      history: preview.history ?? [],
+      draft: { ...preview.draft, parts: preview.draft.parts ?? [] },
+    };
+  },
   save: (request: AssemblySaveRequest) =>
     backendApi.post<ChapterAssembly>('/planning/chapter-assemblies', request),
 };

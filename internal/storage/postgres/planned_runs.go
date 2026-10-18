@@ -240,6 +240,9 @@ func (s *Store) StartPlannedRun(ctx context.Context, scope string, req app.Plann
 	if req.Mode == "chapter" {
 		source.BeatID = app.ChapterBeatID
 	}
+	if req.Mode == "chapter" {
+		cfg = cfg.ChapterLimits()
+	}
 	r = app.Run{Planning: source, ID: req.RequestID, ChapterID: frozen.Bundle.ChapterID, BranchID: "main", BaseDraftVersion: req.DraftVersion, DraftVersion: req.DraftVersion, Status: "running", CurrentNode: "context_assemble", Scenario: "normal", InputDigest: frozen.Manifest.Digest, AutoRevise: req.AutoRevise, MaxRounds: 2, MaxCalls: cfg.MaxCalls, MaxTokens: cfg.MaxTokens, Provider: cfg.Model, Model: cfg.ModelName, Nodes: []any{}, ActiveRoles: []string{}}
 	if err = createRunTx(ctx, tx, r, &frozen, &frozen); err != nil {
 		return r, false, err
