@@ -62,22 +62,9 @@ Inkloom 将 AI 写作组织为可追溯的创作流程。模型负责提出正�
 
 ## 创作流程
 
-```mermaid
-flowchart LR
-    A[确认立意、风格与人物世界] --> B[确认章纲与本章细纲]
-    B --> C[上下文装配与按需检索]
-    C --> D[生成单段或整章候选]
-    D --> E[一致性与语言审查]
-    E --> F[作者审阅与修改对照]
-    F -->|需要修改| G[选区修改 / 直接编辑 / 整段改写]
-    G --> E
-    F -->|采用| H[整章组稿与复审]
-    H --> I[作者通过复审]
-    I --> J[核对章末事实与知情范围]
-    J --> K[确认整章定稿]
-    K --> L[承接前章材料，继续下一章]
-    L --> B
-```
+![创作流程：规划、生成、审改、事实确认与跨章续写](docs/diagrams/creation-workflow.svg)
+
+[Mermaid 流程源文件](docs/diagrams/creation-workflow.mmd)
 
 局部预览和应用不会自动重审整个批次；作者可集中修改后统一复检。新章默认按尽量不超过 **3000 字**的目标规划，显式章节目标优先；篇幅属于软约束，不会自动截断已有正文。
 
@@ -94,20 +81,9 @@ flowchart LR
 | 作者工作台 | React + Tiptap 承载正文、选区操作、原文问题标记与 diff；TanStack Query 管理服务端状态，Zustand 管理界面状态。 |
 | 可追溯定稿 | 冻结完整章稿、复审、作者决定和事实来源；下一章引用已确认材料，候选内容不会直接升级为事实。 |
 
-```mermaid
-flowchart TB
-    UI[React / Tiptap 作者工作台] -->|HTTP 人工动作| API[Go HTTP API]
-    API --> APP[规划、写作、复审、定稿应用服务]
-    APP --> GRAPH[Eino 编排与版本化运行状态]
-    GRAPH --> AGENT[Writer / Critic / Reviser]
-    AGENT --> MODEL[模型接口 · DeepSeek / Fake]
-    GRAPH --> CTX[上下文装配与受限检索]
-    CTX --> DB[(PostgreSQL + pgvector)]
-    APP --> DB
-    GRAPH --> DB
-    DB --> EVENTS[持久化事件 / SSE]
-    EVENTS --> UI
-```
+![系统架构：作者工作台、Go 应用服务、Agent 编排与持久化](docs/diagrams/system-architecture.svg)
+
+[Mermaid 架构源文件](docs/diagrams/system-architecture.mmd)
 
 **实现入口：** [运行与图编排](internal/orchestration) · [模型与提示词](internal/agents) · [上下文装配](internal/contextassembly) · [检索](internal/retrieval) · [持久化与迁移](internal/storage/postgres) · [正文工作台](src/app/writing)
 

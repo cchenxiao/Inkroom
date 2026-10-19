@@ -1,0 +1,12 @@
+flowchart TB
+    UI[React / Tiptap 作者工作台] -->|HTTP 人工动作| API[Go HTTP API]
+    API --> APP[规划、写作、复审、定稿应用服务]
+    APP --> GRAPH[Eino 编排与版本化运行状态]
+    GRAPH --> AGENT[Writer / Critic / Reviser]
+    AGENT --> MODEL[模型接口 · DeepSeek / Fake]
+    GRAPH --> CTX[上下文装配与受限检索]
+    CTX --> DB[(PostgreSQL + pgvector)]
+    APP --> DB
+    GRAPH --> DB
+    DB --> EVENTS[持久化事件 / SSE]
+    EVENTS --> UI
