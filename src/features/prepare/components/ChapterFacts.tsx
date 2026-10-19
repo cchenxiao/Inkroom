@@ -1,3 +1,4 @@
+import { completeFactDecisions, factDecisionReasons } from '../api/fact-batch';
 import { TechnicalDetails } from '@/shared/ui/technical-details';
 import { textLabel, readableMessage } from '@/shared/lib/business-labels';
 import { useEffect, useRef, useState } from 'react';
@@ -24,11 +25,13 @@ export default function ChapterFacts({
   state,
   blocked,
   onChange,
+  compact = false,
 }: {
   review: ChapterReviewJob;
   state?: FactsState;
   blocked: boolean;
   onChange: () => void;
+  compact?: boolean;
 }) {
   const [pending, setPending] = useState<FactsRequest | null>(null);
   const [restartMode, setRestartMode] = useState<FactsRequest['mode'] | null>(null);
@@ -107,7 +110,10 @@ export default function ChapterFacts({
       )}
       {job && !pending && !start.isPending && (
         <>
-          <p role={job.status === 'failed' || job.status === 'interrupted' ? 'alert' : 'status'}>
+          <p
+            hidden={compact}
+            role={job.status === 'failed' || job.status === 'interrupted' ? 'alert' : 'status'}
+          >
             {job.status === 'running'
               ? t.busy
               : job.status === 'completed' && job.output
@@ -121,8 +127,8 @@ export default function ChapterFacts({
                 : '这条历史记录未保存具体失败原因。可重新提取以记录诊断，或选择“我来整理事实”继续核对。'}
             </p>
           )}
-          {job.provider === 'human' && <p>{t.noModel}</p>}
-          {job.provider === 'fake' && <p>{t.fake}</p>}
+          {job.provider === 'human' && !compact && <p>{t.noModel}</p>}
+          {job.provider === 'fake' && !compact && <p>{t.fake}</p>}
           {latest?.id !== job.id && job.id !== start.data?.id && (
             <>
               <p role="alert">{t.stale}</p>
@@ -138,6 +144,7 @@ export default function ChapterFacts({
           {job.output && (
             <FactEditor
               key={job.id}
+              compact={compact}
               job={job}
               selection={latest?.id === job.id ? state?.selection : null}
               blocked={
@@ -150,7 +157,7 @@ export default function ChapterFacts({
               onChange={onChange}
             />
           )}
-          <details>
+          <details hidden={compact}>
             <summary>{t.audit}</summary>
             <p>
               {job.provider === 'human' ? '人工整理' : '模型整理'} · {job.calls.length} 次模型调用
@@ -183,6 +190,7 @@ export default function ChapterFacts({
       <details
         open={!job || job.status === 'failed' || job.status === 'interrupted'}
         className="chapter-facts-restart"
+        hidden={compact}
       >
         <summary hidden={!job}>重新整理候选</summary>
         <h4>{t.title}</h4>
@@ -211,11 +219,13 @@ function FactEditor({
   selection,
   blocked,
   onChange,
+  compact = false,
 }: {
   job: FactsJob;
   selection?: FactsSelection | null;
   blocked: boolean;
   onChange: () => void;
+  compact?: boolean;
 }) {
   const planning = usePlanning();
   const characterNames = new Map(
@@ -233,9 +243,13 @@ function FactEditor({
   const [dirty, setDirty] = useState(false),
     [stale, setStale] = useState(false);
   const [pending, setPending] = useState<FactsSelectionRequest | null>(null);
+  const saving = useRef(false);
   const save = useMutation({
     mutationFn: chapterFactsApi.save,
     retry: false,
+    onSettled: () => {
+      saving.current = false;
+    },
     onSuccess: (s) => {
       setPending(null);
       setDirty(false);
@@ -277,12 +291,7 @@ function FactEditor({
       return [...old.filter((d) => d.candidateId !== id), { ...existing, ...update }];
     });
   };
-  const decisionReasons: Record<FactDecision['action'], string> = {
-    confirm: '作者选择确认为新增事实',
-    exclude: '作者选择不写入章末事实',
-    keep_existing: '作者选择保留已有事实',
-    revise_manuscript: '作者要求先修改正文',
-  };
+  const decisionReasons = factDecisionReasons;
   const choose = (id: string, action: FactDecision['action']) => {
     setEditingDecision('');
     const previous = decisions.find((d) => d.candidateId === id);
@@ -326,9 +335,34 @@ function FactEditor({
     setManual((old) => old.map((c) => (c.id === id ? { ...c, ...patch } : c)));
     setDecisions((old) => old.filter((d) => d.candidateId !== id));
   };
+  const saveBlock =
+    locked ||
+    !!correction ||
+    stale ||
+    baseVersion !== (selection?.version ?? 0) ||
+    decisions.some((d) => !d.reason.trim());
+  const submitDecisions = (next: FactDecision[]) => {
+    if (saveBlock || saving.current) return;
+    saving.current = true;
+    const req = {
+      requestId: crypto.randomUUID(),
+      jobId: job.id,
+      expectedVersion: baseVersion,
+      manual,
+      decisions: next,
+    };
+    setDecisions(next);
+    setDirty(true);
+    setPending(req);
+    save.mutate(req);
+  };
+  const finishBatch = (mode: 'events' | 'exclude') => {
+    submitDecisions(completeFactDecisions(candidates, decisions, mode));
+  };
+  const eventCount = undecided.filter((c) => c.kind === 'event' && !c.relatedFactId).length;
   return (
     <div className="page-stack">
-      <div className="chapter-facts-actions">
+      <div className="chapter-facts-actions" hidden={compact}>
         <Button
           disabled={
             locked ||
@@ -340,17 +374,7 @@ function FactEditor({
           }
           disabledReason={selection && !dirty ? '事实决定已保存，没有未保存修改' : t.editBlock}
           loading={save.isPending}
-          onClick={() => {
-            const req = {
-              requestId: crypto.randomUUID(),
-              jobId: job.id,
-              expectedVersion: baseVersion,
-              manual,
-              decisions,
-            };
-            setPending(req);
-            save.mutate(req);
-          }}
+          onClick={() => submitDecisions(decisions)}
         >
           {t.save}
         </Button>
@@ -370,36 +394,102 @@ function FactEditor({
         </Button>
         {!dirty && selection && <span role="status">事实决定已保存</span>}
       </div>
-      {!!candidates.length && (
+      {!!candidates.length && (!compact || undecided.length > 0 || dirty || !!pending) && (
         <section className="chapter-facts-batch" aria-label="批量处理事实">
           <strong>
             已处理 {candidates.length - undecided.length}/{candidates.length} 条
             {dirty ? ' · 未保存' : ''}
           </strong>
-          <p className="muted">仅处理尚未决定的条目，不覆盖已有决定。普通决定无需另填理由。</p>
-          <div className="chapter-fact-choices">
-            {ordinary.length > 0 ? (
+          <p className="muted">
+            剩余 {undecided.length} 条尚未决定。以下操作会直接保存，已有决定保持不变。
+          </p>
+          <div className="chapter-facts-quick-actions">
+            {eventCount > 0 && (
+              <Button
+                variant="default"
+                disabled={!!saveBlock}
+                disabledReason={
+                  stale || baseVersion !== (selection?.version ?? 0)
+                    ? t.stale
+                    : correction
+                      ? '请先完成或取消分类调整。'
+                      : t.editBlock
+                }
+                loading={save.isPending}
+                onClick={() => finishBatch('events')}
+              >
+                计入 {eventCount} 条事件
+                {undecided.length > eventCount
+                  ? `，其余 ${undecided.length - eventCount} 条不计入`
+                  : ''}
+                并保存
+              </Button>
+            )}
+            {undecided.length > 0 && (
+              <Button
+                disabled={!!saveBlock}
+                disabledReason={
+                  stale || baseVersion !== (selection?.version ?? 0)
+                    ? t.stale
+                    : correction
+                      ? '请先完成或取消分类调整。'
+                      : t.editBlock
+                }
+                loading={save.isPending}
+                onClick={() => finishBatch('exclude')}
+              >
+                剩余 {undecided.length} 条全部不计入并保存
+              </Button>
+            )}
+            {!undecided.length && dirty && (
+              <Button
+                disabled={!!saveBlock}
+                disabledReason={
+                  stale || baseVersion !== (selection?.version ?? 0)
+                    ? t.stale
+                    : correction
+                      ? '请先完成或取消分类调整。'
+                      : t.editBlock
+                }
+                loading={save.isPending}
+                onClick={() => submitDecisions(decisions)}
+              >
+                保存当前事实决定
+              </Button>
+            )}
+          </div>
+          <p className="muted">
+            批量计入仅限明确事件；台词断言、不确定内容和关联旧事实的候选不直接变成新增事实。如需计入这些例外，可在“核对事实”中调整分类。
+          </p>
+          {compact && correction && (
+            <p role="status">有尚未完成的分类调整，请返回核对事实完成或取消。</p>
+          )}
+          <details hidden={compact}>
+            <summary>分别调整批量决定（暂不保存）</summary>
+            <div className="chapter-fact-choices">
+              {ordinary.length > 0 ? (
+                <Button
+                  size="sm"
+                  disabled={locked || !!correction}
+                  onClick={() => decideBatch(ordinary, 'confirm')}
+                >
+                  将 {ordinary.length} 条普通事件计入
+                </Button>
+              ) : (
+                <span className="muted">没有待批量计入的普通事件</span>
+              )}
               <Button
                 size="sm"
-                disabled={locked || !!correction}
-                onClick={() => decideBatch(ordinary, 'confirm')}
+                disabled={locked || !!correction || !undecided.length}
+                onClick={() => decideBatch(undecided, 'exclude')}
               >
-                将 {ordinary.length} 条普通事件计入
+                排除其余 {undecided.length} 条
               </Button>
-            ) : (
-              <span className="muted">没有待批量计入的普通事件</span>
-            )}
-            <Button
-              size="sm"
-              disabled={locked || !!correction || !undecided.length}
-              onClick={() => decideBatch(undecided, 'exclude')}
-            >
-              排除其余 {undecided.length} 条
-            </Button>
-          </div>
+            </div>
+          </details>
         </section>
       )}
-      {!candidates.length && (
+      {!compact && !candidates.length && (
         <p>
           {job.request.mode === 'manual'
             ? '尚未补充事实。请核对正文后添加，或确认本章没有新增事实。'
@@ -411,7 +501,12 @@ function FactEditor({
         const isManual = manual.some((m) => m.id === c.id);
         const existing = job.input.knowledge.facts.find((f) => f.id === c.relatedFactId);
         return (
-          <article key={c.id} className="chapter-fact-card" aria-label={`事实 ${i + 1}`}>
+          <article
+            hidden={compact}
+            key={c.id}
+            className="chapter-fact-card"
+            aria-label={`事实 ${i + 1}`}
+          >
             <div className="chapter-fact-overview">
               <div>
                 <Badge>
@@ -784,6 +879,7 @@ function FactEditor({
       })}
       <Button
         size="sm"
+        hidden={compact}
         disabled={locked || manual.length >= 8}
         onClick={() => {
           setDirty(true);
@@ -802,13 +898,13 @@ function FactEditor({
       >
         {t.add}
       </Button>
-      {selection && (
+      {!compact && selection && (
         <p>
           {t.saved} · v{selection.version} · {selection.package.facts.length} 条新增事实
         </p>
       )}
-      {selection?.block && <p role="status">{selection.block}</p>}
-      {dirty && <p>{t.draft}</p>}
+      {!compact && selection?.block && <p role="status">{selection.block}</p>}
+      {!compact && dirty && <p>{t.draft}</p>}
       {(stale || baseVersion !== (selection?.version ?? 0)) && <p role="alert">{t.stale}</p>}
       {save.isError && (
         <p role="alert">{save.error instanceof ApiError ? save.error.message : t.unknown}</p>

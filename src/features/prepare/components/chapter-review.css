@@ -249,3 +249,17 @@
   padding-left: 10px;
   border-left: 2px solid var(--ai);
 }
+
+.chapter-facts-quick-actions {
+  display: grid;
+  gap: 8px;
+}
+.chapter-facts-quick-actions .ui-button {
+  white-space: normal;
+  height: auto;
+  min-height: 36px;
+  text-align: center;
+}
+.chapter-facts-actions[hidden] {
+  display: none;
+}

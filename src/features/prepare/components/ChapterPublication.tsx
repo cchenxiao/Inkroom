@@ -105,6 +105,16 @@ export default function ChapterPublication({
   const reason =
     gate || (choice === 'pending' ? t.factsBlocked : choice !== 'none' ? t.factsRequired : '');
   const current = query.data?.current && job.current;
+  const factCandidates = [
+    ...(factsQuery.data?.job?.output?.candidates ?? []),
+    ...(factsQuery.data?.selection?.request.manual ?? []),
+  ];
+  const savedDecisions = factsQuery.data?.selection?.request.decisions ?? [];
+  const savedCount = factCandidates.filter((c) =>
+    savedDecisions.some((d) => d.candidateId === c.id),
+  ).length;
+  const excludedCount = savedDecisions.filter((d) => d.action === 'exclude').length;
+
   return (
     <section className="page-stack chapter-publication-workbench" aria-label={t.title}>
       <div ref={heading} className="chapter-publication-heading">
@@ -125,19 +135,26 @@ export default function ChapterPublication({
       {/* Keep local decisions and uncertain retries mounted if another window publishes. */}
       <details className="chapter-publication-fact-record" open={!receipt}>
         <summary hidden={!receipt}>已保存的事实决定</summary>
-        <div hidden={!receipt && step !== 'facts'} className="chapter-publication-facts">
+        <div className="chapter-publication-facts">
           <ChapterFacts
             review={job}
+            compact={!receipt && step === 'confirm'}
             state={factsQuery.data}
             blocked={
               blocked || stale || factsQuery.isError || !!pending || save.isPending || !!receipt
             }
             onChange={refresh}
           />
-          {!receipt && !factsQuery.isPending && !factsQuery.isError && !factsQuery.data?.job && (
-            <p className="muted">如果核对后确认没有新增事实或冲突，可直接进入确认定稿。</p>
+          {!receipt &&
+            step === 'facts' &&
+            !factsQuery.isPending &&
+            !factsQuery.isError &&
+            !factsQuery.data?.job && (
+              <p className="muted">如果核对后确认没有新增事实或冲突，可直接进入确认定稿。</p>
+            )}
+          {!receipt && step === 'facts' && (
+            <Button onClick={() => goTo('confirm')}>继续：确认定稿</Button>
           )}
-          {!receipt && <Button onClick={() => goTo('confirm')}>继续：确认定稿</Button>}
         </div>
       </details>
       {receipt ? (
@@ -180,8 +197,11 @@ export default function ChapterPublication({
           <p className="muted">{t.note}</p>
           {factsQuery.data?.selection && (
             <p>
-              已保存事实决定 · {factsQuery.data.selection.package.facts.length}{' '}
-              条新增事实将供后续章节使用。
+              已保存 {savedCount}/{factCandidates.length} 条决定：计入{' '}
+              {factsQuery.data.selection.package.facts.length} 条，不计入 {excludedCount} 条。
+              {savedCount < factCandidates.length
+                ? `还有 ${factCandidates.length - savedCount} 条待处理，可在上方批量完成。`
+                : '已计入事实将在定稿后供后续章节使用。'}
             </p>
           )}
           {query.isPending ? (

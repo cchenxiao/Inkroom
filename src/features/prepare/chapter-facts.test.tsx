@@ -307,6 +307,7 @@ it('offers direct and batch decisions without opening evidence, preserving previ
   const detail = first.getByText('证据与调整', { selector: 'summary' });
   expect(detail.closest('details')).not.toHaveAttribute('open');
   await user.click(first.getByRole('button', { name: '不记入事实' }));
+  await user.click(screen.getByText('分别调整批量决定（暂不保存）'));
   await user.click(screen.getByRole('button', { name: '将 1 条普通事件计入' }));
   expect(first.getByText('· 已选不计入', { exact: false })).toBeVisible();
   expect(first.queryByRole('button', { name: '计入事实' })).not.toBeInTheDocument();
@@ -376,3 +377,125 @@ it('offers direct and batch decisions without opening evidence, preserving previ
   view.unmount();
   client.clear();
 });
+
+it.each(['events', 'exclude'] as const)(
+  'finishes remaining fact decisions from the publication step: %s',
+  async (mode) => {
+    const review = {
+      id: 'quick-review',
+      current: true,
+      status: 'completed',
+      inputDigest: 'digest',
+      input: { draftVersion: 1, parts: [] },
+      decision: { action: 'approve', requestId: 'approval' },
+    } as unknown as ChapterReviewJob;
+    const candidates = ['event', 'event', 'statement', 'uncertain'].map((kind, i) => ({
+      id: String(i),
+      kind,
+      text: `事实${i}`,
+      relatedFactId: '',
+      reason: '',
+      evidence: { ref: 's', quote: '证据' },
+    }));
+    const job = {
+      id: 'quick-facts',
+      status: 'completed',
+      provider: 'real',
+      request: { mode: 'model' },
+      calls: [],
+      input: { review: review.input, knowledge: { characters: [], facts: [] } },
+      output: { candidates },
+    } as unknown as FactsJob;
+    const original = {
+      candidateId: '0',
+      action: 'confirm' as const,
+      text: '作者已修改的事实',
+      knownBy: [],
+      reason: '已核对',
+    };
+    const state: FactsState = {
+      job,
+      selection: {
+        version: 2,
+        request: {
+          requestId: 'old',
+          jobId: job.id,
+          expectedVersion: 1,
+          manual: [],
+          decisions: [original],
+        },
+        package: { baseKnowledge: { version: 1, digest: 'k' }, facts: [] },
+        block: '仍有事实候选未逐条决定',
+        createdAt: '',
+      },
+      current: true,
+      published: false,
+      block: '仍有事实候选未逐条决定',
+    };
+    const writes: FactsSelectionRequest[] = [];
+    server.use(
+      http.get('*/go-api/planning', () => HttpResponse.json({ jobs: [] })),
+      http.get('*/go-api/planning/chapter-reviews/quick-review/publication', () =>
+        HttpResponse.json({ publication: null, current: true }),
+      ),
+      http.get('*/go-api/planning/chapter-reviews/quick-review/facts', () =>
+        HttpResponse.json(state),
+      ),
+      http.post('*/go-api/planning/chapter-fact-selections', async ({ request }) => {
+        const req = (await request.json()) as FactsSelectionRequest;
+        writes.push(req);
+        if (mode === 'events' && writes.length === 1)
+          return HttpResponse.json({ message: '结果未确认' }, { status: 503 });
+        state.selection = { ...state.selection!, version: 3, request: req, block: '' };
+        state.block = '';
+        return HttpResponse.json(state.selection);
+      }),
+    );
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const router = createMemoryRouter([
+      {
+        path: '/',
+        element: (
+          <PendingWritingProvider>
+            <ChapterPublication job={review} blocked={false} />
+          </PendingWritingProvider>
+        ),
+      },
+    ]);
+    const view = render(
+      <QueryClientProvider client={client}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>,
+    );
+    const user = userEvent.setup();
+    await screen.findByText('已处理 1/4 条');
+    await user.click(screen.getByRole('button', { name: '2 确认定稿' }));
+    expect(screen.queryByRole('article')).not.toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: p.none })).toBeDisabled();
+    await user.click(
+      screen.getByRole('button', {
+        name:
+          mode === 'events' ? '计入 1 条事件，其余 2 条不计入并保存' : '剩余 3 条全部不计入并保存',
+      }),
+    );
+    await waitFor(() => expect(writes).toHaveLength(1));
+    if (mode === 'events') {
+      await user.click(await screen.findByRole('button', { name: t.retrySave }));
+      await waitFor(() => expect(writes).toHaveLength(2));
+      expect(writes[1]).toEqual(writes[0]);
+    }
+    expect(writes[0].expectedVersion).toBe(2);
+    expect(writes[0].decisions[0]).toEqual(original);
+    expect(writes[0].decisions.map((d) => d.action)).toEqual([
+      'confirm',
+      mode === 'events' ? 'confirm' : 'exclude',
+      'exclude',
+      'exclude',
+    ]);
+    await waitFor(() => expect(screen.getByRole('radio', { name: p.none })).toBeEnabled());
+    await user.click(screen.getByRole('radio', { name: p.none }));
+    expect(screen.getByRole('button', { name: p.publish })).toBeEnabled();
+    view.unmount();
+    client.clear();
+  },
+);
